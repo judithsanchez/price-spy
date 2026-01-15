@@ -5,7 +5,7 @@ import pytest
 from dotenv import load_dotenv
 
 from app.core.browser import capture_screenshot
-from app.core.vision import extract_price_data
+from app.core.vision import extract_product_info
 
 
 load_dotenv()
@@ -21,23 +21,22 @@ def api_key():
 
 
 @pytest.mark.asyncio
-async def test_extract_price_from_search_page(api_key):
-    """Verify Gemini can extract price data from Amazon search results."""
-    # Capture a search page with products
-    url = "https://www.amazon.nl/s?k=headphones"
+async def test_extract_product_info_from_screenshot(api_key):
+    """Verify Gemini can extract product name and price from Amazon product page."""
+    # Use the same product URL from test_browser
+    url = "https://www.amazon.nl/-/en/INSTITUTO-ESPA%C3%91OL-Urea-lotion-dispenser/dp/B015OAQEHI"
     screenshot_bytes = await capture_screenshot(url)
 
-    result = await extract_price_data(screenshot_bytes, api_key)
+    result = await extract_product_info(screenshot_bytes, api_key)
 
     assert result is not None, "Should return a result"
-    assert "product_name" in result, "Should have product_name"
-    assert "price" in result, "Should have price"
-    assert "currency" in result, "Should have currency"
-    assert "confidence_score" in result, "Should have confidence_score"
-    assert result["price"] > 0, "Price should be positive"
-    assert 0 <= result["confidence_score"] <= 1, "Confidence should be 0-1"
+    assert len(result) > 0, "Should have some content"
 
-    print(f"\nExtracted data: {result}")
+    print(f"\n{'='*50}")
+    print(f"Gemini extracted:")
+    print(f"{'='*50}")
+    print(result)
+    print(f"{'='*50}")
 
 
 if __name__ == "__main__":

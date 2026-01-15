@@ -6,6 +6,7 @@ from app.core.browser import capture_screenshot
 
 
 PNG_MAGIC = b'\x89PNG\r\n\x1a\n'
+PRODUCT_URL = "https://www.amazon.nl/-/en/INSTITUTO-ESPA%C3%91OL-Urea-lotion-dispenser/dp/B015OAQEHI"
 
 
 @pytest.mark.asyncio
@@ -23,14 +24,17 @@ async def test_capture_screenshot_returns_png_bytes():
 @pytest.mark.asyncio
 async def test_capture_product_page_screenshot():
     """Verify we can capture a specific Amazon product page without CAPTCHA."""
-    # Popular product URL (Echo Dot)
-    url = "https://www.amazon.nl/dp/B09B8V1LZ3"
+    screenshot_bytes = await capture_screenshot(PRODUCT_URL)
 
-    screenshot_bytes = await capture_screenshot(url)
+    # Save to screenshots folder for inspection
+    with open("screenshots/product_test.png", "wb") as f:
+        f.write(screenshot_bytes)
 
     assert screenshot_bytes is not None, "Screenshot should not be None"
     assert len(screenshot_bytes) > 1000, "Screenshot should have substantial content"
     assert screenshot_bytes[:8] == PNG_MAGIC, "Screenshot should be valid PNG format"
+
+    print(f"\nScreenshot saved to screenshots/product_test.png ({len(screenshot_bytes):,} bytes)")
 
 
 if __name__ == "__main__":

@@ -56,8 +56,28 @@ async def capture_screenshot(url: str) -> bytes:
         await page.add_init_script(STEALTH_SCRIPTS)
 
         await page.goto(url, wait_until="domcontentloaded", timeout=60000)
+
+        # Try to dismiss cookie consent popups
+        try:
+            # Amazon cookie accept button
+            accept_btn = page.locator('[data-action="a]').first
+            if await accept_btn.is_visible(timeout=2000):
+                await accept_btn.click()
+        except:
+            pass
+
+        try:
+            # Generic "Accept" or "Akzeptieren" buttons
+            for selector in ['button:has-text("Accept")', 'button:has-text("Accepteren")', '#sp-cc-accept']:
+                btn = page.locator(selector).first
+                if await btn.is_visible(timeout=1000):
+                    await btn.click()
+                    break
+        except:
+            pass
+
         # Wait for page to stabilize
-        await page.wait_for_timeout(3000)
+        await page.wait_for_timeout(2000)
 
         # Capture above-the-fold area (top 1200px as per spec)
         screenshot_bytes = await page.screenshot(
