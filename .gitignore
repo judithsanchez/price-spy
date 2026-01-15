@@ -52,8 +52,9 @@ htmlcov/
 .mypy_cache/
 
 # Playwright
-screenshots/
-*.png
+/screenshots/
+tests/screenshots/*.png
+!tests/screenshots/.gitkeep
 
 # OS
 .DS_Store
