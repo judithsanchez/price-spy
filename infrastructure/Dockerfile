@@ -34,6 +34,7 @@ RUN playwright install chromium
 # Copy application code
 COPY app/ ./app/
 COPY tests/ ./tests/
+COPY spy.py .
 COPY pyproject.toml .
 
 # Create screenshots directory
