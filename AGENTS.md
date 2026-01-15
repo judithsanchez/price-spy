@@ -1,6 +1,6 @@
 ## 1. Project Overview
 * **Mission:** A stealthy, visual-first price tracker.
-* **Tech Stack:** Raspberry Pi 5 (ARM64), Docker, Python 3.10+, Playwright (Chromium), Gemini 1.5 Flash (Vision API).
+* **Tech Stack:** Raspberry Pi 5 (ARM64), Docker, Python 3.10+, Playwright (Chromium), Gemini 2.5 Flash (Vision API).
 * **Methodology:** Using screenshots + Computer Vision to bypass anti-bot measures.
 
 ## 2. Infrastructure Constraints

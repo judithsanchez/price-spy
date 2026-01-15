@@ -12,7 +12,7 @@ Aggressive anti-bot services detect automated "code reading" and block the IP.
 Complex sites (Javascript-heavy) require heavy resources to parse.
 
 3. The Solution (The "Human-Like" Spy)
-Instead of reading code, this tool sees the page just like a human does. By using a headless browser to take a screenshot and sending that image to Google Gemini 1.5 Flash, the system identifies prices based on visual context. If a human can see the price, the Spy can find it.
+Instead of reading code, this tool sees the page just like a human does. By using a headless browser to take a screenshot and sending that image to Google Gemini 2.5 Flash, the system identifies prices based on visual context. If a human can see the price, the Spy can find it.
 
 4. Core Values
 Universal Compatibility: If it has a URL and a price tag, it can be tracked.

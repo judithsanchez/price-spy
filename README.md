@@ -1,4 +1,4 @@
-A professional-grade, visual-first price tracking system running on **Raspberry Pi 5**. This project uses computer vision (Gemini 1.5 Flash) and stealth browser automation (Playwright) to monitor prices without being blocked by anti-bot measures.
+A professional-grade, visual-first price tracking system running on **Raspberry Pi 5**. This project uses computer vision (Gemini 2.5 Flash) and stealth browser automation (Playwright) to monitor prices without being blocked by anti-bot measures.
 
 ## 📁 Project Structure
 
@@ -16,7 +16,7 @@ A professional-grade, visual-first price tracking system running on **Raspberry 
 - **OS:** Raspberry Pi OS / Ubuntu Jammy (Docker)
 - **Language:** Python 3.10+
 - **Automation:** Playwright (Chromium)
-- **AI:** Google Gemini 1.5 Flash (Vision API)
+- **AI:** Google Gemini 2.5 Flash (Vision API)
 - **Database:** SQLite (Planned for Slice 2)
 
 ## 🚀 Quick Start (Slice 1)

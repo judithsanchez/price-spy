@@ -2,7 +2,7 @@
 
 ## Overview
 
-**Objective:** Build a CLI proof-of-concept that takes a URL, captures a screenshot using a stealth-configured browser, sends it to Gemini 1.5 Flash Vision API, and outputs structured price data as JSON.
+**Objective:** Build a CLI proof-of-concept that takes a URL, captures a screenshot using a stealth-configured browser, sends it to Gemini 2.5 Flash Vision API, and outputs structured price data as JSON.
 
 **Success Criteria:**
 - Navigates to Amazon.nl or Google Shopping without triggering CAPTCHA
@@ -162,7 +162,7 @@ async def detect_captcha(page: Page) -> bool
 
 ### 2.5 `app/core/vision.py` - Gemini Vision Module
 
-**Purpose:** Send screenshots to Gemini 1.5 Flash and parse structured responses.
+**Purpose:** Send screenshots to Gemini 2.5 Flash and parse structured responses.
 
 **Responsibilities:**
 - Construct the extraction prompt (dual-mode: single product vs search list)
