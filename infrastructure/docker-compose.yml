@@ -1,0 +1,12 @@
+services:
+  price-spy:
+    build:
+      context: ..
+      dockerfile: infrastructure/Dockerfile
+    container_name: price_spy
+    env_file:
+      - ../.env
+    volumes:
+      - ../tests/screenshots:/app/tests/screenshots
+    stdin_open: true
+    tty: true

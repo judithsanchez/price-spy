@@ -1,0 +1,33 @@
+# Git
+.git
+.gitignore
+
+# Virtual environment
+venv/
+env/
+.venv/
+
+# Python cache
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# IDE
+.idea/
+.vscode/
+
+# Test artifacts
+tests/screenshots/*.png
+screenshots/
+
+# Docs
+docs/
+specs/
+*.md
+
+# Environment (handled by docker-compose env_file)
+.env
+.env.*
+
+# Other
+CLAUDE.md
