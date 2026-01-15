@@ -1,0 +1,10 @@
+[project]
+name = "price-spy"
+version = "0.1.0"
+description = "Visual-first price tracking system"
+requires-python = ">=3.10"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+pythonpath = ["."]
+testpaths = ["tests"]

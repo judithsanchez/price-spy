@@ -44,3 +44,7 @@ def test_gemini_api_key_works(api_key):
     assert len(text) > 0, "Empty response from Gemini"
 
     print(f"\nGemini responded with: {text}")
+
+
+if __name__ == "__main__":
+    pytest.main([__file__, "-v", "-s"])
