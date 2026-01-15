@@ -1,9 +1,11 @@
 """Tests for the browser module - screenshot capture functionality."""
 
-import os
 import pytest
 
 from app.core.browser import capture_screenshot
+
+
+PNG_MAGIC = b'\x89PNG\r\n\x1a\n'
 
 
 @pytest.mark.asyncio
@@ -13,11 +15,21 @@ async def test_capture_screenshot_returns_png_bytes():
 
     screenshot_bytes = await capture_screenshot(url)
 
-    # PNG files start with these magic bytes
-    PNG_MAGIC = b'\x89PNG\r\n\x1a\n'
-
     assert screenshot_bytes is not None, "Screenshot should not be None"
     assert len(screenshot_bytes) > 0, "Screenshot should not be empty"
+    assert screenshot_bytes[:8] == PNG_MAGIC, "Screenshot should be valid PNG format"
+
+
+@pytest.mark.asyncio
+async def test_capture_product_page_screenshot():
+    """Verify we can capture a specific Amazon product page without CAPTCHA."""
+    # Popular product URL (Echo Dot)
+    url = "https://www.amazon.nl/dp/B09B8V1LZ3"
+
+    screenshot_bytes = await capture_screenshot(url)
+
+    assert screenshot_bytes is not None, "Screenshot should not be None"
+    assert len(screenshot_bytes) > 1000, "Screenshot should have substantial content"
     assert screenshot_bytes[:8] == PNG_MAGIC, "Screenshot should be valid PNG format"
 
 
