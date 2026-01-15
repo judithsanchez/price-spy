@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 
 from app.core.browser import capture_screenshot
 from app.core.vision import extract_product_info
+from app.models.schemas import ProductInfo
 
 
 load_dotenv()
@@ -30,12 +31,21 @@ async def test_extract_product_info_from_screenshot(api_key):
     result = await extract_product_info(screenshot_bytes, api_key)
 
     assert result is not None, "Should return a result"
-    assert len(result) > 0, "Should have some content"
+
+    # Result should be a ProductInfo object with valid data
+    assert isinstance(result, ProductInfo), "Should return a ProductInfo object"
+    assert result.product_name, "Should have a product name"
+    assert result.price > 0, "Should have a positive price"
+    assert result.confidence >= 0 and result.confidence <= 1, "Confidence should be 0-1"
 
     print(f"\n{'='*50}")
     print(f"Gemini extracted:")
     print(f"{'='*50}")
-    print(result)
+    print(f"Product: {result.product_name}")
+    print(f"Price: {result.currency} {result.price}")
+    print(f"Store: {result.store_name}")
+    print(f"Page type: {result.page_type}")
+    print(f"Confidence: {result.confidence:.0%}")
     print(f"{'='*50}")
 
 

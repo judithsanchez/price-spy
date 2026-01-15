@@ -34,11 +34,12 @@ RUN playwright install chromium
 # Copy application code
 COPY app/ ./app/
 COPY tests/ ./tests/
+COPY data/ ./data/
 COPY spy.py .
 COPY pyproject.toml .
 
-# Create screenshots directory
-RUN mkdir -p screenshots tests/screenshots
+# Create screenshots and data directories
+RUN mkdir -p screenshots tests/screenshots data
 
 # Default command runs tests
 CMD ["pytest", "tests/", "-v", "-s"]
