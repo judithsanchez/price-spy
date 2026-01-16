@@ -181,6 +181,36 @@ class ProductRepository:
         )
         self.db.commit()
 
+    def update(self, product_id: int, product: Product) -> None:
+        """Update a product."""
+        self.db.execute(
+            """
+            UPDATE products SET
+                name = ?,
+                category = ?,
+                purchase_type = ?,
+                target_price = ?,
+                preferred_unit_size = ?,
+                current_stock = ?
+            WHERE id = ?
+            """,
+            (
+                product.name,
+                product.category,
+                product.purchase_type,
+                product.target_price,
+                product.preferred_unit_size,
+                product.current_stock,
+                product_id,
+            )
+        )
+        self.db.commit()
+
+    def delete(self, product_id: int) -> None:
+        """Delete a product."""
+        self.db.execute("DELETE FROM products WHERE id = ?", (product_id,))
+        self.db.commit()
+
     def _row_to_record(self, row) -> Product:
         """Convert a database row to a Product."""
         return Product(
@@ -245,6 +275,32 @@ class StoreRepository:
         """Get all stores."""
         cursor = self.db.execute("SELECT * FROM stores ORDER BY name")
         return [self._row_to_record(row) for row in cursor.fetchall()]
+
+    def update(self, store_id: int, store: Store) -> None:
+        """Update a store."""
+        self.db.execute(
+            """
+            UPDATE stores SET
+                name = ?,
+                shipping_cost_standard = ?,
+                free_shipping_threshold = ?,
+                notes = ?
+            WHERE id = ?
+            """,
+            (
+                store.name,
+                store.shipping_cost_standard,
+                store.free_shipping_threshold,
+                store.notes,
+                store_id,
+            )
+        )
+        self.db.commit()
+
+    def delete(self, store_id: int) -> None:
+        """Delete a store."""
+        self.db.execute("DELETE FROM stores WHERE id = ?", (store_id,))
+        self.db.commit()
 
     def _row_to_record(self, row) -> Store:
         """Convert a database row to a Store."""
@@ -323,6 +379,50 @@ class TrackedItemRepository:
             (item_id,)
         )
         self.db.commit()
+
+    def update(self, item_id: int, item: TrackedItem) -> None:
+        """Update a tracked item."""
+        self.db.execute(
+            """
+            UPDATE tracked_items SET
+                product_id = ?,
+                store_id = ?,
+                url = ?,
+                item_name_on_site = ?,
+                quantity_size = ?,
+                quantity_unit = ?,
+                items_per_lot = ?,
+                is_active = ?,
+                alerts_enabled = ?
+            WHERE id = ?
+            """,
+            (
+                item.product_id,
+                item.store_id,
+                item.url,
+                item.item_name_on_site,
+                item.quantity_size,
+                item.quantity_unit,
+                item.items_per_lot,
+                1 if item.is_active else 0,
+                1 if item.alerts_enabled else 0,
+                item_id,
+            )
+        )
+        self.db.commit()
+
+    def delete(self, item_id: int) -> None:
+        """Delete a tracked item."""
+        self.db.execute("DELETE FROM tracked_items WHERE id = ?", (item_id,))
+        self.db.commit()
+
+    def get_by_product(self, product_id: int) -> List[TrackedItem]:
+        """Get all tracked items for a product."""
+        cursor = self.db.execute(
+            "SELECT * FROM tracked_items WHERE product_id = ?",
+            (product_id,)
+        )
+        return [self._row_to_record(row) for row in cursor.fetchall()]
 
     def _row_to_record(self, row) -> TrackedItem:
         """Convert a database row to a TrackedItem."""

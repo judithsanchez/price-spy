@@ -209,6 +209,36 @@ class TestProductRepository:
         updated = repo.get_by_id(product_id)
         assert updated.current_stock == 8
 
+    def test_update(self, temp_db):
+        """Should update product fields."""
+        db = Database(temp_db)
+        db.initialize()
+        repo = ProductRepository(db)
+
+        product_id = repo.insert(Product(name="Original", category="Old"))
+        repo.update(product_id, Product(
+            name="Updated",
+            category="New",
+            target_price=15.00
+        ))
+
+        updated = repo.get_by_id(product_id)
+        assert updated.name == "Updated"
+        assert updated.category == "New"
+        assert updated.target_price == 15.00
+
+    def test_delete(self, temp_db):
+        """Should delete product."""
+        db = Database(temp_db)
+        db.initialize()
+        repo = ProductRepository(db)
+
+        product_id = repo.insert(Product(name="To Delete"))
+        assert repo.get_by_id(product_id) is not None
+
+        repo.delete(product_id)
+        assert repo.get_by_id(product_id) is None
+
 
 class TestStoreRepository:
     """Tests for StoreRepository."""
@@ -244,6 +274,36 @@ class TestStoreRepository:
         amazon = repo.get_by_name("Amazon.nl")
         assert amazon is not None
         assert amazon.name == "Amazon.nl"
+
+    def test_update(self, temp_db):
+        """Should update store fields."""
+        db = Database(temp_db)
+        db.initialize()
+        repo = StoreRepository(db)
+
+        store_id = repo.insert(Store(name="Old Store", shipping_cost_standard=5.0))
+        repo.update(store_id, Store(
+            name="New Store",
+            shipping_cost_standard=3.0,
+            free_shipping_threshold=25.0
+        ))
+
+        updated = repo.get_by_id(store_id)
+        assert updated.name == "New Store"
+        assert updated.shipping_cost_standard == 3.0
+        assert updated.free_shipping_threshold == 25.0
+
+    def test_delete(self, temp_db):
+        """Should delete store."""
+        db = Database(temp_db)
+        db.initialize()
+        repo = StoreRepository(db)
+
+        store_id = repo.insert(Store(name="To Delete"))
+        assert repo.get_by_id(store_id) is not None
+
+        repo.delete(store_id)
+        assert repo.get_by_id(store_id) is None
 
 
 class TestTrackedItemRepository:
@@ -337,6 +397,105 @@ class TestTrackedItemRepository:
         active = item_repo.get_active()
         assert len(active) == 1
         assert active[0].url == "https://example.com/active"
+
+    def test_update(self, temp_db):
+        """Should update tracked item fields."""
+        db = Database(temp_db)
+        db.initialize()
+
+        product_repo = ProductRepository(db)
+        store_repo = StoreRepository(db)
+        item_repo = TrackedItemRepository(db)
+
+        product_id = product_repo.insert(Product(name="Test"))
+        store_id = store_repo.insert(Store(name="Test Store"))
+
+        item_id = item_repo.insert(TrackedItem(
+            product_id=product_id,
+            store_id=store_id,
+            url="https://example.com/old",
+            quantity_size=100,
+            quantity_unit="ml"
+        ))
+
+        item_repo.update(item_id, TrackedItem(
+            product_id=product_id,
+            store_id=store_id,
+            url="https://example.com/new",
+            quantity_size=500,
+            quantity_unit="ml",
+            items_per_lot=2
+        ))
+
+        updated = item_repo.get_by_id(item_id)
+        assert updated.url == "https://example.com/new"
+        assert updated.quantity_size == 500
+        assert updated.items_per_lot == 2
+
+    def test_delete(self, temp_db):
+        """Should delete tracked item."""
+        db = Database(temp_db)
+        db.initialize()
+
+        product_repo = ProductRepository(db)
+        store_repo = StoreRepository(db)
+        item_repo = TrackedItemRepository(db)
+
+        product_id = product_repo.insert(Product(name="Test"))
+        store_id = store_repo.insert(Store(name="Test Store"))
+
+        item_id = item_repo.insert(TrackedItem(
+            product_id=product_id,
+            store_id=store_id,
+            url="https://example.com/delete",
+            quantity_size=100,
+            quantity_unit="ml"
+        ))
+
+        assert item_repo.get_by_id(item_id) is not None
+        item_repo.delete(item_id)
+        assert item_repo.get_by_id(item_id) is None
+
+    def test_get_by_product(self, temp_db):
+        """Should get all tracked items for a product."""
+        db = Database(temp_db)
+        db.initialize()
+
+        product_repo = ProductRepository(db)
+        store_repo = StoreRepository(db)
+        item_repo = TrackedItemRepository(db)
+
+        product_id = product_repo.insert(Product(name="Test Product"))
+        other_product_id = product_repo.insert(Product(name="Other Product"))
+        store_id = store_repo.insert(Store(name="Store"))
+
+        # Add two items for test product
+        item_repo.insert(TrackedItem(
+            product_id=product_id,
+            store_id=store_id,
+            url="https://store1.com/product",
+            quantity_size=100,
+            quantity_unit="ml"
+        ))
+        item_repo.insert(TrackedItem(
+            product_id=product_id,
+            store_id=store_id,
+            url="https://store2.com/product",
+            quantity_size=200,
+            quantity_unit="ml"
+        ))
+
+        # Add one for other product
+        item_repo.insert(TrackedItem(
+            product_id=other_product_id,
+            store_id=store_id,
+            url="https://store1.com/other",
+            quantity_size=50,
+            quantity_unit="g"
+        ))
+
+        items = item_repo.get_by_product(product_id)
+        assert len(items) == 2
 
 
 if __name__ == "__main__":
