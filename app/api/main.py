@@ -63,9 +63,11 @@ class DashboardItem(BaseModel):
 
 class ExtractResponse(BaseModel):
     """Response for extract endpoint."""
-    status: str
+    status: str  # "success", "error"
     item_id: int
     message: Optional[str] = None
+    price: Optional[float] = None
+    error: Optional[str] = None
 
 
 class ProductCreate(BaseModel):
@@ -266,25 +268,77 @@ async def run_extraction(item_id: int, db_path: str):
         db.close()
 
 
-@app.post("/api/extract/{item_id}", response_model=ExtractResponse, status_code=202)
-async def trigger_extraction(item_id: int, background_tasks: BackgroundTasks):
-    """Trigger price extraction for a tracked item."""
+@app.post("/api/extract/{item_id}", response_model=ExtractResponse)
+async def trigger_extraction(item_id: int):
+    """Run price extraction for a tracked item (synchronous for error feedback)."""
+    from app.core.browser import capture_screenshot
+    from app.core.vision import extract_with_structured_output
+    from app.models.schemas import PriceHistoryRecord
+
     db = get_db()
     try:
         tracked_repo = TrackedItemRepository(db)
+        price_repo = PriceHistoryRepository(db)
         item = tracked_repo.get_by_id(item_id)
 
         if not item:
             raise HTTPException(status_code=404, detail="Item not found")
 
-        db_path = _test_db_path if _test_db_path else "data/pricespy.db"
-        background_tasks.add_task(run_extraction, item_id, db_path)
+        api_key = os.getenv("GEMINI_API_KEY")
+        if not api_key:
+            return ExtractResponse(
+                status="error",
+                item_id=item_id,
+                error="GEMINI_API_KEY not configured"
+            )
 
-        return ExtractResponse(
-            status="queued",
-            item_id=item_id,
-            message="Extraction queued"
-        )
+        try:
+            # Capture screenshot
+            screenshot_bytes = await capture_screenshot(item.url)
+
+            # Save screenshot
+            screenshot_path = Path(f"screenshots/{item_id}.png")
+            screenshot_path.parent.mkdir(parents=True, exist_ok=True)
+            screenshot_path.write_bytes(screenshot_bytes)
+
+            # Extract price
+            result = await extract_with_structured_output(screenshot_bytes, api_key)
+
+            # Save to price history
+            record = PriceHistoryRecord(
+                product_name=result.product_name,
+                price=result.price,
+                currency=result.currency,
+                confidence=1.0,
+                url=item.url,
+                store_name=result.store_name,
+            )
+            price_repo.insert(record)
+
+            # Update last checked time
+            tracked_repo.set_last_checked(item_id)
+
+            return ExtractResponse(
+                status="success",
+                item_id=item_id,
+                message=f"Extracted price: {result.currency} {result.price:.2f}",
+                price=result.price
+            )
+
+        except Exception as e:
+            error_msg = str(e)
+            # Parse common errors for friendlier messages
+            if "429" in error_msg or "quota" in error_msg.lower():
+                error_msg = "Gemini API quota exceeded. Try again tomorrow or upgrade your plan."
+            elif "401" in error_msg or "API key" in error_msg.lower():
+                error_msg = "Invalid Gemini API key."
+
+            return ExtractResponse(
+                status="error",
+                item_id=item_id,
+                error=error_msg
+            )
+
     finally:
         db.close()
 

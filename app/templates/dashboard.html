@@ -24,7 +24,7 @@
         </thead>
         <tbody class="divide-y divide-gray-200">
             {% for item in items %}
-            <tr x-data="{ loading: false }" class="hover:bg-gray-50">
+            <tr x-data="{ loading: false, error: null, success: null }" class="hover:bg-gray-50">
                 <td class="px-4 py-3 text-sm">{{ item.product_name }}</td>
                 <td class="px-4 py-3 text-sm text-gray-600">{{ item.store_name }}</td>
                 <td class="px-4 py-3 text-sm font-medium">
@@ -63,13 +63,29 @@
                     {% endif %}
                 </td>
                 <td class="px-4 py-3">
-                    <button
-                        @click="loading = true; fetch('/api/extract/{{ item.id }}', {method: 'POST'}).then(r => r.json()).then(() => setTimeout(() => location.reload(), 5000)).catch(() => loading = false)"
-                        :disabled="loading"
-                        class="bg-blue-500 hover:bg-blue-600 disabled:bg-blue-300 text-white text-sm px-3 py-1 rounded transition-colors">
-                        <span x-show="!loading">Spy Now</span>
-                        <span x-show="loading">Extracting... (5s)</span>
-                    </button>
+                    <div class="flex flex-col gap-1">
+                        <button
+                            @click="loading = true; error = null; success = null;
+                                fetch('/api/extract/{{ item.id }}', {method: 'POST'})
+                                .then(r => r.json())
+                                .then(data => {
+                                    loading = false;
+                                    if (data.status === 'error') {
+                                        error = data.error;
+                                    } else {
+                                        success = data.message;
+                                        setTimeout(() => location.reload(), 2000);
+                                    }
+                                })
+                                .catch(e => { loading = false; error = e.message; })"
+                            :disabled="loading"
+                            class="bg-blue-500 hover:bg-blue-600 disabled:bg-blue-300 text-white text-sm px-3 py-1 rounded transition-colors">
+                            <span x-show="!loading">Spy Now</span>
+                            <span x-show="loading">Extracting...</span>
+                        </button>
+                        <span x-show="error" x-text="error" class="text-red-600 text-xs max-w-[200px]"></span>
+                        <span x-show="success" x-text="success" class="text-green-600 text-xs"></span>
+                    </div>
                 </td>
             </tr>
             {% endfor %}

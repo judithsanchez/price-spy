@@ -146,20 +146,43 @@ class TestExtractEndpoint:
 
     def test_extract_returns_404_for_missing_item(self, client):
         """Extract should return 404 for non-existent item."""
-        with patch('app.api.main.run_extraction', new_callable=AsyncMock):
-            response = client.post("/api/extract/99999")
-            assert response.status_code == 404
+        response = client.post("/api/extract/99999")
+        assert response.status_code == 404
 
-    def test_extract_returns_accepted(self, client_with_data):
-        """Extract should return 202 Accepted for valid item."""
-        with patch('app.api.main.run_extraction', new_callable=AsyncMock) as mock_extract:
+    def test_extract_returns_success(self, client_with_data):
+        """Extract should return success with price for valid item."""
+        from app.models.schemas import ExtractionResult
+
+        mock_result = ExtractionResult(
+            price=12.99,
+            currency="EUR",
+            is_available=True,
+            product_name="Test Product",
+            store_name="Test Store"
+        )
+
+        with patch('app.core.browser.capture_screenshot', new_callable=AsyncMock) as mock_screenshot, \
+             patch('app.core.vision.extract_with_structured_output', new_callable=AsyncMock) as mock_extract:
+            mock_screenshot.return_value = b"fake_image_bytes"
+            mock_extract.return_value = mock_result
+
             response = client_with_data.post("/api/extract/1")
-            assert response.status_code == 202
+            assert response.status_code == 200
             data = response.json()
-            assert data["status"] == "queued"
+            assert data["status"] == "success"
             assert data["item_id"] == 1
-            # Verify extraction was queued (background task added)
-            mock_extract.assert_called_once()
+            assert data["price"] == 12.99
+
+    def test_extract_returns_error_on_failure(self, client_with_data):
+        """Extract should return error status when extraction fails."""
+        with patch('app.core.browser.capture_screenshot', new_callable=AsyncMock) as mock_screenshot:
+            mock_screenshot.side_effect = Exception("Gemini API error 429: quota exceeded")
+
+            response = client_with_data.post("/api/extract/1")
+            assert response.status_code == 200
+            data = response.json()
+            assert data["status"] == "error"
+            assert "quota" in data["error"].lower()
 
 
 @pytest.fixture
