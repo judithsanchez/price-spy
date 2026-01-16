@@ -41,5 +41,8 @@ COPY pyproject.toml .
 # Create screenshots and data directories
 RUN mkdir -p screenshots tests/screenshots data
 
-# Default command runs tests
-CMD ["pytest", "tests/", "-v", "-s"]
+# Expose port for web UI
+EXPOSE 8000
+
+# Default command runs web server
+CMD ["uvicorn", "app.api.main:app", "--host", "0.0.0.0", "--port", "8000"]

@@ -11,6 +11,7 @@ from app.models.schemas import (
     Store,
     TrackedItem,
     PriceComparison,
+    ExtractionResult,
 )
 
 
@@ -340,6 +341,110 @@ class TestPriceComparison:
         )
         assert comparison.volume_price == 3.03
         assert comparison.volume_unit == "L"
+
+
+class TestExtractionResult:
+    """Tests for ExtractionResult model (structured Gemini output)."""
+
+    def test_valid_extraction_result(self):
+        """Valid extraction result should parse correctly."""
+        result = ExtractionResult(
+            price=12.99,
+            currency="EUR",
+            is_available=True,
+            product_name="Test Product",
+            store_name="Amazon.nl"
+        )
+        assert result.price == 12.99
+        assert result.currency == "EUR"
+        assert result.is_available is True
+        assert result.product_name == "Test Product"
+        assert result.detected_at is not None
+
+    def test_extraction_result_from_json(self):
+        """Should parse from JSON string (Gemini response)."""
+        json_str = '{"price": 19.99, "currency": "EUR", "is_available": true, "product_name": "Lotion 950ml"}'
+        result = ExtractionResult.model_validate_json(json_str)
+        assert result.price == 19.99
+        assert result.is_available is True
+
+    def test_extraction_result_price_must_be_positive(self):
+        """Price must be positive."""
+        with pytest.raises(ValidationError):
+            ExtractionResult(
+                price=-5.0,
+                currency="EUR",
+                is_available=True,
+                product_name="Test"
+            )
+
+    def test_extraction_result_price_zero_invalid(self):
+        """Zero price should raise ValidationError."""
+        with pytest.raises(ValidationError):
+            ExtractionResult(
+                price=0,
+                currency="EUR",
+                is_available=True,
+                product_name="Test"
+            )
+
+    def test_extraction_result_currency_pattern(self):
+        """Currency must be 3 uppercase letters."""
+        with pytest.raises(ValidationError):
+            ExtractionResult(
+                price=10.0,
+                currency="euro",  # lowercase - invalid
+                is_available=True,
+                product_name="Test"
+            )
+
+    def test_extraction_result_is_available_required(self):
+        """is_available field is required."""
+        with pytest.raises(ValidationError):
+            ExtractionResult(
+                price=10.0,
+                currency="EUR",
+                product_name="Test"
+            )
+
+    def test_extraction_result_product_name_required(self):
+        """product_name is required."""
+        with pytest.raises(ValidationError):
+            ExtractionResult(
+                price=10.0,
+                currency="EUR",
+                is_available=True
+            )
+
+    def test_extraction_result_store_name_optional(self):
+        """store_name should be optional."""
+        result = ExtractionResult(
+            price=10.0,
+            currency="EUR",
+            is_available=True,
+            product_name="Test"
+        )
+        assert result.store_name is None
+
+    def test_extraction_result_out_of_stock(self):
+        """Should handle out of stock items."""
+        result = ExtractionResult(
+            price=15.99,
+            currency="EUR",
+            is_available=False,
+            product_name="Out of Stock Item"
+        )
+        assert result.is_available is False
+
+    def test_extraction_result_price_rounded(self):
+        """Price should be rounded to 2 decimal places."""
+        result = ExtractionResult(
+            price=12.999,
+            currency="EUR",
+            is_available=True,
+            product_name="Test"
+        )
+        assert result.price == 13.0
 
 
 if __name__ == "__main__":

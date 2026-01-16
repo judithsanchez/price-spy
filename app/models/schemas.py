@@ -110,3 +110,26 @@ class PriceComparison(BaseModel):
     volume_price: Optional[float] = Field(default=None, gt=0)
     volume_unit: Optional[str] = Field(default=None, max_length=20)
     is_price_drop: bool = False
+
+
+class ExtractionResult(BaseModel):
+    """Guaranteed structured output from Gemini.
+
+    This model represents the structured JSON response from Gemini
+    when using response_mime_type: "application/json".
+    """
+
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    price: float = Field(..., gt=0, le=1_000_000, description="Numeric price value")
+    currency: str = Field(default="EUR", pattern=r"^[A-Z]{3}$")
+    is_available: bool = Field(..., description="In stock status")
+    product_name: str = Field(..., min_length=1, max_length=500)
+    store_name: Optional[str] = Field(default=None, max_length=100)
+    detected_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+    @field_validator("price")
+    @classmethod
+    def round_price(cls, v: float) -> float:
+        """Round price to 2 decimal places."""
+        return round(v, 2)

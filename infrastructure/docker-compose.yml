@@ -6,8 +6,11 @@ services:
     container_name: price_spy
     env_file:
       - ../.env
+    ports:
+      - "8000:8000"
     volumes:
       - ../tests/screenshots:/app/tests/screenshots
       - ../data:/app/data
+      - ../screenshots:/app/screenshots
     stdin_open: true
     tty: true

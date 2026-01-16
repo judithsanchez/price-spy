@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Price Spy{% endblock %}
+
+{% block content %}
+<div class="mb-6">
+    <h2 class="text-2xl font-bold text-gray-800">Dashboard</h2>
+    <p class="text-gray-600">Track and monitor product prices</p>
+</div>
+
+{% if items %}
+<div class="bg-white rounded-lg shadow overflow-hidden">
+    <table class="w-full">
+        <thead class="bg-gray-50">
+            <tr>
+                <th class="px-4 py-3 text-left text-sm font-medium text-gray-700">Product</th>
+                <th class="px-4 py-3 text-left text-sm font-medium text-gray-700">Store</th>
+                <th class="px-4 py-3 text-left text-sm font-medium text-gray-700">Price</th>
+                <th class="px-4 py-3 text-left text-sm font-medium text-gray-700">Target</th>
+                <th class="px-4 py-3 text-left text-sm font-medium text-gray-700">Status</th>
+                <th class="px-4 py-3 text-left text-sm font-medium text-gray-700">Screenshot</th>
+                <th class="px-4 py-3 text-left text-sm font-medium text-gray-700">Action</th>
+            </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-200">
+            {% for item in items %}
+            <tr x-data="{ loading: false }" class="hover:bg-gray-50">
+                <td class="px-4 py-3 text-sm">{{ item.product_name }}</td>
+                <td class="px-4 py-3 text-sm text-gray-600">{{ item.store_name }}</td>
+                <td class="px-4 py-3 text-sm font-medium">
+                    {% if item.price %}
+                        {{ item.currency }} {{ "%.2f"|format(item.price) }}
+                    {% else %}
+                        <span class="text-gray-400">-</span>
+                    {% endif %}
+                </td>
+                <td class="px-4 py-3 text-sm">
+                    {% if item.target_price %}
+                        {{ item.currency }} {{ "%.2f"|format(item.target_price) }}
+                    {% else %}
+                        <span class="text-gray-400">-</span>
+                    {% endif %}
+                </td>
+                <td class="px-4 py-3 text-sm">
+                    {% if item.target_price and item.price %}
+                        {% if item.price <= item.target_price %}
+                            <span class="text-green-600 font-medium">Below target</span>
+                        {% else %}
+                            <span class="text-red-600 font-medium">Above target</span>
+                        {% endif %}
+                    {% else %}
+                        <span class="text-gray-400">-</span>
+                    {% endif %}
+                </td>
+                <td class="px-4 py-3">
+                    {% if item.screenshot_path %}
+                        <img src="/screenshots/{{ item.id }}.png"
+                             alt="Screenshot"
+                             class="w-20 h-auto rounded border cursor-pointer hover:opacity-75"
+                             @click="window.open('/screenshots/{{ item.id }}.png', '_blank')">
+                    {% else %}
+                        <span class="text-gray-400 text-sm">No image</span>
+                    {% endif %}
+                </td>
+                <td class="px-4 py-3">
+                    <button
+                        @click="loading = true; fetch('/api/extract/{{ item.id }}', {method: 'POST'}).then(r => r.json()).then(() => setTimeout(() => location.reload(), 2000)).catch(() => loading = false)"
+                        :disabled="loading"
+                        class="bg-blue-500 hover:bg-blue-600 disabled:bg-blue-300 text-white text-sm px-3 py-1 rounded transition-colors">
+                        <span x-show="!loading">Spy Now</span>
+                        <span x-show="loading">Extracting...</span>
+                    </button>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<div class="bg-white rounded-lg shadow p-8 text-center">
+    <p class="text-gray-500 mb-4">No tracked items yet.</p>
+    <p class="text-sm text-gray-400">
+        Add products and track URLs using the CLI:<br>
+        <code class="bg-gray-100 px-2 py-1 rounded">python spy.py add-product "Product Name"</code>
+    </p>
+</div>
+{% endif %}
+{% endblock %}

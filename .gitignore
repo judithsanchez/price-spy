@@ -52,7 +52,8 @@ htmlcov/
 .mypy_cache/
 
 # Playwright
-/screenshots/
+/screenshots/*.png
+!screenshots/.gitkeep
 tests/screenshots/*.png
 !tests/screenshots/.gitkeep
 
