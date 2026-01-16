@@ -300,11 +300,13 @@ To preserve existing price_history data:
 ## 8. Definition of Done
 
 Slice 2 is complete when:
-- [ ] All new model tests pass
-- [ ] All repository tests pass
-- [ ] Price calculator tests pass
-- [ ] CLI supports add-product, add-store, track commands
-- [ ] Extracting a tracked URL shows price comparison
-- [ ] Volume price calculation works for multipacks
-- [ ] All tests pass in Docker (ARM64)
-- [ ] Documentation updated
+- [x] All new model tests pass (31 tests)
+- [x] All repository tests pass (15 tests)
+- [x] Price calculator tests pass (10 tests)
+- [x] CLI supports add-product, add-store, track commands
+- [x] Extracting a tracked URL shows price comparison
+- [x] Volume price calculation works for multipacks
+- [x] All tests pass in Docker (ARM64) - 70 total tests
+- [x] Documentation updated
+
+**Status: COMPLETE** (January 2026)

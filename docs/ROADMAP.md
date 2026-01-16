@@ -7,18 +7,19 @@
   - [x] No CAPTCHA in 5 consecutive runs
   - [x] 31 unit/integration tests passing in Docker
 
-## Slice 2: Full Data Model (The Memory)
+## Slice 2: Full Data Model (Complete)
 * **Goal:** Implement complete database schema for product tracking and price comparison.
-* **Status:** In Development.
+* **Status:** Complete.
 * **Scope:**
-    * Implement full schema: `products`, `stores`, `tracked_items` tables (per DATA_STRUCTURE.md)
+    * Implemented full schema: `products`, `stores`, `tracked_items` tables
     * Link tracked URLs to master products and stores
     * Price comparison logic: "Last Price" vs "Current Price"
     * Volume/unit price calculation for multipacks
-    * Process logging with run_id grouping
+    * CLI commands: add-product, add-store, track, list
 * **Success Criteria:**
-  - Track multiple URLs for the same product across different stores
-  - Calculate and display price per unit (e.g., EUR/L)
+  - [x] Track multiple URLs for the same product across different stores
+  - [x] Calculate and display price per unit (e.g., EUR/L)
+  - [x] 70 tests passing in Docker
 
 ## Slice 3: Communication (The Alert)
 * **Goal:** Notify the user when a price drops.

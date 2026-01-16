@@ -7,7 +7,8 @@ price-spy/
 ├── app/                    # Python source code
 │   ├── core/
 │   │   ├── browser.py      # Stealth browser screenshot capture
-│   │   └── vision.py       # Gemini price extraction
+│   │   ├── vision.py       # Gemini price extraction
+│   │   └── price_calculator.py  # Volume price & comparison logic
 │   ├── models/
 │   │   └── schemas.py      # Pydantic data models
 │   ├── storage/
@@ -16,7 +17,7 @@ price-spy/
 │   └── utils/
 │       └── logging.py      # Structured JSON logging
 ├── data/                   # SQLite database storage
-├── tests/                  # Test suites (31 tests)
+├── tests/                  # Test suites (70 tests)
 ├── infrastructure/         # Docker configuration
 │   ├── Dockerfile
 │   └── docker-compose.yml
@@ -75,17 +76,34 @@ docker compose -f infrastructure/docker-compose.yml run --rm price-spy pytest te
 docker compose -f infrastructure/docker-compose.yml run --rm price-spy pytest tests/test_vision.py -v -s
 ```
 
-### 6. Extract Price from URL
+### 6. CLI Commands
 
 ```bash
-# Amazon.nl product page
-docker compose -f infrastructure/docker-compose.yml run --rm price-spy python spy.py "https://www.amazon.nl/dp/B08N5WRWNW"
+# Extract price from URL
+python spy.py extract "https://www.amazon.nl/dp/B08N5WRWNW"
 
-# Example output:
+# Add a product to track
+python spy.py add-product "Campina Slagroom" --category "Dairy" --target-price 2.50
+
+# Add a store with shipping info
+python spy.py add-store "Amazon.nl" --shipping 4.95 --free-threshold 50
+
+# Track a URL (link to product and store)
+python spy.py track "https://amazon.nl/..." --product-id 1 --store-id 1 --size 250 --unit ml
+
+# List items
+python spy.py list products
+python spy.py list stores
+python spy.py list tracked
+
+# Example extract output (with price comparison):
 # Product: INSTITUTO ESPAÑOL Urea lotion dispenser 950 ml
 # Price: EUR 13.4
 # Store: Amazon.nl
 # Confidence: 100%
+# Unit price: EUR 14.11/L
+# Price change: ↓ 0.50 (-3.6%)
+# *** PRICE DROP DETECTED ***
 ```
 
 ### 7. Interactive Shell
@@ -121,9 +139,12 @@ All features must be planned and documented in `specs/` before implementation.
 
 ## Data Persistence
 
-Price extractions and errors are stored in SQLite (`data/price_spy.db`):
+All data is stored in SQLite (`data/pricespy.db`):
 
-- **price_history** - Successful extractions with product name, price, currency, confidence
+- **products** - Master product concepts (what you buy)
+- **stores** - Store definitions with shipping rules
+- **tracked_items** - URLs linked to products and stores
+- **price_history** - Successful extractions with price, confidence, timestamp
 - **error_log** - Failed extractions with error type, message, and stack trace
 
 Logs are output as structured JSON to stderr for easy parsing.
