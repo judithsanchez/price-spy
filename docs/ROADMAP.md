@@ -1,15 +1,24 @@
-## Slice 1: The Manual Spy (Current)
+## Slice 1: The Manual Spy (Complete)
 * **Goal:** Proof of Concept for Visual Scraping.
-* **Status:** In Development.
-* **Scope:** Manual CLI trigger, Chromium/Playwright context, Gemini Vision analysis, JSON output to console.
-* **Success Criteria:** Verified JSON response from Amazon.nl and Google Shopping.
+* **Status:** Complete.
+* **Scope:** Manual CLI trigger, Chromium/Playwright stealth browser, Gemini 2.5 Flash Vision analysis, Pydantic validation, SQLite persistence (price_history, error_log), structured JSON logging.
+* **Success Criteria:**
+  - [x] Verified JSON response from Amazon.nl (100% confidence)
+  - [x] No CAPTCHA in 5 consecutive runs
+  - [x] 31 unit/integration tests passing in Docker
 
-## Slice 2: Persistence (The Memory)
-* **Goal:** Stop "forgetting" prices between runs.
-* **Scope:** * Implement **SQLite** database to store `product_name`, `price`, `timestamp`, and `url`.
-    * Logic to compare "Last Price" vs "Current Price."
-    * TDD check: Verify database creates entries and retrieves history correctly on ARM64.
-* **Success Criteria:** Running the tool twice for the same URL results in two database entries.
+## Slice 2: Full Data Model (The Memory)
+* **Goal:** Implement complete database schema for product tracking and price comparison.
+* **Status:** In Development.
+* **Scope:**
+    * Implement full schema: `products`, `stores`, `tracked_items` tables (per DATA_STRUCTURE.md)
+    * Link tracked URLs to master products and stores
+    * Price comparison logic: "Last Price" vs "Current Price"
+    * Volume/unit price calculation for multipacks
+    * Process logging with run_id grouping
+* **Success Criteria:**
+  - Track multiple URLs for the same product across different stores
+  - Calculate and display price per unit (e.g., EUR/L)
 
 ## Slice 3: Communication (The Alert)
 * **Goal:** Notify the user when a price drops.
