@@ -5,6 +5,8 @@ import requests
 import pytest
 from dotenv import load_dotenv
 
+from app.core.gemini import GeminiModels
+
 
 load_dotenv()
 
@@ -19,8 +21,9 @@ def api_key():
 
 
 def test_gemini_api_key_works(api_key):
-    """Verify API key by requesting a programming joke from Gemini 2.5 Flash."""
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={api_key}"
+    """Verify API key by requesting a programming joke from Gemini 2.5 Flash Lite."""
+    # Use lite model for API testing - faster and cheaper
+    url = GeminiModels.get_api_url(GeminiModels.API_TEST, api_key)
 
     payload = {
         "contents": [

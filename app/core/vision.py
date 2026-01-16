@@ -7,6 +7,7 @@ from typing import Union
 
 from app.models.schemas import ProductInfo, ExtractionResult
 from app.utils.logging import get_logger
+from app.core.gemini import GeminiModels
 
 logger = get_logger(__name__)
 
@@ -54,7 +55,7 @@ async def extract_product_info(image_bytes: bytes, api_key: str) -> Union[Produc
 
     Returns ProductInfo if JSON parsing succeeds, otherwise returns raw text.
     """
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={api_key}"
+    url = GeminiModels.get_api_url(GeminiModels.VISION_EXTRACTION, api_key)
 
     image_base64 = base64.b64encode(image_bytes).decode("utf-8")
 
@@ -145,7 +146,7 @@ async def extract_with_structured_output(image_bytes: bytes, api_key: str) -> Ex
     Raises:
         Exception: If API call fails or response is invalid
     """
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={api_key}"
+    url = GeminiModels.get_api_url(GeminiModels.VISION_EXTRACTION, api_key)
 
     image_base64 = base64.b64encode(image_bytes).decode("utf-8")
 
