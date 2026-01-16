@@ -376,3 +376,146 @@ def client_with_data():
     finally:
         if os.path.exists(db_path):
             os.unlink(db_path)
+
+
+class TestProductsAPI:
+    """Tests for /api/products endpoints."""
+
+    def test_products_list_returns_200(self, client_empty_db):
+        """Products list should return 200 OK."""
+        response = client_empty_db.get("/api/products")
+        assert response.status_code == 200
+
+    def test_products_list_returns_list(self, client_empty_db):
+        """Products list should return a list."""
+        response = client_empty_db.get("/api/products")
+        assert isinstance(response.json(), list)
+
+    def test_products_list_with_data(self, client_with_data):
+        """Products list should return products."""
+        response = client_with_data.get("/api/products")
+        products = response.json()
+        assert len(products) >= 1
+        assert "name" in products[0]
+        assert "id" in products[0]
+
+    def test_products_create_returns_201(self, client_empty_db):
+        """Creating product should return 201."""
+        response = client_empty_db.post("/api/products", json={
+            "name": "New Product",
+            "category": "Test",
+            "target_price": 15.00
+        })
+        assert response.status_code == 201
+        data = response.json()
+        assert data["name"] == "New Product"
+        assert data["id"] is not None
+
+    def test_products_create_requires_name(self, client_empty_db):
+        """Creating product without name should return 422."""
+        response = client_empty_db.post("/api/products", json={
+            "category": "Test"
+        })
+        assert response.status_code == 422
+
+    def test_products_get_by_id(self, client_with_data):
+        """Should get product by ID."""
+        response = client_with_data.get("/api/products/1")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["id"] == 1
+        assert "name" in data
+
+    def test_products_get_by_id_404(self, client_empty_db):
+        """Should return 404 for non-existent product."""
+        response = client_empty_db.get("/api/products/99999")
+        assert response.status_code == 404
+
+    def test_products_update(self, client_with_data):
+        """Should update product."""
+        response = client_with_data.put("/api/products/1", json={
+            "name": "Updated Product",
+            "category": "Updated",
+            "target_price": 20.00
+        })
+        assert response.status_code == 200
+        data = response.json()
+        assert data["name"] == "Updated Product"
+
+    def test_products_update_404(self, client_empty_db):
+        """Should return 404 for updating non-existent product."""
+        response = client_empty_db.put("/api/products/99999", json={
+            "name": "Updated"
+        })
+        assert response.status_code == 404
+
+    def test_products_delete(self, client_with_data):
+        """Should delete product."""
+        # First create a product to delete
+        create_response = client_with_data.post("/api/products", json={
+            "name": "To Delete"
+        })
+        product_id = create_response.json()["id"]
+
+        response = client_with_data.delete(f"/api/products/{product_id}")
+        assert response.status_code == 204
+
+        # Verify deletion
+        get_response = client_with_data.get(f"/api/products/{product_id}")
+        assert get_response.status_code == 404
+
+    def test_products_delete_404(self, client_empty_db):
+        """Should return 404 for deleting non-existent product."""
+        response = client_empty_db.delete("/api/products/99999")
+        assert response.status_code == 404
+
+
+class TestStoresAPI:
+    """Tests for /api/stores endpoints."""
+
+    def test_stores_list_returns_200(self, client_empty_db):
+        """Stores list should return 200 OK."""
+        response = client_empty_db.get("/api/stores")
+        assert response.status_code == 200
+
+    def test_stores_list_returns_list(self, client_empty_db):
+        """Stores list should return a list."""
+        response = client_empty_db.get("/api/stores")
+        assert isinstance(response.json(), list)
+
+    def test_stores_create_returns_201(self, client_empty_db):
+        """Creating store should return 201."""
+        response = client_empty_db.post("/api/stores", json={
+            "name": "New Store",
+            "shipping_cost_standard": 4.95
+        })
+        assert response.status_code == 201
+        data = response.json()
+        assert data["name"] == "New Store"
+
+    def test_stores_get_by_id(self, client_with_data):
+        """Should get store by ID."""
+        response = client_with_data.get("/api/stores/1")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["id"] == 1
+
+    def test_stores_update(self, client_with_data):
+        """Should update store."""
+        response = client_with_data.put("/api/stores/1", json={
+            "name": "Updated Store",
+            "shipping_cost_standard": 3.00
+        })
+        assert response.status_code == 200
+        data = response.json()
+        assert data["name"] == "Updated Store"
+
+    def test_stores_delete(self, client_with_data):
+        """Should delete store."""
+        create_response = client_with_data.post("/api/stores", json={
+            "name": "To Delete Store"
+        })
+        store_id = create_response.json()["id"]
+
+        response = client_with_data.delete(f"/api/stores/{store_id}")
+        assert response.status_code == 204
