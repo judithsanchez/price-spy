@@ -398,14 +398,18 @@ async def update_product(product_id: int, product: ProductCreate):
         if not existing:
             raise HTTPException(status_code=404, detail="Product not found")
 
-        updated_product = Product(
-            name=product.name,
-            category=product.category,
-            purchase_type=product.purchase_type,
-            target_price=product.target_price,
-            preferred_unit_size=product.preferred_unit_size,
-            current_stock=product.current_stock,
-        )
+        kwargs = {"name": product.name}
+        if product.category is not None:
+            kwargs["category"] = product.category
+        if product.purchase_type is not None:
+            kwargs["purchase_type"] = product.purchase_type
+        if product.target_price is not None:
+            kwargs["target_price"] = product.target_price
+        if product.preferred_unit_size is not None:
+            kwargs["preferred_unit_size"] = product.preferred_unit_size
+        kwargs["current_stock"] = product.current_stock
+
+        updated_product = Product(**kwargs)
         repo.update(product_id, updated_product)
         result = repo.get_by_id(product_id)
         return ProductResponse(
@@ -466,12 +470,15 @@ async def create_store(store: StoreCreate):
     db = get_db()
     try:
         repo = StoreRepository(db)
-        new_store = Store(
-            name=store.name,
-            shipping_cost_standard=store.shipping_cost_standard,
-            free_shipping_threshold=store.free_shipping_threshold,
-            notes=store.notes,
-        )
+        kwargs = {"name": store.name}
+        if store.shipping_cost_standard is not None:
+            kwargs["shipping_cost_standard"] = store.shipping_cost_standard
+        if store.free_shipping_threshold is not None:
+            kwargs["free_shipping_threshold"] = store.free_shipping_threshold
+        if store.notes is not None:
+            kwargs["notes"] = store.notes
+
+        new_store = Store(**kwargs)
         store_id = repo.insert(new_store)
         created = repo.get_by_id(store_id)
         return StoreResponse(
@@ -517,12 +524,15 @@ async def update_store(store_id: int, store: StoreCreate):
         if not existing:
             raise HTTPException(status_code=404, detail="Store not found")
 
-        updated_store = Store(
-            name=store.name,
-            shipping_cost_standard=store.shipping_cost_standard,
-            free_shipping_threshold=store.free_shipping_threshold,
-            notes=store.notes,
-        )
+        kwargs = {"name": store.name}
+        if store.shipping_cost_standard is not None:
+            kwargs["shipping_cost_standard"] = store.shipping_cost_standard
+        if store.free_shipping_threshold is not None:
+            kwargs["free_shipping_threshold"] = store.free_shipping_threshold
+        if store.notes is not None:
+            kwargs["notes"] = store.notes
+
+        updated_store = Store(**kwargs)
         repo.update(store_id, updated_store)
         result = repo.get_by_id(store_id)
         return StoreResponse(
