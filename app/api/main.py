@@ -106,6 +106,33 @@ class StoreResponse(BaseModel):
     notes: Optional[str] = None
 
 
+class TrackedItemCreate(BaseModel):
+    """Request model for creating a tracked item."""
+    product_id: int
+    store_id: int
+    url: str
+    item_name_on_site: Optional[str] = None
+    quantity_size: float
+    quantity_unit: str
+    items_per_lot: int = 1
+    is_active: bool = True
+    alerts_enabled: bool = True
+
+
+class TrackedItemResponse(BaseModel):
+    """Response model for tracked item."""
+    id: int
+    product_id: int
+    store_id: int
+    url: str
+    item_name_on_site: Optional[str] = None
+    quantity_size: float
+    quantity_unit: str
+    items_per_lot: int = 1
+    is_active: bool = True
+    alerts_enabled: bool = True
+
+
 @app.get("/api/health")
 async def health():
     """Health check endpoint."""
@@ -313,6 +340,12 @@ async def products_page(request: Request):
 async def stores_page(request: Request):
     """Render stores management page."""
     return templates.TemplateResponse(request, "stores.html", {})
+
+
+@app.get("/tracked-items")
+async def tracked_items_page(request: Request):
+    """Render tracked items management page."""
+    return templates.TemplateResponse(request, "tracked-items.html", {})
 
 
 # --- Products API ---
@@ -568,5 +601,150 @@ async def delete_store(store_id: int):
         if not existing:
             raise HTTPException(status_code=404, detail="Store not found")
         repo.delete(store_id)
+    finally:
+        db.close()
+
+
+# --- Tracked Items API ---
+
+@app.get("/api/tracked-items", response_model=List[TrackedItemResponse])
+async def get_tracked_items():
+    """Get all tracked items."""
+    db = get_db()
+    try:
+        repo = TrackedItemRepository(db)
+        items = repo.get_active()
+        return [
+            TrackedItemResponse(
+                id=i.id,
+                product_id=i.product_id,
+                store_id=i.store_id,
+                url=i.url,
+                item_name_on_site=i.item_name_on_site,
+                quantity_size=i.quantity_size,
+                quantity_unit=i.quantity_unit,
+                items_per_lot=i.items_per_lot,
+                is_active=i.is_active,
+                alerts_enabled=i.alerts_enabled,
+            )
+            for i in items
+        ]
+    finally:
+        db.close()
+
+
+@app.post("/api/tracked-items", response_model=TrackedItemResponse, status_code=201)
+async def create_tracked_item(item: TrackedItemCreate):
+    """Create a new tracked item."""
+    from app.models.schemas import TrackedItem
+
+    db = get_db()
+    try:
+        repo = TrackedItemRepository(db)
+        new_item = TrackedItem(
+            product_id=item.product_id,
+            store_id=item.store_id,
+            url=item.url,
+            item_name_on_site=item.item_name_on_site,
+            quantity_size=item.quantity_size,
+            quantity_unit=item.quantity_unit,
+            items_per_lot=item.items_per_lot,
+            is_active=item.is_active,
+            alerts_enabled=item.alerts_enabled,
+        )
+        item_id = repo.insert(new_item)
+        created = repo.get_by_id(item_id)
+        return TrackedItemResponse(
+            id=created.id,
+            product_id=created.product_id,
+            store_id=created.store_id,
+            url=created.url,
+            item_name_on_site=created.item_name_on_site,
+            quantity_size=created.quantity_size,
+            quantity_unit=created.quantity_unit,
+            items_per_lot=created.items_per_lot,
+            is_active=created.is_active,
+            alerts_enabled=created.alerts_enabled,
+        )
+    finally:
+        db.close()
+
+
+@app.get("/api/tracked-items/{item_id}", response_model=TrackedItemResponse)
+async def get_tracked_item(item_id: int):
+    """Get a tracked item by ID."""
+    db = get_db()
+    try:
+        repo = TrackedItemRepository(db)
+        item = repo.get_by_id(item_id)
+        if not item:
+            raise HTTPException(status_code=404, detail="Tracked item not found")
+        return TrackedItemResponse(
+            id=item.id,
+            product_id=item.product_id,
+            store_id=item.store_id,
+            url=item.url,
+            item_name_on_site=item.item_name_on_site,
+            quantity_size=item.quantity_size,
+            quantity_unit=item.quantity_unit,
+            items_per_lot=item.items_per_lot,
+            is_active=item.is_active,
+            alerts_enabled=item.alerts_enabled,
+        )
+    finally:
+        db.close()
+
+
+@app.put("/api/tracked-items/{item_id}", response_model=TrackedItemResponse)
+async def update_tracked_item(item_id: int, item: TrackedItemCreate):
+    """Update a tracked item."""
+    from app.models.schemas import TrackedItem
+
+    db = get_db()
+    try:
+        repo = TrackedItemRepository(db)
+        existing = repo.get_by_id(item_id)
+        if not existing:
+            raise HTTPException(status_code=404, detail="Tracked item not found")
+
+        updated_item = TrackedItem(
+            product_id=item.product_id,
+            store_id=item.store_id,
+            url=item.url,
+            item_name_on_site=item.item_name_on_site,
+            quantity_size=item.quantity_size,
+            quantity_unit=item.quantity_unit,
+            items_per_lot=item.items_per_lot,
+            is_active=item.is_active,
+            alerts_enabled=item.alerts_enabled,
+        )
+        repo.update(item_id, updated_item)
+        result = repo.get_by_id(item_id)
+        return TrackedItemResponse(
+            id=result.id,
+            product_id=result.product_id,
+            store_id=result.store_id,
+            url=result.url,
+            item_name_on_site=result.item_name_on_site,
+            quantity_size=result.quantity_size,
+            quantity_unit=result.quantity_unit,
+            items_per_lot=result.items_per_lot,
+            is_active=result.is_active,
+            alerts_enabled=result.alerts_enabled,
+        )
+    finally:
+        db.close()
+
+
+@app.delete("/api/tracked-items/{item_id}", status_code=204)
+async def delete_tracked_item(item_id: int):
+    """Delete a tracked item."""
+    db = get_db()
+    try:
+        repo = TrackedItemRepository(db)
+        existing = repo.get_by_id(item_id)
+        if not existing:
+            raise HTTPException(status_code=404, detail="Tracked item not found")
+        repo.delete(item_id)
     finally:
         db.close()

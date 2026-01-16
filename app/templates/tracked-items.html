@@ -1,0 +1,258 @@
+{% extends "base.html" %}
+
+{% block title %}Tracked Items - Price Spy{% endblock %}
+
+{% block content %}
+<div x-data="trackedItemsManager()" x-init="init()">
+    <div class="flex justify-between items-center mb-6">
+        <h2 class="text-2xl font-bold text-gray-800">Tracked Items</h2>
+        <button @click="openAddForm()"
+                class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+            Add Tracked Item
+        </button>
+    </div>
+
+    <!-- Tracked Items Table -->
+    <div class="bg-white rounded-lg shadow overflow-hidden">
+        <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-50">
+                <tr>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Product</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Store</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">URL</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Size</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Active</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                </tr>
+            </thead>
+            <tbody class="bg-white divide-y divide-gray-200">
+                <template x-for="item in items" :key="item.id">
+                    <tr>
+                        <td class="px-6 py-4 whitespace-nowrap" x-text="getProductName(item.product_id)"></td>
+                        <td class="px-6 py-4 whitespace-nowrap" x-text="getStoreName(item.store_id)"></td>
+                        <td class="px-6 py-4">
+                            <a :href="item.url" target="_blank" class="text-blue-600 hover:underline truncate block max-w-xs" x-text="item.url"></a>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap" x-text="item.quantity_size + ' ' + item.quantity_unit"></td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <span x-show="item.is_active" class="text-green-600">Yes</span>
+                            <span x-show="!item.is_active" class="text-gray-400">No</span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm">
+                            <button @click="editItem(item)" class="text-blue-600 hover:underline mr-3">Edit</button>
+                            <button @click="deleteItem(item.id)" class="text-red-600 hover:underline">Delete</button>
+                        </td>
+                    </tr>
+                </template>
+                <tr x-show="items.length === 0">
+                    <td colspan="6" class="px-6 py-4 text-center text-gray-500">No tracked items yet. Add one to start tracking prices.</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Modal Form -->
+    <div x-show="showForm" x-cloak class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-lg shadow-xl p-6 w-full max-w-lg" @click.away="showForm = false">
+            <h3 class="text-lg font-bold mb-4" x-text="editingItem ? 'Edit Tracked Item' : 'Add Tracked Item'"></h3>
+            <form @submit.prevent="saveItem()">
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Product *</label>
+                        <select x-model="formData.product_id" required
+                                class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="">Select Product</option>
+                            <template x-for="product in products" :key="product.id">
+                                <option :value="product.id" x-text="product.name"></option>
+                            </template>
+                        </select>
+                    </div>
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Store *</label>
+                        <select x-model="formData.store_id" required
+                                class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="">Select Store</option>
+                            <template x-for="store in stores" :key="store.id">
+                                <option :value="store.id" x-text="store.name"></option>
+                            </template>
+                        </select>
+                    </div>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">URL *</label>
+                    <input type="url" x-model="formData.url" required
+                           class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Item Name on Site</label>
+                    <input type="text" x-model="formData.item_name_on_site"
+                           class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div class="grid grid-cols-3 gap-4">
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Quantity *</label>
+                        <input type="number" step="0.01" x-model="formData.quantity_size" required
+                               class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Unit *</label>
+                        <input type="text" x-model="formData.quantity_unit" required placeholder="ml, g, kg..."
+                               class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Items/Lot</label>
+                        <input type="number" x-model="formData.items_per_lot" min="1"
+                               class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-4 mb-4">
+                    <label class="flex items-center">
+                        <input type="checkbox" x-model="formData.is_active" class="mr-2">
+                        <span class="text-sm text-gray-700">Active</span>
+                    </label>
+                    <label class="flex items-center">
+                        <input type="checkbox" x-model="formData.alerts_enabled" class="mr-2">
+                        <span class="text-sm text-gray-700">Alerts Enabled</span>
+                    </label>
+                </div>
+                <div class="flex justify-end gap-3">
+                    <button type="button" @click="showForm = false"
+                            class="px-4 py-2 border border-gray-300 rounded hover:bg-gray-50">Cancel</button>
+                    <button type="submit"
+                            class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function trackedItemsManager() {
+    return {
+        items: [],
+        products: [],
+        stores: [],
+        showForm: false,
+        editingItem: null,
+        formData: {
+            product_id: '',
+            store_id: '',
+            url: '',
+            item_name_on_site: '',
+            quantity_size: '',
+            quantity_unit: '',
+            items_per_lot: 1,
+            is_active: true,
+            alerts_enabled: true
+        },
+
+        async init() {
+            await Promise.all([
+                this.loadItems(),
+                this.loadProducts(),
+                this.loadStores()
+            ]);
+        },
+
+        async loadItems() {
+            const response = await fetch('/api/tracked-items');
+            this.items = await response.json();
+        },
+
+        async loadProducts() {
+            const response = await fetch('/api/products');
+            this.products = await response.json();
+        },
+
+        async loadStores() {
+            const response = await fetch('/api/stores');
+            this.stores = await response.json();
+        },
+
+        getProductName(id) {
+            const product = this.products.find(p => p.id === id);
+            return product ? product.name : 'Unknown';
+        },
+
+        getStoreName(id) {
+            const store = this.stores.find(s => s.id === id);
+            return store ? store.name : 'Unknown';
+        },
+
+        openAddForm() {
+            this.editingItem = null;
+            this.formData = {
+                product_id: '',
+                store_id: '',
+                url: '',
+                item_name_on_site: '',
+                quantity_size: '',
+                quantity_unit: '',
+                items_per_lot: 1,
+                is_active: true,
+                alerts_enabled: true
+            };
+            this.showForm = true;
+        },
+
+        editItem(item) {
+            this.editingItem = item;
+            this.formData = {
+                product_id: item.product_id,
+                store_id: item.store_id,
+                url: item.url,
+                item_name_on_site: item.item_name_on_site || '',
+                quantity_size: item.quantity_size,
+                quantity_unit: item.quantity_unit,
+                items_per_lot: item.items_per_lot || 1,
+                is_active: item.is_active,
+                alerts_enabled: item.alerts_enabled
+            };
+            this.showForm = true;
+        },
+
+        async saveItem() {
+            const data = {
+                product_id: parseInt(this.formData.product_id),
+                store_id: parseInt(this.formData.store_id),
+                url: this.formData.url,
+                item_name_on_site: this.formData.item_name_on_site || null,
+                quantity_size: parseFloat(this.formData.quantity_size),
+                quantity_unit: this.formData.quantity_unit,
+                items_per_lot: parseInt(this.formData.items_per_lot) || 1,
+                is_active: this.formData.is_active,
+                alerts_enabled: this.formData.alerts_enabled
+            };
+
+            if (this.editingItem) {
+                await fetch(`/api/tracked-items/${this.editingItem.id}`, {
+                    method: 'PUT',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(data)
+                });
+            } else {
+                await fetch('/api/tracked-items', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(data)
+                });
+            }
+
+            this.showForm = false;
+            await this.loadItems();
+        },
+
+        async deleteItem(id) {
+            if (confirm('Delete this tracked item?')) {
+                await fetch(`/api/tracked-items/${id}`, {method: 'DELETE'});
+                await this.loadItems();
+            }
+        }
+    };
+}
+</script>
+
+<style>
+[x-cloak] { display: none !important; }
+</style>
+{% endblock %}

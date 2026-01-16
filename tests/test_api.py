@@ -519,3 +519,107 @@ class TestStoresAPI:
 
         response = client_with_data.delete(f"/api/stores/{store_id}")
         assert response.status_code == 204
+
+
+class TestTrackedItemsAPI:
+    """Tests for /api/tracked-items endpoints."""
+
+    def test_tracked_items_list_returns_200(self, client_empty_db):
+        """Tracked items list should return 200 OK."""
+        response = client_empty_db.get("/api/tracked-items")
+        assert response.status_code == 200
+
+    def test_tracked_items_list_returns_list(self, client_empty_db):
+        """Tracked items list should return a list."""
+        response = client_empty_db.get("/api/tracked-items")
+        assert isinstance(response.json(), list)
+
+    def test_tracked_items_list_with_data(self, client_with_data):
+        """Tracked items list should return items."""
+        response = client_with_data.get("/api/tracked-items")
+        items = response.json()
+        assert len(items) >= 1
+        assert "url" in items[0]
+        assert "product_id" in items[0]
+
+    def test_tracked_items_create_returns_201(self, client_with_data):
+        """Creating tracked item should return 201."""
+        response = client_with_data.post("/api/tracked-items", json={
+            "product_id": 1,
+            "store_id": 1,
+            "url": "https://example.com/new-item",
+            "quantity_size": 100,
+            "quantity_unit": "ml"
+        })
+        assert response.status_code == 201
+        data = response.json()
+        assert data["url"] == "https://example.com/new-item"
+        assert data["id"] is not None
+
+    def test_tracked_items_create_requires_fields(self, client_with_data):
+        """Creating tracked item without required fields should return 422."""
+        response = client_with_data.post("/api/tracked-items", json={
+            "url": "https://example.com/incomplete"
+        })
+        assert response.status_code == 422
+
+    def test_tracked_items_get_by_id(self, client_with_data):
+        """Should get tracked item by ID."""
+        response = client_with_data.get("/api/tracked-items/1")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["id"] == 1
+
+    def test_tracked_items_get_by_id_404(self, client_empty_db):
+        """Should return 404 for non-existent tracked item."""
+        response = client_empty_db.get("/api/tracked-items/99999")
+        assert response.status_code == 404
+
+    def test_tracked_items_update(self, client_with_data):
+        """Should update tracked item."""
+        response = client_with_data.put("/api/tracked-items/1", json={
+            "product_id": 1,
+            "store_id": 1,
+            "url": "https://example.com/updated",
+            "quantity_size": 200,
+            "quantity_unit": "g"
+        })
+        assert response.status_code == 200
+        data = response.json()
+        assert data["url"] == "https://example.com/updated"
+        assert data["quantity_size"] == 200
+
+    def test_tracked_items_update_404(self, client_empty_db):
+        """Should return 404 for updating non-existent tracked item."""
+        response = client_empty_db.put("/api/tracked-items/99999", json={
+            "product_id": 1,
+            "store_id": 1,
+            "url": "https://example.com/test",
+            "quantity_size": 100,
+            "quantity_unit": "ml"
+        })
+        assert response.status_code == 404
+
+    def test_tracked_items_delete(self, client_with_data):
+        """Should delete tracked item."""
+        # First create an item to delete
+        create_response = client_with_data.post("/api/tracked-items", json={
+            "product_id": 1,
+            "store_id": 1,
+            "url": "https://example.com/to-delete",
+            "quantity_size": 50,
+            "quantity_unit": "ml"
+        })
+        item_id = create_response.json()["id"]
+
+        response = client_with_data.delete(f"/api/tracked-items/{item_id}")
+        assert response.status_code == 204
+
+        # Verify deletion
+        get_response = client_with_data.get(f"/api/tracked-items/{item_id}")
+        assert get_response.status_code == 404
+
+    def test_tracked_items_delete_404(self, client_empty_db):
+        """Should return 404 for deleting non-existent tracked item."""
+        response = client_empty_db.delete("/api/tracked-items/99999")
+        assert response.status_code == 404
