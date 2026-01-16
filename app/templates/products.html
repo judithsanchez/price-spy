@@ -1,0 +1,151 @@
+{% extends "base.html" %}
+
+{% block title %}Products - Price Spy{% endblock %}
+
+{% block content %}
+<div x-data="productsManager()" x-init="loadProducts()">
+    <div class="flex justify-between items-center mb-6">
+        <h2 class="text-2xl font-bold text-gray-800">Products</h2>
+        <button @click="showForm = true; editingProduct = null; formData = {name: '', category: '', target_price: '', current_stock: 0}"
+                class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+            Add Product
+        </button>
+    </div>
+
+    <!-- Products Table -->
+    <div class="bg-white rounded-lg shadow overflow-hidden">
+        <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-50">
+                <tr>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Category</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Target Price</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Stock</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                </tr>
+            </thead>
+            <tbody class="bg-white divide-y divide-gray-200">
+                <template x-for="product in products" :key="product.id">
+                    <tr>
+                        <td class="px-6 py-4 whitespace-nowrap" x-text="product.name"></td>
+                        <td class="px-6 py-4 whitespace-nowrap" x-text="product.category || '-'"></td>
+                        <td class="px-6 py-4 whitespace-nowrap" x-text="product.target_price ? '€' + product.target_price.toFixed(2) : '-'"></td>
+                        <td class="px-6 py-4 whitespace-nowrap" x-text="product.current_stock"></td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm">
+                            <button @click="editProduct(product)" class="text-blue-600 hover:underline mr-3">Edit</button>
+                            <button @click="deleteProduct(product.id)" class="text-red-600 hover:underline">Delete</button>
+                        </td>
+                    </tr>
+                </template>
+                <tr x-show="products.length === 0">
+                    <td colspan="5" class="px-6 py-4 text-center text-gray-500">No products yet. Add one to get started.</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Modal Form -->
+    <div x-show="showForm" x-cloak class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-lg shadow-xl p-6 w-full max-w-md" @click.away="showForm = false">
+            <h3 class="text-lg font-bold mb-4" x-text="editingProduct ? 'Edit Product' : 'Add Product'"></h3>
+            <form @submit.prevent="saveProduct()">
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Name *</label>
+                    <input type="text" x-model="formData.name" required
+                           class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Category</label>
+                    <input type="text" x-model="formData.category"
+                           class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Target Price</label>
+                    <input type="number" step="0.01" x-model="formData.target_price"
+                           class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Current Stock</label>
+                    <input type="number" x-model="formData.current_stock"
+                           class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div class="flex justify-end gap-3">
+                    <button type="button" @click="showForm = false"
+                            class="px-4 py-2 border border-gray-300 rounded hover:bg-gray-50">Cancel</button>
+                    <button type="submit"
+                            class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function productsManager() {
+    return {
+        products: [],
+        showForm: false,
+        editingProduct: null,
+        formData: {
+            name: '',
+            category: '',
+            target_price: '',
+            current_stock: 0
+        },
+
+        async loadProducts() {
+            const response = await fetch('/api/products');
+            this.products = await response.json();
+        },
+
+        editProduct(product) {
+            this.editingProduct = product;
+            this.formData = {
+                name: product.name,
+                category: product.category || '',
+                target_price: product.target_price || '',
+                current_stock: product.current_stock || 0
+            };
+            this.showForm = true;
+        },
+
+        async saveProduct() {
+            const data = {
+                name: this.formData.name,
+                category: this.formData.category || null,
+                target_price: this.formData.target_price ? parseFloat(this.formData.target_price) : null,
+                current_stock: parseInt(this.formData.current_stock) || 0
+            };
+
+            if (this.editingProduct) {
+                await fetch(`/api/products/${this.editingProduct.id}`, {
+                    method: 'PUT',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(data)
+                });
+            } else {
+                await fetch('/api/products', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(data)
+                });
+            }
+
+            this.showForm = false;
+            await this.loadProducts();
+        },
+
+        async deleteProduct(id) {
+            if (confirm('Delete this product?')) {
+                await fetch(`/api/products/${id}`, {method: 'DELETE'});
+                await this.loadProducts();
+            }
+        }
+    };
+}
+</script>
+
+<style>
+[x-cloak] { display: none !important; }
+</style>
+{% endblock %}

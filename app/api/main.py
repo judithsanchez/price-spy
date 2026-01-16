@@ -303,6 +303,18 @@ async def dashboard(request: Request):
         db.close()
 
 
+@app.get("/products")
+async def products_page(request: Request):
+    """Render products management page."""
+    return templates.TemplateResponse(request, "products.html", {})
+
+
+@app.get("/stores")
+async def stores_page(request: Request):
+    """Render stores management page."""
+    return templates.TemplateResponse(request, "stores.html", {})
+
+
 # --- Products API ---
 
 @app.get("/api/products", response_model=List[ProductResponse])
