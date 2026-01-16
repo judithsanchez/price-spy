@@ -8,5 +8,6 @@ services:
       - ../.env
     volumes:
       - ../tests/screenshots:/app/tests/screenshots
+      - ../data:/app/data
     stdin_open: true
     tty: true

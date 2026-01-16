@@ -56,6 +56,10 @@ htmlcov/
 tests/screenshots/*.png
 !tests/screenshots/.gitkeep
 
+# Database
+data/*.db
+!data/.gitkeep
+
 # OS
 .DS_Store
 Thumbs.db
