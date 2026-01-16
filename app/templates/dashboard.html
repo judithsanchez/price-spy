@@ -64,11 +64,11 @@
                 </td>
                 <td class="px-4 py-3">
                     <button
-                        @click="loading = true; fetch('/api/extract/{{ item.id }}', {method: 'POST'}).then(r => r.json()).then(() => setTimeout(() => location.reload(), 2000)).catch(() => loading = false)"
+                        @click="loading = true; fetch('/api/extract/{{ item.id }}', {method: 'POST'}).then(r => r.json()).then(() => setTimeout(() => location.reload(), 5000)).catch(() => loading = false)"
                         :disabled="loading"
                         class="bg-blue-500 hover:bg-blue-600 disabled:bg-blue-300 text-white text-sm px-3 py-1 rounded transition-colors">
                         <span x-show="!loading">Spy Now</span>
-                        <span x-show="loading">Extracting...</span>
+                        <span x-show="loading">Extracting... (5s)</span>
                     </button>
                 </td>
             </tr>
@@ -79,10 +79,20 @@
 {% else %}
 <div class="bg-white rounded-lg shadow p-8 text-center">
     <p class="text-gray-500 mb-4">No tracked items yet.</p>
-    <p class="text-sm text-gray-400">
-        Add products and track URLs using the CLI:<br>
-        <code class="bg-gray-100 px-2 py-1 rounded">python spy.py add-product "Product Name"</code>
+    <p class="text-sm text-gray-400 mb-4">
+        Get started by adding products and stores, then create tracked items:
     </p>
+    <div class="flex justify-center gap-4">
+        <a href="/products" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded">
+            Add Products
+        </a>
+        <a href="/stores" class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded">
+            Add Stores
+        </a>
+        <a href="/tracked-items" class="bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded">
+            Track Items
+        </a>
+    </div>
 </div>
 {% endif %}
 {% endblock %}
