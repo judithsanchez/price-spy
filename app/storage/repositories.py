@@ -4,7 +4,13 @@ from datetime import datetime
 from typing import List, Optional
 
 from app.storage.database import Database
-from app.models.schemas import PriceHistoryRecord, ErrorRecord
+from app.models.schemas import (
+    PriceHistoryRecord,
+    ErrorRecord,
+    Product,
+    Store,
+    TrackedItem,
+)
 
 
 class PriceHistoryRepository:
@@ -122,4 +128,218 @@ class ErrorLogRepository:
             screenshot_path=row["screenshot_path"],
             stack_trace=row["stack_trace"],
             created_at=datetime.fromisoformat(row["created_at"]),
+        )
+
+
+class ProductRepository:
+    """Repository for product operations."""
+
+    def __init__(self, db: Database):
+        self.db = db
+
+    def insert(self, product: Product) -> int:
+        """Insert a product and return its ID."""
+        cursor = self.db.execute(
+            """
+            INSERT INTO products
+            (name, category, purchase_type, target_price, preferred_unit_size, current_stock)
+            VALUES (?, ?, ?, ?, ?, ?)
+            """,
+            (
+                product.name,
+                product.category,
+                product.purchase_type,
+                product.target_price,
+                product.preferred_unit_size,
+                product.current_stock,
+            )
+        )
+        self.db.commit()
+        return cursor.lastrowid
+
+    def get_by_id(self, product_id: int) -> Optional[Product]:
+        """Get a product by ID."""
+        cursor = self.db.execute(
+            "SELECT * FROM products WHERE id = ?",
+            (product_id,)
+        )
+        row = cursor.fetchone()
+        if row is None:
+            return None
+        return self._row_to_record(row)
+
+    def get_all(self) -> List[Product]:
+        """Get all products."""
+        cursor = self.db.execute("SELECT * FROM products ORDER BY name")
+        return [self._row_to_record(row) for row in cursor.fetchall()]
+
+    def update_stock(self, product_id: int, delta: int) -> None:
+        """Update product stock by delta (positive or negative)."""
+        self.db.execute(
+            "UPDATE products SET current_stock = current_stock + ? WHERE id = ?",
+            (delta, product_id)
+        )
+        self.db.commit()
+
+    def _row_to_record(self, row) -> Product:
+        """Convert a database row to a Product."""
+        return Product(
+            id=row["id"],
+            name=row["name"],
+            category=row["category"],
+            purchase_type=row["purchase_type"],
+            target_price=row["target_price"],
+            preferred_unit_size=row["preferred_unit_size"],
+            current_stock=row["current_stock"],
+            created_at=datetime.fromisoformat(row["created_at"]),
+        )
+
+
+class StoreRepository:
+    """Repository for store operations."""
+
+    def __init__(self, db: Database):
+        self.db = db
+
+    def insert(self, store: Store) -> int:
+        """Insert a store and return its ID."""
+        cursor = self.db.execute(
+            """
+            INSERT INTO stores
+            (name, shipping_cost_standard, free_shipping_threshold, notes)
+            VALUES (?, ?, ?, ?)
+            """,
+            (
+                store.name,
+                store.shipping_cost_standard,
+                store.free_shipping_threshold,
+                store.notes,
+            )
+        )
+        self.db.commit()
+        return cursor.lastrowid
+
+    def get_by_id(self, store_id: int) -> Optional[Store]:
+        """Get a store by ID."""
+        cursor = self.db.execute(
+            "SELECT * FROM stores WHERE id = ?",
+            (store_id,)
+        )
+        row = cursor.fetchone()
+        if row is None:
+            return None
+        return self._row_to_record(row)
+
+    def get_by_name(self, name: str) -> Optional[Store]:
+        """Get a store by name."""
+        cursor = self.db.execute(
+            "SELECT * FROM stores WHERE name = ?",
+            (name,)
+        )
+        row = cursor.fetchone()
+        if row is None:
+            return None
+        return self._row_to_record(row)
+
+    def get_all(self) -> List[Store]:
+        """Get all stores."""
+        cursor = self.db.execute("SELECT * FROM stores ORDER BY name")
+        return [self._row_to_record(row) for row in cursor.fetchall()]
+
+    def _row_to_record(self, row) -> Store:
+        """Convert a database row to a Store."""
+        return Store(
+            id=row["id"],
+            name=row["name"],
+            shipping_cost_standard=row["shipping_cost_standard"],
+            free_shipping_threshold=row["free_shipping_threshold"],
+            notes=row["notes"],
+        )
+
+
+class TrackedItemRepository:
+    """Repository for tracked item operations."""
+
+    def __init__(self, db: Database):
+        self.db = db
+
+    def insert(self, item: TrackedItem) -> int:
+        """Insert a tracked item and return its ID."""
+        cursor = self.db.execute(
+            """
+            INSERT INTO tracked_items
+            (product_id, store_id, url, item_name_on_site, quantity_size,
+             quantity_unit, items_per_lot, is_active, alerts_enabled)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                item.product_id,
+                item.store_id,
+                item.url,
+                item.item_name_on_site,
+                item.quantity_size,
+                item.quantity_unit,
+                item.items_per_lot,
+                1 if item.is_active else 0,
+                1 if item.alerts_enabled else 0,
+            )
+        )
+        self.db.commit()
+        return cursor.lastrowid
+
+    def get_by_id(self, item_id: int) -> Optional[TrackedItem]:
+        """Get a tracked item by ID."""
+        cursor = self.db.execute(
+            "SELECT * FROM tracked_items WHERE id = ?",
+            (item_id,)
+        )
+        row = cursor.fetchone()
+        if row is None:
+            return None
+        return self._row_to_record(row)
+
+    def get_by_url(self, url: str) -> Optional[TrackedItem]:
+        """Get a tracked item by URL."""
+        cursor = self.db.execute(
+            "SELECT * FROM tracked_items WHERE url = ?",
+            (url,)
+        )
+        row = cursor.fetchone()
+        if row is None:
+            return None
+        return self._row_to_record(row)
+
+    def get_active(self) -> List[TrackedItem]:
+        """Get all active tracked items."""
+        cursor = self.db.execute(
+            "SELECT * FROM tracked_items WHERE is_active = 1"
+        )
+        return [self._row_to_record(row) for row in cursor.fetchall()]
+
+    def set_last_checked(self, item_id: int) -> None:
+        """Update the last_checked_at timestamp."""
+        self.db.execute(
+            "UPDATE tracked_items SET last_checked_at = datetime('now') WHERE id = ?",
+            (item_id,)
+        )
+        self.db.commit()
+
+    def _row_to_record(self, row) -> TrackedItem:
+        """Convert a database row to a TrackedItem."""
+        last_checked = None
+        if row["last_checked_at"]:
+            last_checked = datetime.fromisoformat(row["last_checked_at"])
+
+        return TrackedItem(
+            id=row["id"],
+            product_id=row["product_id"],
+            store_id=row["store_id"],
+            url=row["url"],
+            item_name_on_site=row["item_name_on_site"],
+            quantity_size=row["quantity_size"],
+            quantity_unit=row["quantity_unit"],
+            items_per_lot=row["items_per_lot"],
+            last_checked_at=last_checked,
+            is_active=bool(row["is_active"]),
+            alerts_enabled=bool(row["alerts_enabled"]),
         )

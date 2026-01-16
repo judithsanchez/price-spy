@@ -53,3 +53,60 @@ class PriceHistoryRecord(BaseModel):
     store_name: Optional[str] = None
     page_type: Optional[str] = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class Product(BaseModel):
+    """Master product concept - what you buy."""
+
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    id: Optional[int] = None
+    name: str = Field(..., min_length=1, max_length=200)
+    category: Optional[str] = Field(default=None, max_length=100)
+    purchase_type: Literal["recurring", "one_time"] = "recurring"
+    target_price: Optional[float] = Field(default=None, gt=0)
+    preferred_unit_size: Optional[str] = Field(default=None, max_length=50)
+    current_stock: int = Field(default=0, ge=0)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class Store(BaseModel):
+    """Store definition with shipping rules."""
+
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    id: Optional[int] = None
+    name: str = Field(..., min_length=1, max_length=100)
+    shipping_cost_standard: float = Field(default=0, ge=0)
+    free_shipping_threshold: Optional[float] = Field(default=None, gt=0)
+    notes: Optional[str] = Field(default=None, max_length=500)
+
+
+class TrackedItem(BaseModel):
+    """URL to track - linked to product and store."""
+
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    id: Optional[int] = None
+    product_id: int = Field(...)
+    store_id: int = Field(...)
+    url: str = Field(..., min_length=1)
+    item_name_on_site: Optional[str] = Field(default=None, max_length=300)
+    quantity_size: float = Field(..., gt=0)
+    quantity_unit: str = Field(..., min_length=1, max_length=20)
+    items_per_lot: int = Field(default=1, ge=1)
+    last_checked_at: Optional[datetime] = None
+    is_active: bool = True
+    alerts_enabled: bool = True
+
+
+class PriceComparison(BaseModel):
+    """Price comparison result."""
+
+    current_price: float = Field(..., gt=0)
+    previous_price: Optional[float] = Field(default=None, gt=0)
+    price_change: Optional[float] = None
+    price_change_percent: Optional[float] = None
+    volume_price: Optional[float] = Field(default=None, gt=0)
+    volume_unit: Optional[str] = Field(default=None, max_length=20)
+    is_price_drop: bool = False

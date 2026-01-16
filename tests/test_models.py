@@ -3,7 +3,15 @@
 import pytest
 from pydantic import ValidationError
 
-from app.models.schemas import ProductInfo, ErrorRecord, PriceHistoryRecord
+from app.models.schemas import (
+    ProductInfo,
+    ErrorRecord,
+    PriceHistoryRecord,
+    Product,
+    Store,
+    TrackedItem,
+    PriceComparison,
+)
 
 
 class TestProductInfo:
@@ -150,6 +158,188 @@ class TestPriceHistoryRecord:
         assert record.product_name == "Test Product"
         assert record.price == 29.99
         assert record.created_at is not None
+
+
+class TestProduct:
+    """Tests for Product model (master product concept)."""
+
+    def test_valid_product(self):
+        """Valid product should parse correctly."""
+        product = Product(
+            name="Campina Slagroom",
+            category="Dairy",
+            purchase_type="recurring",
+            target_price=2.50,
+            preferred_unit_size="250ml"
+        )
+        assert product.name == "Campina Slagroom"
+        assert product.category == "Dairy"
+        assert product.current_stock == 0
+
+    def test_product_name_required(self):
+        """Product name is required."""
+        with pytest.raises(ValidationError):
+            Product(category="Dairy")
+
+    def test_product_target_price_must_be_positive(self):
+        """Target price must be positive if provided."""
+        with pytest.raises(ValidationError):
+            Product(name="Test", target_price=-5.0)
+
+    def test_product_purchase_type_valid_values(self):
+        """Purchase type must be 'recurring' or 'one_time'."""
+        with pytest.raises(ValidationError):
+            Product(name="Test", purchase_type="invalid")
+
+    def test_product_stock_cannot_be_negative(self):
+        """Current stock cannot be negative."""
+        with pytest.raises(ValidationError):
+            Product(name="Test", current_stock=-1)
+
+
+class TestStore:
+    """Tests for Store model."""
+
+    def test_valid_store(self):
+        """Valid store should parse correctly."""
+        store = Store(
+            name="Amazon.nl",
+            shipping_cost_standard=4.95,
+            free_shipping_threshold=50.0,
+            notes="Usually fast delivery"
+        )
+        assert store.name == "Amazon.nl"
+        assert store.shipping_cost_standard == 4.95
+        assert store.free_shipping_threshold == 50.0
+
+    def test_store_name_required(self):
+        """Store name is required."""
+        with pytest.raises(ValidationError):
+            Store(shipping_cost_standard=4.95)
+
+    def test_store_shipping_cost_default_zero(self):
+        """Shipping cost defaults to 0."""
+        store = Store(name="Free Store")
+        assert store.shipping_cost_standard == 0
+
+    def test_store_shipping_cannot_be_negative(self):
+        """Shipping cost cannot be negative."""
+        with pytest.raises(ValidationError):
+            Store(name="Test", shipping_cost_standard=-1.0)
+
+
+class TestTrackedItem:
+    """Tests for TrackedItem model (URL to track)."""
+
+    def test_valid_tracked_item(self):
+        """Valid tracked item should parse correctly."""
+        item = TrackedItem(
+            product_id=1,
+            store_id=1,
+            url="https://amazon.nl/dp/B12345",
+            quantity_size=250,
+            quantity_unit="ml",
+            items_per_lot=1
+        )
+        assert item.url == "https://amazon.nl/dp/B12345"
+        assert item.quantity_size == 250
+        assert item.is_active is True
+        assert item.alerts_enabled is True
+
+    def test_tracked_item_multipack(self):
+        """Multipack items should have items_per_lot > 1."""
+        item = TrackedItem(
+            product_id=1,
+            store_id=1,
+            url="https://amazon.nl/dp/B12345",
+            quantity_size=330,
+            quantity_unit="ml",
+            items_per_lot=6
+        )
+        assert item.items_per_lot == 6
+
+    def test_tracked_item_quantity_must_be_positive(self):
+        """Quantity size must be positive."""
+        with pytest.raises(ValidationError):
+            TrackedItem(
+                product_id=1,
+                store_id=1,
+                url="https://example.com",
+                quantity_size=0,
+                quantity_unit="ml"
+            )
+
+    def test_tracked_item_items_per_lot_minimum_one(self):
+        """Items per lot must be at least 1."""
+        with pytest.raises(ValidationError):
+            TrackedItem(
+                product_id=1,
+                store_id=1,
+                url="https://example.com",
+                quantity_size=100,
+                quantity_unit="ml",
+                items_per_lot=0
+            )
+
+    def test_tracked_item_requires_product_and_store(self):
+        """Product ID and Store ID are required."""
+        with pytest.raises(ValidationError):
+            TrackedItem(
+                url="https://example.com",
+                quantity_size=100,
+                quantity_unit="ml"
+            )
+
+
+class TestPriceComparison:
+    """Tests for PriceComparison model."""
+
+    def test_price_drop(self):
+        """Price drop should be detected."""
+        comparison = PriceComparison(
+            current_price=8.99,
+            previous_price=10.99,
+            price_change=-2.0,
+            price_change_percent=-18.2,
+            is_price_drop=True
+        )
+        assert comparison.is_price_drop is True
+        assert comparison.price_change == -2.0
+
+    def test_price_increase(self):
+        """Price increase should not be flagged as drop."""
+        comparison = PriceComparison(
+            current_price=12.99,
+            previous_price=10.99,
+            price_change=2.0,
+            price_change_percent=18.2,
+            is_price_drop=False
+        )
+        assert comparison.is_price_drop is False
+
+    def test_no_previous_price(self):
+        """First check has no previous price."""
+        comparison = PriceComparison(
+            current_price=10.99,
+            previous_price=None,
+            is_price_drop=False
+        )
+        assert comparison.previous_price is None
+        assert comparison.price_change is None
+
+    def test_with_volume_price(self):
+        """Volume price should be included when available."""
+        comparison = PriceComparison(
+            current_price=6.00,
+            previous_price=6.50,
+            price_change=-0.50,
+            price_change_percent=-7.7,
+            volume_price=3.03,
+            volume_unit="L",
+            is_price_drop=True
+        )
+        assert comparison.volume_price == 3.03
+        assert comparison.volume_unit == "L"
 
 
 if __name__ == "__main__":

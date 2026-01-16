@@ -5,6 +5,48 @@ from typing import Optional
 
 
 SCHEMA = """
+-- Products Table (Master product concepts)
+CREATE TABLE IF NOT EXISTS products (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    category TEXT,
+    purchase_type TEXT CHECK(purchase_type IN ('recurring', 'one_time')) DEFAULT 'recurring',
+    target_price REAL,
+    preferred_unit_size TEXT,
+    current_stock INTEGER DEFAULT 0,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+-- Stores Table (Shipping rules)
+CREATE TABLE IF NOT EXISTS stores (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL UNIQUE,
+    shipping_cost_standard REAL DEFAULT 0,
+    free_shipping_threshold REAL,
+    notes TEXT
+);
+
+-- Tracked Items Table (URLs linked to products and stores)
+CREATE TABLE IF NOT EXISTS tracked_items (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    product_id INTEGER NOT NULL,
+    store_id INTEGER NOT NULL,
+    url TEXT NOT NULL,
+    item_name_on_site TEXT,
+    quantity_size REAL NOT NULL,
+    quantity_unit TEXT NOT NULL,
+    items_per_lot INTEGER DEFAULT 1,
+    last_checked_at TEXT,
+    is_active INTEGER DEFAULT 1,
+    alerts_enabled INTEGER DEFAULT 1,
+    FOREIGN KEY(product_id) REFERENCES products(id),
+    FOREIGN KEY(store_id) REFERENCES stores(id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_tracked_items_url ON tracked_items(url);
+CREATE INDEX IF NOT EXISTS idx_tracked_items_product ON tracked_items(product_id);
+CREATE INDEX IF NOT EXISTS idx_tracked_items_active ON tracked_items(is_active);
+
 -- Price History Table
 CREATE TABLE IF NOT EXISTS price_history (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
