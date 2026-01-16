@@ -90,6 +90,57 @@ class TestItemsEndpoint:
         assert "target_price" in item
 
 
+class TestDashboardWithData:
+    """Tests for dashboard with tracked items."""
+
+    def test_dashboard_shows_tracked_items(self, client_with_data):
+        """Dashboard should display tracked items."""
+        response = client_with_data.get("/")
+        assert response.status_code == 200
+        assert "Test Product" in response.text
+        assert "Test Store" in response.text
+
+    def test_dashboard_shows_spy_button(self, client_with_data):
+        """Dashboard should have Spy Now button."""
+        response = client_with_data.get("/")
+        assert "Spy Now" in response.text
+
+    def test_dashboard_shows_no_items_message_when_empty(self, client_empty_db):
+        """Dashboard should show message when no items tracked."""
+        response = client_empty_db.get("/")
+        assert "No tracked items" in response.text
+
+    def test_dashboard_shows_below_target_status(self, client_with_price_below_target):
+        """Dashboard should show green status when price is below target."""
+        response = client_with_price_below_target.get("/")
+        assert "Below target" in response.text
+        assert "text-green-600" in response.text
+
+    def test_dashboard_shows_above_target_status(self, client_with_price_above_target):
+        """Dashboard should show red status when price is above target."""
+        response = client_with_price_above_target.get("/")
+        assert "Above target" in response.text
+        assert "text-red-600" in response.text
+
+
+class TestItemDetailEndpoint:
+    """Tests for /api/items/{id} endpoint."""
+
+    def test_item_detail_returns_404_for_missing(self, client):
+        """Should return 404 for non-existent item."""
+        response = client.get("/api/items/99999")
+        assert response.status_code == 404
+
+    def test_item_detail_returns_item(self, client_with_data):
+        """Should return item details."""
+        response = client_with_data.get("/api/items/1")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["id"] == 1
+        assert "product_name" in data
+        assert "store_name" in data
+
+
 class TestExtractEndpoint:
     """Tests for /api/extract endpoint."""
 
@@ -116,6 +167,162 @@ def client():
     """Create test client for FastAPI app."""
     from app.api.main import app
     return TestClient(app)
+
+
+@pytest.fixture
+def client_empty_db():
+    """Create test client with empty database."""
+    from app.api.main import app
+    from app.storage.database import Database
+    import app.api.main as main_module
+
+    # Use a temporary empty database
+    with tempfile.NamedTemporaryFile(suffix='.db', delete=False) as f:
+        db_path = f.name
+
+    try:
+        db = Database(db_path)
+        db.initialize()
+        db.close()
+
+        # Override the test database path
+        original_db_path = main_module._test_db_path
+        main_module._test_db_path = db_path
+
+        yield TestClient(app)
+
+        # Restore original
+        main_module._test_db_path = original_db_path
+
+    finally:
+        if os.path.exists(db_path):
+            os.unlink(db_path)
+
+
+@pytest.fixture
+def client_with_price_below_target():
+    """Create test client with item priced below target."""
+    from app.api.main import app
+    from app.storage.database import Database
+    from app.storage.repositories import (
+        ProductRepository, StoreRepository, TrackedItemRepository, PriceHistoryRepository
+    )
+    from app.models.schemas import Product, Store, TrackedItem, PriceHistoryRecord
+    import app.api.main as main_module
+
+    with tempfile.NamedTemporaryFile(suffix='.db', delete=False) as f:
+        db_path = f.name
+
+    try:
+        db = Database(db_path)
+        db.initialize()
+
+        # Create product with target price 15.00
+        product_repo = ProductRepository(db)
+        store_repo = StoreRepository(db)
+        tracked_repo = TrackedItemRepository(db)
+        price_repo = PriceHistoryRepository(db)
+
+        product = Product(name="Target Test Product", category="Test", target_price=15.00)
+        product_id = product_repo.insert(product)
+
+        store = Store(name="Test Store", shipping_cost_standard=0)
+        store_id = store_repo.insert(store)
+
+        tracked = TrackedItem(
+            product_id=product_id,
+            store_id=store_id,
+            url="https://example.com/below-target",
+            quantity_size=100,
+            quantity_unit="ml"
+        )
+        tracked_repo.insert(tracked)
+
+        # Add price history with price below target (10.00 < 15.00)
+        price_record = PriceHistoryRecord(
+            product_name="Target Test Product",
+            price=10.00,
+            currency="EUR",
+            confidence=1.0,
+            url="https://example.com/below-target"
+        )
+        price_repo.insert(price_record)
+
+        db.close()
+
+        original_db_path = main_module._test_db_path
+        main_module._test_db_path = db_path
+
+        yield TestClient(app)
+
+        main_module._test_db_path = original_db_path
+
+    finally:
+        if os.path.exists(db_path):
+            os.unlink(db_path)
+
+
+@pytest.fixture
+def client_with_price_above_target():
+    """Create test client with item priced above target."""
+    from app.api.main import app
+    from app.storage.database import Database
+    from app.storage.repositories import (
+        ProductRepository, StoreRepository, TrackedItemRepository, PriceHistoryRepository
+    )
+    from app.models.schemas import Product, Store, TrackedItem, PriceHistoryRecord
+    import app.api.main as main_module
+
+    with tempfile.NamedTemporaryFile(suffix='.db', delete=False) as f:
+        db_path = f.name
+
+    try:
+        db = Database(db_path)
+        db.initialize()
+
+        # Create product with target price 10.00
+        product_repo = ProductRepository(db)
+        store_repo = StoreRepository(db)
+        tracked_repo = TrackedItemRepository(db)
+        price_repo = PriceHistoryRepository(db)
+
+        product = Product(name="Above Target Product", category="Test", target_price=10.00)
+        product_id = product_repo.insert(product)
+
+        store = Store(name="Test Store", shipping_cost_standard=0)
+        store_id = store_repo.insert(store)
+
+        tracked = TrackedItem(
+            product_id=product_id,
+            store_id=store_id,
+            url="https://example.com/above-target",
+            quantity_size=100,
+            quantity_unit="ml"
+        )
+        tracked_repo.insert(tracked)
+
+        # Add price history with price above target (15.00 > 10.00)
+        price_record = PriceHistoryRecord(
+            product_name="Above Target Product",
+            price=15.00,
+            currency="EUR",
+            confidence=1.0,
+            url="https://example.com/above-target"
+        )
+        price_repo.insert(price_record)
+
+        db.close()
+
+        original_db_path = main_module._test_db_path
+        main_module._test_db_path = db_path
+
+        yield TestClient(app)
+
+        main_module._test_db_path = original_db_path
+
+    finally:
+        if os.path.exists(db_path):
+            os.unlink(db_path)
 
 
 @pytest.fixture

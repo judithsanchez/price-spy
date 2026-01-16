@@ -466,17 +466,17 @@ Both CLI and Web UI share the same core modules.
 ## 13. Definition of Done
 
 Slice 3 is complete when:
-- [ ] FastAPI server starts with `uvicorn` on port 8000
-- [ ] Health endpoint returns `{"status": "ok"}`
-- [ ] Dashboard renders with Jinja2 + Tailwind CSS
-- [ ] `/api/items` returns JSON list of tracked items
-- [ ] "Spy Now" button triggers extraction via Alpine.js
-- [ ] Gemini uses structured outputs (guaranteed JSON)
-- [ ] `ExtractionResult` includes `is_available` field
-- [ ] Screenshots saved and displayed in UI
-- [ ] Price status shows green (below target) or red (above)
-- [ ] All existing tests pass (70+)
-- [ ] New API/UI tests pass (15+)
+- [x] FastAPI server starts with `uvicorn` on port 8000
+- [x] Health endpoint returns `{"status": "ok"}`
+- [x] Dashboard renders with Jinja2 + Tailwind CSS
+- [x] `/api/items` returns JSON list of tracked items
+- [x] "Spy Now" button triggers extraction via Alpine.js
+- [x] Gemini uses structured outputs (guaranteed JSON)
+- [x] `ExtractionResult` includes `is_available` field
+- [x] Screenshots saved and displayed in UI
+- [x] Price status shows green (below target) or red (above)
+- [x] All existing tests pass (70+) - 108 passing
+- [x] New API/UI tests pass (15+) - 38 new tests
 - [ ] Works in Docker on ARM64 (Raspberry Pi 5)
 - [ ] Documentation updated
 
@@ -512,4 +512,4 @@ docker compose -f infrastructure/docker-compose.yml run --rm price-spy pytest te
 docker compose -f infrastructure/docker-compose.yml run --rm price-spy bash
 ```
 
-**Status: PLANNING** (January 2026)
+**Status: COMPLETE** (January 2026)

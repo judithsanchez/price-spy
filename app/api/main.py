@@ -114,6 +114,42 @@ async def get_items():
         db.close()
 
 
+@app.get("/api/items/{item_id}", response_model=DashboardItem)
+async def get_item(item_id: int):
+    """Get a single tracked item by ID."""
+    db = get_db()
+    try:
+        product_repo = ProductRepository(db)
+        store_repo = StoreRepository(db)
+        tracked_repo = TrackedItemRepository(db)
+        price_repo = PriceHistoryRepository(db)
+
+        item = tracked_repo.get_by_id(item_id)
+        if not item:
+            raise HTTPException(status_code=404, detail="Item not found")
+
+        product = product_repo.get_by_id(item.product_id)
+        store = store_repo.get_by_id(item.store_id)
+        latest_price = price_repo.get_latest_by_url(item.url)
+
+        screenshot_path = f"screenshots/{item.id}.png"
+        has_screenshot = Path(screenshot_path).exists()
+
+        return DashboardItem(
+            id=item.id,
+            product_name=product.name if product else "Unknown",
+            store_name=store.name if store else "Unknown",
+            url=item.url,
+            price=latest_price.price if latest_price else None,
+            currency=latest_price.currency if latest_price else "EUR",
+            target_price=product.target_price if product else None,
+            screenshot_path=screenshot_path if has_screenshot else None,
+            last_checked=item.last_checked_at.isoformat() if item.last_checked_at else None,
+        )
+    finally:
+        db.close()
+
+
 async def run_extraction(item_id: int, db_path: str):
     """Background task to run price extraction."""
     from app.core.browser import capture_screenshot
