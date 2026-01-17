@@ -16,6 +16,7 @@
                 <th class="px-4 py-3 text-left text-sm font-medium text-gray-700">Product</th>
                 <th class="px-4 py-3 text-left text-sm font-medium text-gray-700">Store</th>
                 <th class="px-4 py-3 text-left text-sm font-medium text-gray-700">Price</th>
+                <th class="px-4 py-3 text-left text-sm font-medium text-gray-700">Unit Price</th>
                 <th class="px-4 py-3 text-left text-sm font-medium text-gray-700">Target</th>
                 <th class="px-4 py-3 text-left text-sm font-medium text-gray-700">Status</th>
                 <th class="px-4 py-3 text-left text-sm font-medium text-gray-700">Screenshot</th>
@@ -30,6 +31,13 @@
                 <td class="px-4 py-3 text-sm font-medium">
                     {% if item.price %}
                         {{ item.currency }} {{ "%.2f"|format(item.price) }}
+                    {% else %}
+                        <span class="text-gray-400">-</span>
+                    {% endif %}
+                </td>
+                <td class="px-4 py-3 text-sm text-gray-600">
+                    {% if item.unit_price and item.unit %}
+                        {{ item.currency }} {{ "%.2f"|format(item.unit_price) }}/{{ item.unit }}
                     {% else %}
                         <span class="text-gray-400">-</span>
                     {% endif %}

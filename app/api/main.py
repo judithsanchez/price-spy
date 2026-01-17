@@ -148,6 +148,17 @@ class ExtractionLogResponse(BaseModel):
     created_at: str
 
 
+class ErrorLogResponse(BaseModel):
+    """Response model for error log."""
+    id: int
+    error_type: str
+    message: str
+    url: Optional[str] = None
+    screenshot_path: Optional[str] = None
+    stack_trace: Optional[str] = None
+    created_at: str
+
+
 class ExtractionStatsResponse(BaseModel):
     """Response model for extraction statistics."""
     total_today: int
@@ -416,6 +427,8 @@ async def trigger_extraction(item_id: int):
 @app.get("/")
 async def dashboard(request: Request):
     """Render dashboard page."""
+    from app.core.price_calculator import calculate_volume_price
+
     db = get_db()
     try:
         product_repo = ProductRepository(db)
@@ -434,6 +447,18 @@ async def dashboard(request: Request):
             screenshot_path = f"screenshots/{item.id}.png"
             has_screenshot = Path(screenshot_path).exists()
 
+            # Calculate unit price if we have a price
+            unit_price = None
+            unit = None
+            if latest_price and latest_price.price:
+                unit_price, unit = calculate_volume_price(
+                    latest_price.price,
+                    item.items_per_lot,
+                    item.quantity_size,
+                    item.quantity_unit
+                )
+                unit_price = round(unit_price, 2)
+
             items.append({
                 "id": item.id,
                 "product_name": product.name if product else "Unknown",
@@ -442,6 +467,8 @@ async def dashboard(request: Request):
                 "price": latest_price.price if latest_price else None,
                 "currency": latest_price.currency if latest_price else "EUR",
                 "target_price": product.target_price if product else None,
+                "unit_price": unit_price,
+                "unit": unit,
                 "screenshot_path": screenshot_path if has_screenshot else None,
             })
 
@@ -470,6 +497,12 @@ async def stores_page(request: Request):
 async def tracked_items_page(request: Request):
     """Render tracked items management page."""
     return templates.TemplateResponse(request, "tracked-items.html", {})
+
+
+@app.get("/logs")
+async def logs_page(request: Request):
+    """Render logs page."""
+    return templates.TemplateResponse(request, "logs.html", {})
 
 
 # --- Products API ---
@@ -877,14 +910,28 @@ async def delete_tracked_item(item_id: int):
 # --- Extraction Logs & API Usage ---
 
 @app.get("/api/logs", response_model=List[ExtractionLogResponse])
-async def get_extraction_logs(limit: int = 50):
-    """Get recent extraction logs."""
+async def get_extraction_logs(
+    status: Optional[str] = None,
+    item_id: Optional[int] = None,
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    limit: int = 100,
+    offset: int = 0
+):
+    """Get recent extraction logs with optional filters."""
     from app.storage.repositories import ExtractionLogRepository
 
     db = get_db()
     try:
         repo = ExtractionLogRepository(db)
-        logs = repo.get_recent(limit=limit)
+        logs = repo.get_all_filtered(
+            status=status,
+            item_id=item_id,
+            start_date=start_date,
+            end_date=end_date,
+            limit=limit,
+            offset=offset,
+        )
         return [
             ExtractionLogResponse(
                 id=log.id,
@@ -895,6 +942,43 @@ async def get_extraction_logs(limit: int = 50):
                 currency=log.currency,
                 error_message=log.error_message,
                 duration_ms=log.duration_ms,
+                created_at=log.created_at.isoformat(),
+            )
+            for log in logs
+        ]
+    finally:
+        db.close()
+
+
+@app.get("/api/errors", response_model=List[ErrorLogResponse])
+async def get_error_logs(
+    error_type: Optional[str] = None,
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    limit: int = 100,
+    offset: int = 0
+):
+    """Get recent error logs with optional filters."""
+    from app.storage.repositories import ErrorLogRepository
+
+    db = get_db()
+    try:
+        repo = ErrorLogRepository(db)
+        logs = repo.get_all_filtered(
+            error_type=error_type,
+            start_date=start_date,
+            end_date=end_date,
+            limit=limit,
+            offset=offset,
+        )
+        return [
+            ErrorLogResponse(
+                id=log.id,
+                error_type=log.error_type,
+                message=log.message,
+                url=log.url,
+                screenshot_path=log.screenshot_path,
+                stack_trace=log.stack_trace,
                 created_at=log.created_at.isoformat(),
             )
             for log in logs

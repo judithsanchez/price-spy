@@ -119,6 +119,38 @@ class ErrorLogRepository:
         )
         return [self._row_to_record(row) for row in cursor.fetchall()]
 
+    def get_all_filtered(
+        self,
+        error_type: Optional[str] = None,
+        start_date: Optional[str] = None,
+        end_date: Optional[str] = None,
+        limit: int = 100,
+        offset: int = 0
+    ) -> List[ErrorRecord]:
+        """Get all error logs with filters and pagination."""
+        query = "SELECT * FROM error_log"
+        conditions = []
+        params = []
+
+        if error_type:
+            conditions.append("error_type = ?")
+            params.append(error_type)
+        if start_date:
+            conditions.append("date(created_at) >= ?")
+            params.append(start_date)
+        if end_date:
+            conditions.append("date(created_at) <= ?")
+            params.append(end_date)
+
+        if conditions:
+            query += " WHERE " + " AND ".join(conditions)
+
+        query += " ORDER BY created_at DESC LIMIT ? OFFSET ?"
+        params.extend([limit, offset])
+
+        cursor = self.db.execute(query, tuple(params))
+        return [self._row_to_record(row) for row in cursor.fetchall()]
+
     def _row_to_record(self, row) -> ErrorRecord:
         """Convert a database row to an ErrorRecord."""
         return ErrorRecord(
@@ -523,6 +555,42 @@ class ExtractionLogRepository:
             "error_count": row["error_count"] or 0,
             "avg_duration_ms": int(row["avg_duration_ms"]) if row["avg_duration_ms"] else 0,
         }
+
+    def get_all_filtered(
+        self,
+        status: Optional[str] = None,
+        item_id: Optional[int] = None,
+        start_date: Optional[str] = None,
+        end_date: Optional[str] = None,
+        limit: int = 100,
+        offset: int = 0
+    ) -> List[ExtractionLog]:
+        """Get all extraction logs with filters and pagination."""
+        query = "SELECT * FROM extraction_logs"
+        conditions = []
+        params = []
+
+        if status:
+            conditions.append("status = ?")
+            params.append(status)
+        if item_id:
+            conditions.append("tracked_item_id = ?")
+            params.append(item_id)
+        if start_date:
+            conditions.append("date(created_at) >= ?")
+            params.append(start_date)
+        if end_date:
+            conditions.append("date(created_at) <= ?")
+            params.append(end_date)
+
+        if conditions:
+            query += " WHERE " + " AND ".join(conditions)
+
+        query += " ORDER BY created_at DESC LIMIT ? OFFSET ?"
+        params.extend([limit, offset])
+
+        cursor = self.db.execute(query, tuple(params))
+        return [self._row_to_record(row) for row in cursor.fetchall()]
 
     def _row_to_record(self, row) -> ExtractionLog:
         """Convert a database row to an ExtractionLog."""

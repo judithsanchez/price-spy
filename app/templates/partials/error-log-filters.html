@@ -1,0 +1,73 @@
+<div
+  x-data="errorLogFilters()"
+  class="mb-4 p-4 bg-gray-50 rounded-lg border"
+>
+  <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+    <!-- Error Type Filter -->
+    <div>
+      <label for="error-type-filter" class="block text-sm font-medium text-gray-700">Error Type</label>
+      <select
+        id="error-type-filter"
+        x-model="errorType"
+        @change="applyFilters()"
+        class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
+      >
+        <option value="">All</option>
+        <option value="ScrapingError">Scraping Error</option>
+        <option value="VisionAPIError">Vision API Error</option>
+        <option value="DatabaseError">Database Error</option>
+      </select>
+    </div>
+
+    <!-- Start Date -->
+    <div>
+        <label for="error-start-date-filter" class="block text-sm font-medium text-gray-700">Start Date</label>
+        <input type="date" id="error-start-date-filter" x-model="startDate" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
+    </div>
+
+    <!-- End Date -->
+    <div>
+        <label for="error-end-date-filter" class="block text-sm font-medium text-gray-700">End Date</label>
+        <input type="date" id="error-end-date-filter" x-model="endDate" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
+    </div>
+
+    <!-- Action Buttons -->
+    <div class="flex items-end space-x-2">
+      <button
+        @click="applyFilters()"
+        class="w-full inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+      >
+        Filter
+      </button>
+      <button
+        @click="resetFilters()"
+        class="w-full inline-flex justify-center py-2 px-4 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+      >
+        Reset
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+function errorLogFilters() {
+    return {
+        errorType: '',
+        startDate: '',
+        endDate: '',
+        applyFilters() {
+            this.$dispatch('error-log-filter-changed', {
+                errorType: this.errorType,
+                startDate: this.startDate,
+                endDate: this.endDate,
+            });
+        },
+        resetFilters() {
+            this.errorType = '';
+            this.startDate = '';
+            this.endDate = '';
+            this.applyFilters();
+        }
+    }
+}
+</script>

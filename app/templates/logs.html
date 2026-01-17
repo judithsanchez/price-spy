@@ -1,0 +1,174 @@
+{% extends "base.html" %}
+
+{% block title %}System Logs - Price Spy{% endblock %}
+
+{% block content %}
+<div class="mb-6">
+    <h2 class="text-2xl font-bold text-gray-800">System Logs</h2>
+    <p class="text-gray-600">Detailed history of all system events</p>
+</div>
+
+<div x-data="{ tab: 'extraction' }" class="bg-white rounded-lg shadow overflow-hidden">
+    <div class="border-b border-gray-200">
+        <nav class="-mb-px flex space-x-8 px-6" aria-label="Tabs">
+            <button @click="tab = 'extraction'" :class="{ 'border-blue-500 text-blue-600': tab === 'extraction', 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300': tab !== 'extraction' }" class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
+                Extraction Logs
+            </button>
+            <button @click="tab = 'error'" :class="{ 'border-blue-500 text-blue-600': tab === 'error', 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300': tab !== 'error' }" class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
+                Error Logs
+            </button>
+        </nav>
+    </div>
+
+    <!-- Extraction Logs Panel -->
+    <div x-show="tab === 'extraction'" class="p-4" x-data="fullLogs()">
+        {% include 'partials/log-filters.html' %}
+        <div x-show="loading" class="text-center p-8 text-gray-500">Loading logs...</div>
+        <div x-show="!loading && logs.length === 0" class="text-center p-8 text-gray-500">No logs found.</div>
+        <div x-show="!loading && logs.length > 0" class="overflow-x-auto">
+            <table class="w-full min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Time</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Item ID</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Price</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Model</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Duration</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Details</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    <template x-for="log in logs" :key="log.id">
+                        <tr class="hover:bg-gray-50">
+                            <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500" x-text="formatTime(log.created_at)"></td>
+                            <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-800">
+                                <a :href="'/tracked-items#' + log.tracked_item_id" class="text-blue-600 hover:underline" x-text="log.tracked_item_id"></a>
+                            </td>
+                            <td class="px-4 py-3 whitespace-nowrap text-sm">
+                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full" :class="{ 'bg-green-100 text-green-800': log.status === 'success', 'bg-red-100 text-red-800': log.status === 'error' }" x-text="log.status"></span>
+                            </td>
+                            <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">
+                                <span x-show="log.price" x-text="log.currency + ' ' + log.price.toFixed(2)"></span>
+                                <span x-show="!log.price" class="text-gray-400">-</span>
+                            </td>
+                            <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500" x-text="log.model_used || '-'"></td>
+                            <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
+                                <span x-show="log.duration_ms" x-text="log.duration_ms + ' ms'"></span>
+                                <span x-show="!log.duration_ms" class="text-gray-400">-</span>
+                            </td>
+                            <td class="px-4 py-3 text-sm text-gray-500 max-w-xs truncate" x-text="log.error_message || 'OK'" :title="log.error_message"></td>
+                        </tr>
+                    </template>
+                </tbody>
+            </table>
+            <div class="py-3 flex items-center justify-between border-t border-gray-200">
+                 <button @click="prevPage()" :disabled="page <= 1" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50">Previous</button>
+                 <span class="text-sm text-gray-700">Page <span x-text="page"></span></span>
+                <button @click="nextPage()" :disabled="!hasMore" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50">Next</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Error Logs Panel -->
+    <div x-show="tab === 'error'" class="p-4" x-data="errorLogs()">
+        {% include 'partials/error-log-filters.html' %}
+        <div x-show="loading" class="text-center p-8 text-gray-500">Loading error logs...</div>
+        <div x-show="!loading && logs.length === 0" class="text-center p-8 text-gray-500">No error logs found.</div>
+        <div x-show="!loading && logs.length > 0" class="overflow-x-auto">
+            <table class="w-full min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Time</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Error Type</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Message</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">URL</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Screenshot</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    <template x-for="log in logs" :key="log.id">
+                        <tr class="hover:bg-gray-50">
+                            <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500" x-text="formatTime(log.created_at)"></td>
+                            <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-800" x-text="log.error_type"></td>
+                            <td class="px-4 py-3 text-sm text-gray-500 max-w-xs truncate" x-text="log.message" :title="log.message"></td>
+                            <td class="px-4 py-3 whitespace-nowrap text-sm text-blue-600">
+                                <a :href="log.url" target="_blank" class="hover:underline" x-text="log.url ? 'Link' : '-'"></a>
+                            </td>
+                            <td class="px-4 py-3 whitespace-nowrap text-sm text-blue-600">
+                                <a :href="log.screenshot_path" target="_blank" class="hover:underline" x-text="log.screenshot_path ? 'View' : '-'"></a>
+                            </td>
+                        </tr>
+                    </template>
+                </tbody>
+            </table>
+            <div class="py-3 flex items-center justify-between border-t border-gray-200">
+                <button @click="prevPage()" :disabled="page <= 1" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50">Previous</button>
+                <span class="text-sm text-gray-700">Page <span x-text="page"></span></span>
+                <button @click="nextPage()" :disabled="!hasMore" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50">Next</button>
+           </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function fullLogs() {
+    return {
+        logs: [], loading: true, page: 1, limit: 100, hasMore: false,
+        filters: { status: '', itemId: '', startDate: '', endDate: '' },
+        init() { this.loadLogs(); window.addEventListener('log-filter-changed', e => { this.filters = e.detail; this.loadLogs(); }); },
+        buildQuery() {
+            let q = `?limit=${this.limit}&offset=${(this.page - 1) * this.limit}`;
+            if (this.filters.status) q += `&status=${this.filters.status}`;
+            if (this.filters.itemId) q += `&item_id=${this.filters.itemId}`;
+            if (this.filters.startDate) q += `&start_date=${this.filters.startDate}`;
+            if (this.filters.endDate) q += `&end_date=${this.filters.endDate}`;
+            return q;
+        },
+        async loadLogs() {
+            this.loading = true;
+            try {
+                const res = await fetch(`/api/logs${this.buildQuery()}`);
+                const data = await res.json();
+                this.logs = data;
+                this.hasMore = data.length === this.limit;
+            } catch (e) { console.error('Failed to load logs:', e); this.logs = []; this.hasMore = false; }
+            finally { this.loading = false; }
+        },
+        nextPage() { if (this.hasMore) { this.page++; this.loadLogs(); } },
+        prevPage() { if (this.page > 1) { this.page--; this.loadLogs(); } },
+        formatTime(iso) { return iso ? new Date(iso).toLocaleString('en-US', { dateStyle: 'short', timeStyle: 'medium' }) : '-'; }
+    }
+}
+
+function errorLogs() {
+    return {
+        logs: [], loading: true, page: 1, limit: 100, hasMore: false,
+        filters: { errorType: '', startDate: '', endDate: '' },
+        init() { this.loadLogs(); window.addEventListener('error-log-filter-changed', e => { this.filters = e.detail; this.loadLogs(); }); },
+        buildQuery() {
+            let q = `?limit=${this.limit}&offset=${(this.page - 1) * this.limit}`;
+            if (this.filters.errorType) q += `&error_type=${this.filters.errorType}`;
+            if (this.filters.startDate) q += `&start_date=${this.filters.startDate}`;
+            if (this.filters.endDate) q += `&end_date=${this.filters.endDate}`;
+            return q;
+        },
+        async loadLogs() {
+            this.loading = true;
+            try {
+                const res = await fetch(`/api/errors${this.buildQuery()}`);
+                const data = await res.json();
+                this.logs = data;
+                this.hasMore = data.length === this.limit;
+            } catch (e) { console.error('Failed to load error logs:', e); this.logs = []; this.hasMore = false; }
+            finally { this.loading = false; }
+        },
+        nextPage() { if (this.hasMore) { this.page++; this.loadLogs(); } },
+        prevPage() { if (this.page > 1) { this.page--; this.loadLogs(); } },
+        formatTime(iso) { return iso ? new Date(iso).toLocaleString('en-US', { dateStyle: 'short', timeStyle: 'medium' }) : '-'; }
+    }
+}
+</script>
+
+{% endblock %}
+
