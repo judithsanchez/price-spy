@@ -109,20 +109,49 @@ purchase_date DATE NOT NULL,
 
 );
 
-F. Process Logs (Debugging)
+F. Error Log Table (Debugging)
 
-Stores errors and execution logs.
-Update: Added run_id and trigger_source for grouping and tracking execution origin.
+Stores general errors and execution failures.
 
-CREATE TABLE process_logs (
-id INTEGER PRIMARY KEY AUTOINCREMENT,
-run_id TEXT, -- UUID to group logs from one "session"
-trigger_source TEXT, -- 'CRON' or 'MANUAL'
-process_name TEXT NOT NULL, -- e.g., "scraper", "ai_extractor"
-status TEXT NOT NULL, -- "INFO", "ERROR", "WARNING"
-message TEXT,
-raw_data TEXT,
-created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+CREATE TABLE error_log (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    error_type TEXT NOT NULL,
+    message TEXT NOT NULL,
+    url TEXT,
+    screenshot_path TEXT,
+    stack_trace TEXT,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+G. Extraction Logs Table (New in Slice 4)
+
+Tracks all extraction attempts (success and failure) for monitoring.
+
+CREATE TABLE extraction_logs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    tracked_item_id INTEGER NOT NULL,
+    status TEXT CHECK(status IN ('success', 'error')) NOT NULL,
+    model_used TEXT,                  -- e.g., "gemini-2.5-flash"
+    price REAL,                       -- Extracted price (if successful)
+    currency TEXT,                    -- e.g., "EUR"
+    error_message TEXT,               -- Error details (if failed)
+    duration_ms INTEGER,              -- Extraction time in milliseconds
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY(tracked_item_id) REFERENCES tracked_items(id)
+);
+
+H. API Usage Table (New in Slice 4)
+
+Tracks daily API quota usage per model for rate limiting.
+
+CREATE TABLE api_usage (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    model TEXT NOT NULL,              -- e.g., "gemini-2.5-flash"
+    date TEXT NOT NULL,               -- YYYY-MM-DD (Pacific time)
+    request_count INTEGER DEFAULT 0,  -- Requests made today
+    last_request_at TEXT,             -- Timestamp of last request
+    is_exhausted INTEGER DEFAULT 0,   -- 1 if quota hit (429 received)
+    UNIQUE(model, date)
 );
 
 3. AI Extraction Prompt (The Interface)

@@ -1,3 +1,5 @@
+# Price Spy Roadmap
+
 ## Slice 1: The Manual Spy (Complete)
 * **Goal:** Proof of Concept for Visual Scraping.
 * **Status:** Complete.
@@ -21,23 +23,72 @@
   - [x] Calculate and display price per unit (e.g., EUR/L)
   - [x] 70 tests passing in Docker
 
-## Slice 3: Communication (The Alert)
-* **Goal:** Notify the user when a price drops.
+## Slice 3: Web Dashboard (Complete)
+* **Goal:** Simple web interface to view and trigger extractions.
+* **Status:** Complete.
 * **Scope:**
-    * Integrate Python `smtplib` for **Email** notifications.
-    * Daily Summary: One email at the end of the day with all monitored prices.
-    * Price Drop Alert: Immediate email if a price is lower than the previous record.
-* **Success Criteria:** Receiving a formatted email on a test price drop.
+    * FastAPI web server with Jinja2 templates
+    * Dashboard showing tracked items with prices
+    * "Spy Now" button with real-time feedback
+    * Price status indicators (above/below target)
+    * Screenshot thumbnails
+* **Success Criteria:**
+  - [x] Access dashboard at http://localhost:8000
+  - [x] Trigger extraction via UI
+  - [x] See success/error feedback inline
 
-## Slice 4: Automation & Integration
-* **Goal:** Connect to the Smart Home ecosystem.
+## Slice 4: Full CRUD UI (Complete)
+* **Goal:** Complete web interface for managing all entities.
+* **Status:** Complete.
 * **Scope:**
-    * Schedule the spy to run **once a day** using a Cron job or Docker Compose scheduler.
-    * Integrate with **Home Assistant** via Webhooks or MQTT to trigger phone notifications.
-* **Success Criteria:** An automated daily run that triggers a phone notification.
+    * Full CRUD for Products, Stores, Tracked Items via web UI
+    * Navigation menu across all pages
+    * Delete confirmations with modals
+    * Extraction logging (success/error tracking)
+    * API usage tracking with rate limit management
+    * Auto-fallback between Gemini models on quota exhaustion
+    * API endpoints for logs and usage stats
+    * Dashboard panels for API usage and recent extractions
+* **Success Criteria:**
+  - [x] Products: List, Add, Edit, Delete working
+  - [x] Stores: List, Add, Edit, Delete working
+  - [x] Tracked Items: CRUD with product/store dropdowns
+  - [x] Extraction logs visible in dashboard
+  - [x] API usage/quota visible in dashboard
+  - [x] 157 tests passing
 
-## Slice 5: Management (The Dashboard)
-* **Goal:** A simple Web UI to manage the Spy.
-* **Scope:** * A lightweight Flask or FastAPI web server.
-    * UI to add/remove URLs and view price history graphs.
-* **Success Criteria:** Accessing `http://raspberrypi:5000` and adding a new tracking URL via the browser.
+## Slice 5: Price History & Alerts (Planned)
+* **Goal:** View price history and get notified on price drops.
+* **Status:** Planned.
+* **Scope:**
+    * Price history view per tracked item (chart/table)
+    * Email notifications on price drops
+    * Daily summary email
+* **Success Criteria:**
+  - [ ] View price history graph for any tracked item
+  - [ ] Receive email alert when price drops below target
+
+## Slice 6: Automation & Scheduling (Planned)
+* **Goal:** Automated daily price checks.
+* **Status:** Planned.
+* **Scope:**
+    * Scheduled extraction runs (cron/scheduler)
+    * Batch extraction for all active items
+    * Home Assistant integration (webhooks/MQTT)
+* **Success Criteria:**
+  - [ ] Automated daily run without manual trigger
+  - [ ] Phone notification via Home Assistant
+
+---
+
+## Tech Stack
+
+* **Backend:** Python 3.11, FastAPI, SQLite
+* **Browser:** Playwright with Chromium (stealth mode)
+* **AI:** Google Gemini 2.5 Flash/Lite (structured output)
+* **Frontend:** Jinja2 templates, Tailwind CSS, Alpine.js
+* **Infrastructure:** Docker, Docker Compose
+
+---
+
+## Current Test Count: 157 tests

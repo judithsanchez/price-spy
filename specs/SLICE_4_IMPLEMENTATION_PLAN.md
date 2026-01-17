@@ -13,6 +13,8 @@
 - [x] Navigation menu across all pages
 - [ ] Price history view per tracked item (deferred to Slice 5)
 - [x] All operations via web UI (CLI remains as fallback)
+- [x] Extraction logging with error display
+- [x] API usage tracking with rate limit management
 
 ---
 
@@ -51,37 +53,30 @@ TrackedItems (specific URL to monitor)
 
 PriceHistory (extraction results)
 └── product_name, price, currency, url, created_at
+
+ExtractionLogs (all extraction attempts)
+└── tracked_item_id, status, model_used, price, currency, error_message, duration_ms, created_at
+
+ApiUsage (rate limit tracking)
+└── model, date, request_count, last_request_at, is_exhausted
 ```
 
 ---
 
-## 3. New Routes
+## 3. Page Routes
 
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | `/products` | Products list page |
-| GET | `/products/new` | New product form |
-| POST | `/products` | Create product |
-| GET | `/products/{id}/edit` | Edit product form |
-| POST | `/products/{id}` | Update product |
-| POST | `/products/{id}/delete` | Delete product |
-| GET | `/stores` | Stores list page |
-| GET | `/stores/new` | New store form |
-| POST | `/stores` | Create store |
-| GET | `/stores/{id}/edit` | Edit store form |
-| POST | `/stores/{id}` | Update store |
-| POST | `/stores/{id}/delete` | Delete store |
-| GET | `/tracked/new` | New tracked item form |
-| POST | `/tracked` | Create tracked item |
-| GET | `/tracked/{id}/edit` | Edit tracked item form |
-| POST | `/tracked/{id}` | Update tracked item |
-| POST | `/tracked/{id}/delete` | Delete tracked item |
-| GET | `/tracked/{id}/history` | Price history page |
+| GET | `/` | Dashboard with tracked items |
+| GET | `/products` | Products management page |
+| GET | `/stores` | Stores management page |
+| GET | `/tracked-items` | Tracked items management page |
 
 ---
 
 ## 4. API Endpoints (JSON)
 
+### Products
 | Method | Path | Description |
 |--------|------|-------------|
 | GET | `/api/products` | List all products |
@@ -89,14 +84,32 @@ PriceHistory (extraction results)
 | GET | `/api/products/{id}` | Get product |
 | PUT | `/api/products/{id}` | Update product |
 | DELETE | `/api/products/{id}` | Delete product |
+
+### Stores
+| Method | Path | Description |
+|--------|------|-------------|
 | GET | `/api/stores` | List all stores |
 | POST | `/api/stores` | Create store |
 | GET | `/api/stores/{id}` | Get store |
 | PUT | `/api/stores/{id}` | Update store |
 | DELETE | `/api/stores/{id}` | Delete store |
-| DELETE | `/api/items/{id}` | Delete tracked item |
-| PUT | `/api/items/{id}` | Update tracked item |
-| GET | `/api/items/{id}/history` | Get price history |
+
+### Tracked Items
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/tracked-items` | List all tracked items |
+| POST | `/api/tracked-items` | Create tracked item |
+| GET | `/api/tracked-items/{id}` | Get tracked item |
+| PUT | `/api/tracked-items/{id}` | Update tracked item |
+| DELETE | `/api/tracked-items/{id}` | Delete tracked item |
+
+### Extraction & Monitoring
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/api/extract/{id}` | Trigger extraction for item |
+| GET | `/api/logs` | Get recent extraction logs |
+| GET | `/api/logs/stats` | Get today's extraction stats |
+| GET | `/api/usage` | Get API usage per model |
 
 ---
 
@@ -104,21 +117,11 @@ PriceHistory (extraction results)
 
 ```
 app/templates/
-├── base.html              # Updated with navigation
-├── dashboard.html         # Existing (minor updates)
-├── products/
-│   ├── list.html          # Products table with actions
-│   └── form.html          # Add/Edit product form
-├── stores/
-│   ├── list.html          # Stores table with actions
-│   └── form.html          # Add/Edit store form
-├── tracked/
-│   ├── form.html          # Add/Edit tracked item (with dropdowns)
-│   └── history.html       # Price history table/chart
-└── partials/
-    ├── nav.html           # Navigation component
-    ├── flash.html         # Flash messages
-    └── confirm_delete.html # Delete confirmation modal
+├── base.html              # Layout with navigation
+├── dashboard.html         # Main dashboard with logs/usage panels
+├── products.html          # Products CRUD (Alpine.js)
+├── stores.html            # Stores CRUD (Alpine.js)
+└── tracked-items.html     # Tracked items CRUD (Alpine.js)
 ```
 
 ---
@@ -169,60 +172,36 @@ Active link highlighted based on current route.
 
 ---
 
-## 8. Repository Updates
+## 8. Repository Classes
 
 ### 8.1 ProductRepository
-
-```python
-def update(self, product_id: int, product: Product) -> None
-def delete(self, product_id: int) -> None
-```
+- `insert()`, `get_by_id()`, `get_all()`, `update()`, `delete()`, `update_stock()`
 
 ### 8.2 StoreRepository
-
-```python
-def update(self, store_id: int, store: Store) -> None
-def delete(self, store_id: int) -> None
-```
+- `insert()`, `get_by_id()`, `get_by_name()`, `get_all()`, `update()`, `delete()`
 
 ### 8.3 TrackedItemRepository
+- `insert()`, `get_by_id()`, `get_by_url()`, `get_active()`, `update()`, `delete()`, `get_by_product()`, `set_last_checked()`
 
-```python
-def update(self, item_id: int, item: TrackedItem) -> None
-def delete(self, item_id: int) -> None
-def get_by_product(self, product_id: int) -> List[TrackedItem]
-```
+### 8.4 ExtractionLogRepository
+- `insert()`, `get_by_id()`, `get_recent()`, `get_by_item()`, `get_stats()`
 
 ---
 
-## 9. Test Plan (TDD)
+## 9. Rate Limiting & Fallback
 
-### 9.1 Repository Tests
+### Gemini Models Configuration
+```python
+class GeminiModels:
+    VISION_EXTRACTION = ModelConfig(model="gemini-2.5-flash", rpd=250)
+    VISION_FALLBACK = ModelConfig(model="gemini-2.5-flash-lite", rpd=1000)
+```
 
-- `test_product_update`
-- `test_product_delete`
-- `test_store_update`
-- `test_store_delete`
-- `test_tracked_item_update`
-- `test_tracked_item_delete`
-
-### 9.2 API Tests
-
-- `test_api_products_list`
-- `test_api_products_create`
-- `test_api_products_update`
-- `test_api_products_delete`
-- `test_api_stores_list`
-- `test_api_stores_create`
-- `test_api_price_history`
-
-### 9.3 UI Tests
-
-- `test_products_page_renders`
-- `test_products_form_creates`
-- `test_stores_page_renders`
-- `test_tracked_form_has_dropdowns`
-- `test_navigation_links_work`
+### Rate Limit Tracker
+- Tracks daily usage per model in `api_usage` table
+- Auto-marks models as exhausted on 429 errors
+- Provides fallback to next available model
+- Resets at midnight Pacific time (Google's reset time)
 
 ---
 
@@ -239,118 +218,52 @@ def get_by_product(self, product_id: int) -> List[TrackedItem]
 2. [x] Implement `/api/products` endpoints
 3. [x] Create products list template
 4. [x] Create products form template (modal)
-5. [x] Implement form routes
 
 ### Phase 3: Stores CRUD - COMPLETE
 1. [x] Write tests for stores API
 2. [x] Implement `/api/stores` endpoints
 3. [x] Create stores list template
 4. [x] Create stores form template (modal)
-5. [x] Implement form routes
 
 ### Phase 4: Tracked Items CRUD - COMPLETE
 1. [x] Write tests for tracked items update/delete
 2. [x] Create tracked item form with dropdowns
-3. [x] Implement form routes
-4. [ ] Add price history view (deferred to Slice 5)
+3. [x] Implement `/api/tracked-items` endpoints
 
 ### Phase 5: Navigation & Polish - COMPLETE
 1. [x] Update base template with navigation
 2. [x] Add delete confirmation modals
-3. [x] Test all flows end-to-end (143 tests pass)
+3. [x] Add inline error/success feedback
+
+### Phase 6: Extraction Logging & Usage - COMPLETE
+1. [x] Create extraction_logs table and ExtractionLog model
+2. [x] Create ExtractionLogRepository with stats
+3. [x] Integrate rate limiter into extraction endpoint
+4. [x] Add `/api/logs` and `/api/usage` endpoints
+5. [x] Add API Usage panel to dashboard
+6. [x] Add Recent Extractions panel to dashboard
 
 ---
 
-## 11. UI Components (Tailwind)
-
-### 11.1 Table Style
-
-```html
-<table class="w-full bg-white rounded-lg shadow">
-  <thead class="bg-gray-50">
-    <tr>
-      <th class="px-4 py-3 text-left">Column</th>
-    </tr>
-  </thead>
-  <tbody class="divide-y">
-    <tr class="hover:bg-gray-50">
-      <td class="px-4 py-3">Data</td>
-    </tr>
-  </tbody>
-</table>
-```
-
-### 11.2 Form Style
-
-```html
-<form class="bg-white rounded-lg shadow p-6 space-y-4">
-  <div>
-    <label class="block text-sm font-medium text-gray-700">Field</label>
-    <input type="text" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
-  </div>
-  <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded">
-    Save
-  </button>
-</form>
-```
-
-### 11.3 Button Styles
-
-```html
-<!-- Primary -->
-<button class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded">
-
-<!-- Danger -->
-<button class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded">
-
-<!-- Secondary -->
-<button class="bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-2 rounded">
-```
-
----
-
-## 12. Flash Messages
-
-```python
-# In route handler
-from fastapi import Request
-from starlette.responses import RedirectResponse
-
-@app.post("/products")
-async def create_product(request: Request, ...):
-    # Create product
-    return RedirectResponse(url="/products?message=Product+created", status_code=303)
-```
-
-```html
-<!-- In template -->
-{% if request.query_params.get('message') %}
-<div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded">
-  {{ request.query_params.get('message') }}
-</div>
-{% endif %}
-```
-
----
-
-## 13. Definition of Done
+## 11. Definition of Done
 
 Slice 4 is complete when:
-- [ ] Products: List, Add, Edit, Delete working
-- [ ] Stores: List, Add, Edit, Delete working
-- [ ] Tracked Items: Add, Edit, Delete with product/store dropdowns
-- [ ] Price History: View per tracked item
-- [ ] Navigation: Menu links to all sections
-- [ ] Flash messages show operation results
-- [ ] Delete requires confirmation
-- [ ] Form validation with error display
-- [ ] All new tests pass (20+)
-- [ ] Total test count 120+
-- [ ] Documentation updated
+- [x] Products: List, Add, Edit, Delete working
+- [x] Stores: List, Add, Edit, Delete working
+- [x] Tracked Items: Add, Edit, Delete with product/store dropdowns
+- [ ] Price History: View per tracked item (deferred to Slice 5)
+- [x] Navigation: Menu links to all sections
+- [x] Delete requires confirmation
+- [x] Form validation with error display
+- [x] Extraction logs visible in UI
+- [x] API usage/quota visible in UI
+- [x] Rate limit fallback working
+- [x] All tests pass (157 total)
+- [x] Documentation updated
 
 ---
 
-## 14. Quick Commands
+## 12. Quick Commands
 
 ```bash
 # Build and start
@@ -362,6 +275,32 @@ docker compose -f infrastructure/docker-compose.yml run --rm price-spy pytest te
 
 # View logs
 docker compose -f infrastructure/docker-compose.yml logs -f
+
+# Access UI
+open http://localhost:8000
 ```
 
-**Status: PLANNING** (January 2026)
+---
+
+## 13. Files Modified/Created
+
+### New Files
+- `app/core/gemini.py` - Centralized Gemini model configuration
+- `app/core/rate_limiter.py` - Rate limit tracking and fallback
+- `app/templates/products.html` - Products management UI
+- `app/templates/stores.html` - Stores management UI
+- `app/templates/tracked-items.html` - Tracked items management UI
+
+### Modified Files
+- `app/storage/database.py` - Added extraction_logs and api_usage tables
+- `app/storage/repositories.py` - Added ExtractionLogRepository
+- `app/models/schemas.py` - Added ExtractionLog model
+- `app/core/vision.py` - Added rate limiter integration, returns (result, model_used)
+- `app/api/main.py` - Added CRUD endpoints, logs/usage endpoints
+- `app/templates/dashboard.html` - Added API usage and extraction logs panels
+- `app/templates/base.html` - Added navigation
+- `requirements.txt` - Added pytz
+
+---
+
+**Completed:** January 2026

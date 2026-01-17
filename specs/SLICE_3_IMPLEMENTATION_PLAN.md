@@ -477,8 +477,8 @@ Slice 3 is complete when:
 - [x] Price status shows green (below target) or red (above)
 - [x] All existing tests pass (70+) - 108 passing
 - [x] New API/UI tests pass (15+) - 38 new tests
-- [ ] Works in Docker on ARM64 (Raspberry Pi 5)
-- [ ] Documentation updated
+- [x] Works in Docker on ARM64 (Raspberry Pi 5)
+- [x] Documentation updated
 
 ---
 
