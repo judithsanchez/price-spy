@@ -9,6 +9,22 @@
 </div>
 
 {% if items %}
+{% set deals = items | selectattr('price') | selectattr('target_price') | selectattr('is_deal') | list %}
+{% if deals %}
+<div class="mb-4 bg-green-100 border border-green-400 rounded-lg p-4 deal-alert">
+    <div class="flex items-center">
+        <span class="text-2xl mr-3">🎉</span>
+        <div>
+            <h3 class="font-bold text-green-800">Deal Alert!</h3>
+            <p class="text-green-700 text-sm">
+                {% for deal in deals %}
+                    {{ deal.product_name }} is at target price! {{ deal.currency }} {{ "%.2f"|format(deal.price) }} (target: {{ deal.currency }} {{ "%.2f"|format(deal.target_price) }}){% if not loop.last %}, {% endif %}
+                {% endfor %}
+            </p>
+        </div>
+    </div>
+</div>
+{% endif %}
 <div class="bg-white rounded-lg shadow overflow-hidden">
     <table class="w-full">
         <thead class="bg-gray-50">
@@ -52,7 +68,9 @@
                 <td class="px-4 py-3 text-sm">
                     {% if item.target_price and item.price %}
                         {% if item.price <= item.target_price %}
-                            <span class="text-green-600 font-medium">Below target</span>
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-green-500 text-white animate-pulse">
+                                DEAL
+                            </span>
                         {% else %}
                             <span class="text-red-600 font-medium">Above target</span>
                         {% endif %}

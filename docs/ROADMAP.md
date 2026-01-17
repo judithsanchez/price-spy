@@ -57,27 +57,47 @@
   - [x] API usage/quota visible in dashboard
   - [x] 157 tests passing
 
-## Slice 5: Price History & Alerts (Planned)
+## Slice 5: UX Improvements & Bug Fixes (Complete)
+* **Goal:** Fix bugs and improve user experience.
+* **Status:** Complete.
+* **Scope:**
+    * Fixed store/product/tracked-item creation (error handling)
+    * Text truncation for long names
+    * Admin logs dashboard with filters
+    * Unit price display on dashboard
+    * Product links from tracked items
+* **Success Criteria:**
+  - [x] Store creation works reliably
+  - [x] Long names don't break UI
+  - [x] Logs dashboard shows all entries with filters
+  - [x] Unit price displayed on dashboard
+  - [x] 160 tests passing
+
+## Slice 6: Scheduled Extraction & Price Drop Alerts (In Progress)
+* **Goal:** Automated daily price checks with visual alerts.
+* **Status:** In Progress (Phases 1-3 complete, Phase 4 pending).
+* **Scope:**
+    * Scheduled extraction job (APScheduler) - TODO
+    * Batch extraction for all active items - DONE
+    * Price drop alerts on dashboard (DEAL badge + alert banner) - DONE
+    * CLI commands for batch extraction and test data seeding - DONE
+* **Success Criteria:**
+  - [ ] Scheduler runs daily extraction automatically
+  - [x] Dashboard shows "DEAL" badge when price ≤ target
+  - [x] CLI commands: `extract-all`, `seed-test-data`
+  - [x] API endpoint: `POST /api/extract/all`
+  - [x] 179 tests passing
+
+## Slice 7: Price History & Notifications (Planned)
 * **Goal:** View price history and get notified on price drops.
 * **Status:** Planned.
 * **Scope:**
     * Price history view per tracked item (chart/table)
     * Email notifications on price drops
-    * Daily summary email
-* **Success Criteria:**
-  - [ ] View price history graph for any tracked item
-  - [ ] Receive email alert when price drops below target
-
-## Slice 6: Automation & Scheduling (Planned)
-* **Goal:** Automated daily price checks.
-* **Status:** Planned.
-* **Scope:**
-    * Scheduled extraction runs (cron/scheduler)
-    * Batch extraction for all active items
     * Home Assistant integration (webhooks/MQTT)
 * **Success Criteria:**
-  - [ ] Automated daily run without manual trigger
-  - [ ] Phone notification via Home Assistant
+  - [ ] View price history graph for any tracked item
+  - [ ] Receive notification when price drops below target
 
 ---
 
@@ -91,4 +111,4 @@
 
 ---
 
-## Current Test Count: 157 tests
+## Current Test Count: 179 tests

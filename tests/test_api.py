@@ -111,10 +111,10 @@ class TestDashboardWithData:
         assert "No tracked items" in response.text
 
     def test_dashboard_shows_below_target_status(self, client_with_price_below_target):
-        """Dashboard should show green status when price is below target."""
+        """Dashboard should show DEAL badge when price is below target."""
         response = client_with_price_below_target.get("/")
-        assert "Below target" in response.text
-        assert "text-green-600" in response.text
+        assert "DEAL" in response.text
+        assert "bg-green" in response.text
 
     def test_dashboard_shows_above_target_status(self, client_with_price_above_target):
         """Dashboard should show red status when price is above target."""

@@ -7,6 +7,9 @@ A professional-grade, visual-first price tracking system. Uses computer vision (
 - **Visual Price Extraction** - Screenshots product pages and uses AI to extract prices
 - **Stealth Browser** - Playwright with anti-detection measures to avoid CAPTCHAs
 - **Web Dashboard** - Full CRUD UI for products, stores, and tracked items
+- **Price Drop Alerts** - DEAL badge and alert banner when price ≤ target
+- **Batch Extraction** - Extract all items at once via CLI or API
+- **Unit Price Display** - Shows price per L/kg for easy comparison
 - **Rate Limit Management** - Auto-fallback between Gemini models when quota exhausted
 - **Extraction Logging** - Track all extraction attempts with success/error status
 - **API Usage Tracking** - Monitor Gemini API quota usage per model
@@ -51,14 +54,16 @@ Access the dashboard at `http://localhost:8000`:
 
 | Page | URL | Description |
 |------|-----|-------------|
-| Dashboard | `/` | View tracked items, trigger extractions, see logs |
+| Dashboard | `/` | View tracked items, trigger extractions, see deals |
 | Products | `/products` | Manage products (name, category, target price) |
 | Stores | `/stores` | Manage stores (name, shipping costs) |
 | Tracked Items | `/tracked-items` | Link URLs to products and stores |
+| Logs | `/logs` | View extraction logs and error logs with filters |
 
 ### Dashboard Features
 
-- **Tracked Items Table** - View all items with current prices and target status
+- **Deal Alerts** - Green DEAL badge and alert banner when price ≤ target
+- **Tracked Items Table** - View items with prices, unit prices, and target status
 - **Spy Now Button** - Trigger extraction with real-time success/error feedback
 - **API Usage Panel** - See quota usage per Gemini model with progress bars
 - **Extraction Logs Panel** - Recent extractions with status, price, and timing
@@ -69,7 +74,8 @@ Access the dashboard at `http://localhost:8000`:
 | Method | Path | Description |
 |--------|------|-------------|
 | GET | `/api/items` | List tracked items with prices |
-| POST | `/api/extract/{id}` | Trigger price extraction |
+| POST | `/api/extract/{id}` | Trigger price extraction for one item |
+| POST | `/api/extract/all` | Trigger batch extraction for all items |
 
 ### Products
 | Method | Path | Description |
@@ -98,13 +104,27 @@ Access the dashboard at `http://localhost:8000`:
 ### Monitoring
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | `/api/logs` | Recent extraction logs |
+| GET | `/api/logs` | Extraction logs with filters (status, item_id, dates) |
 | GET | `/api/logs/stats` | Today's extraction statistics |
+| GET | `/api/errors` | Error logs with filters |
 | GET | `/api/usage` | API usage per model |
 
 ## CLI Commands
 
-The CLI is still available for scripting:
+### Management CLI
+
+```bash
+# Seed test data for UI testing (creates products, stores, items with deals)
+docker compose -f infrastructure/docker-compose.yml run --rm price-spy python -m app.cli seed-test-data
+
+# Extract prices for all active tracked items
+docker compose -f infrastructure/docker-compose.yml run --rm price-spy python -m app.cli extract-all
+
+# Extract with custom delay between items
+docker compose -f infrastructure/docker-compose.yml run --rm price-spy python -m app.cli extract-all --delay 10
+```
+
+### Legacy CLI (spy.py)
 
 ```bash
 # Extract price from URL
@@ -132,11 +152,14 @@ price-spy/
 ├── app/
 │   ├── api/
 │   │   └── main.py            # FastAPI application
+│   ├── cli.py                 # CLI commands (seed-test-data, extract-all)
 │   ├── core/
 │   │   ├── browser.py         # Stealth browser screenshot capture
 │   │   ├── vision.py          # Gemini price extraction
 │   │   ├── gemini.py          # Model configuration & rate limits
 │   │   ├── rate_limiter.py    # API usage tracking & fallback
+│   │   ├── batch_extraction.py # Batch extraction for all items
+│   │   ├── seeder.py          # Test data generation
 │   │   └── price_calculator.py
 │   ├── models/
 │   │   └── schemas.py         # Pydantic data models
@@ -148,11 +171,11 @@ price-spy/
 │       └── logging.py         # Structured JSON logging
 ├── data/                      # SQLite database storage
 ├── screenshots/               # Captured screenshots
-├── tests/                     # Test suites (157 tests)
+├── tests/                     # Test suites (179 tests)
 ├── infrastructure/            # Docker configuration
 ├── docs/                      # Documentation
 ├── specs/                     # Technical specifications
-└── spy.py                     # CLI entry point
+└── spy.py                     # Legacy CLI entry point
 ```
 
 ## Database Schema
@@ -215,9 +238,12 @@ pytest tests/ -v -s
 
 ## Test Coverage
 
-**157 tests** covering:
+**179 tests** covering:
 - Database operations and repositories
-- API endpoints (Products, Stores, Tracked Items, Logs)
+- API endpoints (Products, Stores, Tracked Items, Logs, Batch Extraction)
 - Vision extraction with mocked Gemini API
 - Price calculation and comparison logic
 - Model configuration and validation
+- Price drop alerts UI (DEAL badge)
+- Test data seeding
+- Batch extraction functionality

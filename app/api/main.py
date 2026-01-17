@@ -309,6 +309,30 @@ async def run_extraction(item_id: int, db_path: str):
         db.close()
 
 
+class BatchExtractResponse(BaseModel):
+    """Response for batch extract endpoint."""
+    total: int
+    success_count: int
+    error_count: int
+    results: list
+
+
+@app.post("/api/extract/all", response_model=BatchExtractResponse)
+async def trigger_batch_extraction():
+    """Run price extraction for all active tracked items."""
+    from app.core.batch_extraction import extract_all_items, get_batch_summary
+
+    db = get_db()
+    try:
+        # Use shorter delay in API context (configurable)
+        delay = float(os.getenv("BATCH_DELAY_SECONDS", "2"))
+        results = await extract_all_items(db, delay_seconds=delay)
+        summary = get_batch_summary(results)
+        return BatchExtractResponse(**summary)
+    finally:
+        db.close()
+
+
 @app.post("/api/extract/{item_id}", response_model=ExtractResponse)
 async def trigger_extraction(item_id: int):
     """Run price extraction for a tracked item with rate limiting and logging."""
@@ -459,16 +483,22 @@ async def dashboard(request: Request):
                 )
                 unit_price = round(unit_price, 2)
 
+            # Determine if this is a deal (price at or below target)
+            price = latest_price.price if latest_price else None
+            target = product.target_price if product else None
+            is_deal = price is not None and target is not None and price <= target
+
             items.append({
                 "id": item.id,
                 "product_name": product.name if product else "Unknown",
                 "store_name": store.name if store else "Unknown",
                 "url": item.url,
-                "price": latest_price.price if latest_price else None,
+                "price": price,
                 "currency": latest_price.currency if latest_price else "EUR",
-                "target_price": product.target_price if product else None,
+                "target_price": target,
                 "unit_price": unit_price,
                 "unit": unit,
+                "is_deal": is_deal,
                 "screenshot_path": screenshot_path if has_screenshot else None,
             })
 
