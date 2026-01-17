@@ -10,6 +10,7 @@ from app.models.schemas import (
     Product,
     Store,
     TrackedItem,
+    ExtractionLog,
 )
 
 
@@ -442,4 +443,97 @@ class TrackedItemRepository:
             last_checked_at=last_checked,
             is_active=bool(row["is_active"]),
             alerts_enabled=bool(row["alerts_enabled"]),
+        )
+
+
+class ExtractionLogRepository:
+    """Repository for extraction log operations."""
+
+    def __init__(self, db: Database):
+        self.db = db
+
+    def insert(self, log: ExtractionLog) -> int:
+        """Insert an extraction log and return its ID."""
+        cursor = self.db.execute(
+            """
+            INSERT INTO extraction_logs
+            (tracked_item_id, status, model_used, price, currency, error_message, duration_ms)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                log.tracked_item_id,
+                log.status,
+                log.model_used,
+                log.price,
+                log.currency,
+                log.error_message,
+                log.duration_ms,
+            )
+        )
+        self.db.commit()
+        return cursor.lastrowid
+
+    def get_by_id(self, log_id: int) -> Optional[ExtractionLog]:
+        """Get an extraction log by ID."""
+        cursor = self.db.execute(
+            "SELECT * FROM extraction_logs WHERE id = ?",
+            (log_id,)
+        )
+        row = cursor.fetchone()
+        if row is None:
+            return None
+        return self._row_to_record(row)
+
+    def get_recent(self, limit: int = 50) -> List[ExtractionLog]:
+        """Get recent extraction logs."""
+        cursor = self.db.execute(
+            "SELECT * FROM extraction_logs ORDER BY created_at DESC LIMIT ?",
+            (limit,)
+        )
+        return [self._row_to_record(row) for row in cursor.fetchall()]
+
+    def get_by_item(self, tracked_item_id: int, limit: int = 20) -> List[ExtractionLog]:
+        """Get extraction logs for a specific tracked item."""
+        cursor = self.db.execute(
+            """
+            SELECT * FROM extraction_logs
+            WHERE tracked_item_id = ?
+            ORDER BY created_at DESC
+            LIMIT ?
+            """,
+            (tracked_item_id, limit)
+        )
+        return [self._row_to_record(row) for row in cursor.fetchall()]
+
+    def get_stats(self) -> dict:
+        """Get extraction statistics."""
+        cursor = self.db.execute("""
+            SELECT
+                COUNT(*) as total,
+                SUM(CASE WHEN status = 'success' THEN 1 ELSE 0 END) as success_count,
+                SUM(CASE WHEN status = 'error' THEN 1 ELSE 0 END) as error_count,
+                AVG(CASE WHEN status = 'success' THEN duration_ms END) as avg_duration_ms
+            FROM extraction_logs
+            WHERE date(created_at) = date('now')
+        """)
+        row = cursor.fetchone()
+        return {
+            "total_today": row["total"] or 0,
+            "success_count": row["success_count"] or 0,
+            "error_count": row["error_count"] or 0,
+            "avg_duration_ms": int(row["avg_duration_ms"]) if row["avg_duration_ms"] else 0,
+        }
+
+    def _row_to_record(self, row) -> ExtractionLog:
+        """Convert a database row to an ExtractionLog."""
+        return ExtractionLog(
+            id=row["id"],
+            tracked_item_id=row["tracked_item_id"],
+            status=row["status"],
+            model_used=row["model_used"],
+            price=row["price"],
+            currency=row["currency"],
+            error_message=row["error_message"],
+            duration_ms=row["duration_ms"],
+            created_at=datetime.fromisoformat(row["created_at"]),
         )

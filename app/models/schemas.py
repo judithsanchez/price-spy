@@ -133,3 +133,19 @@ class ExtractionResult(BaseModel):
     def round_price(cls, v: float) -> float:
         """Round price to 2 decimal places."""
         return round(v, 2)
+
+
+class ExtractionLog(BaseModel):
+    """Log entry for extraction attempts (success or failure)."""
+
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    id: Optional[int] = None
+    tracked_item_id: int
+    status: Literal["success", "error"] = "success"
+    model_used: Optional[str] = None
+    price: Optional[float] = Field(default=None, gt=0)
+    currency: Optional[str] = Field(default=None, pattern=r"^[A-Z]{3}$")
+    error_message: Optional[str] = Field(default=None, max_length=2000)
+    duration_ms: Optional[int] = Field(default=None, ge=0)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))

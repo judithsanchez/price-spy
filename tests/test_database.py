@@ -11,6 +11,7 @@ from app.storage.repositories import (
     ProductRepository,
     StoreRepository,
     TrackedItemRepository,
+    ExtractionLogRepository,
 )
 from app.models.schemas import (
     PriceHistoryRecord,
@@ -18,6 +19,7 @@ from app.models.schemas import (
     Product,
     Store,
     TrackedItem,
+    ExtractionLog,
 )
 
 
@@ -50,6 +52,9 @@ class TestDatabase:
         assert "products" in table_names
         assert "stores" in table_names
         assert "tracked_items" in table_names
+        # Logging tables
+        assert "extraction_logs" in table_names
+        assert "api_usage" in table_names
 
     def test_connection_closes(self, temp_db):
         """Database connection should close properly."""
@@ -496,6 +501,172 @@ class TestTrackedItemRepository:
 
         items = item_repo.get_by_product(product_id)
         assert len(items) == 2
+
+
+class TestExtractionLogRepository:
+    """Tests for ExtractionLogRepository."""
+
+    def test_insert_success_log(self, temp_db):
+        """Should insert a successful extraction log."""
+        db = Database(temp_db)
+        db.initialize()
+
+        product_repo = ProductRepository(db)
+        store_repo = StoreRepository(db)
+        item_repo = TrackedItemRepository(db)
+        log_repo = ExtractionLogRepository(db)
+
+        product_id = product_repo.insert(Product(name="Test Product"))
+        store_id = store_repo.insert(Store(name="Test Store"))
+        item_id = item_repo.insert(TrackedItem(
+            product_id=product_id,
+            store_id=store_id,
+            url="https://example.com/product",
+            quantity_size=100,
+            quantity_unit="ml"
+        ))
+
+        log = ExtractionLog(
+            tracked_item_id=item_id,
+            status="success",
+            model_used="gemini-2.5-flash",
+            price=19.99,
+            currency="EUR",
+            duration_ms=1500
+        )
+
+        log_id = log_repo.insert(log)
+        retrieved = log_repo.get_by_id(log_id)
+
+        assert retrieved is not None
+        assert retrieved.status == "success"
+        assert retrieved.price == 19.99
+        assert retrieved.model_used == "gemini-2.5-flash"
+
+    def test_insert_error_log(self, temp_db):
+        """Should insert an error extraction log."""
+        db = Database(temp_db)
+        db.initialize()
+
+        product_repo = ProductRepository(db)
+        store_repo = StoreRepository(db)
+        item_repo = TrackedItemRepository(db)
+        log_repo = ExtractionLogRepository(db)
+
+        product_id = product_repo.insert(Product(name="Test"))
+        store_id = store_repo.insert(Store(name="Store"))
+        item_id = item_repo.insert(TrackedItem(
+            product_id=product_id,
+            store_id=store_id,
+            url="https://example.com",
+            quantity_size=1,
+            quantity_unit="piece"
+        ))
+
+        log = ExtractionLog(
+            tracked_item_id=item_id,
+            status="error",
+            model_used="gemini-2.5-flash",
+            error_message="Rate limit exceeded (429)"
+        )
+
+        log_id = log_repo.insert(log)
+        retrieved = log_repo.get_by_id(log_id)
+
+        assert retrieved is not None
+        assert retrieved.status == "error"
+        assert "429" in retrieved.error_message
+
+    def test_get_recent(self, temp_db):
+        """Should get recent extraction logs."""
+        db = Database(temp_db)
+        db.initialize()
+
+        product_repo = ProductRepository(db)
+        store_repo = StoreRepository(db)
+        item_repo = TrackedItemRepository(db)
+        log_repo = ExtractionLogRepository(db)
+
+        product_id = product_repo.insert(Product(name="Test"))
+        store_id = store_repo.insert(Store(name="Store"))
+        item_id = item_repo.insert(TrackedItem(
+            product_id=product_id,
+            store_id=store_id,
+            url="https://example.com",
+            quantity_size=1,
+            quantity_unit="piece"
+        ))
+
+        log_repo.insert(ExtractionLog(tracked_item_id=item_id, status="success", price=10.0, currency="EUR"))
+        log_repo.insert(ExtractionLog(tracked_item_id=item_id, status="error", error_message="Timeout"))
+        log_repo.insert(ExtractionLog(tracked_item_id=item_id, status="success", price=9.99, currency="EUR"))
+
+        logs = log_repo.get_recent(limit=10)
+        assert len(logs) == 3
+
+    def test_get_by_item(self, temp_db):
+        """Should get logs for a specific tracked item."""
+        db = Database(temp_db)
+        db.initialize()
+
+        product_repo = ProductRepository(db)
+        store_repo = StoreRepository(db)
+        item_repo = TrackedItemRepository(db)
+        log_repo = ExtractionLogRepository(db)
+
+        product_id = product_repo.insert(Product(name="Test"))
+        store_id = store_repo.insert(Store(name="Store"))
+        item1_id = item_repo.insert(TrackedItem(
+            product_id=product_id, store_id=store_id,
+            url="https://example.com/1", quantity_size=1, quantity_unit="piece"
+        ))
+        item2_id = item_repo.insert(TrackedItem(
+            product_id=product_id, store_id=store_id,
+            url="https://example.com/2", quantity_size=1, quantity_unit="piece"
+        ))
+
+        log_repo.insert(ExtractionLog(tracked_item_id=item1_id, status="success", price=10.0, currency="EUR"))
+        log_repo.insert(ExtractionLog(tracked_item_id=item1_id, status="success", price=9.0, currency="EUR"))
+        log_repo.insert(ExtractionLog(tracked_item_id=item2_id, status="success", price=20.0, currency="EUR"))
+
+        item1_logs = log_repo.get_by_item(item1_id)
+        assert len(item1_logs) == 2
+
+    def test_get_stats(self, temp_db):
+        """Should get extraction statistics for today."""
+        db = Database(temp_db)
+        db.initialize()
+
+        product_repo = ProductRepository(db)
+        store_repo = StoreRepository(db)
+        item_repo = TrackedItemRepository(db)
+        log_repo = ExtractionLogRepository(db)
+
+        product_id = product_repo.insert(Product(name="Test"))
+        store_id = store_repo.insert(Store(name="Store"))
+        item_id = item_repo.insert(TrackedItem(
+            product_id=product_id, store_id=store_id,
+            url="https://example.com", quantity_size=1, quantity_unit="piece"
+        ))
+
+        log_repo.insert(ExtractionLog(
+            tracked_item_id=item_id, status="success",
+            price=10.0, currency="EUR", duration_ms=1000
+        ))
+        log_repo.insert(ExtractionLog(
+            tracked_item_id=item_id, status="success",
+            price=9.0, currency="EUR", duration_ms=2000
+        ))
+        log_repo.insert(ExtractionLog(
+            tracked_item_id=item_id, status="error",
+            error_message="Rate limit"
+        ))
+
+        stats = log_repo.get_stats()
+        assert stats["total_today"] == 3
+        assert stats["success_count"] == 2
+        assert stats["error_count"] == 1
+        assert stats["avg_duration_ms"] == 1500  # (1000 + 2000) / 2
 
 
 if __name__ == "__main__":

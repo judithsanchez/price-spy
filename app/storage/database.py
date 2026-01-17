@@ -75,6 +75,37 @@ CREATE TABLE IF NOT EXISTS error_log (
 );
 
 CREATE INDEX IF NOT EXISTS idx_error_log_created_at ON error_log(created_at);
+
+-- Extraction Logs Table (tracks all extraction attempts)
+CREATE TABLE IF NOT EXISTS extraction_logs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    tracked_item_id INTEGER NOT NULL,
+    status TEXT CHECK(status IN ('success', 'error')) NOT NULL,
+    model_used TEXT,
+    price REAL,
+    currency TEXT,
+    error_message TEXT,
+    duration_ms INTEGER,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY(tracked_item_id) REFERENCES tracked_items(id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_extraction_logs_item ON extraction_logs(tracked_item_id);
+CREATE INDEX IF NOT EXISTS idx_extraction_logs_created_at ON extraction_logs(created_at);
+CREATE INDEX IF NOT EXISTS idx_extraction_logs_status ON extraction_logs(status);
+
+-- API Usage Table (tracks rate limits per model per day)
+CREATE TABLE IF NOT EXISTS api_usage (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    model TEXT NOT NULL,
+    date TEXT NOT NULL,
+    request_count INTEGER DEFAULT 0,
+    last_request_at TEXT,
+    is_exhausted INTEGER DEFAULT 0,
+    UNIQUE(model, date)
+);
+
+CREATE INDEX IF NOT EXISTS idx_api_usage_date ON api_usage(date);
 """
 
 

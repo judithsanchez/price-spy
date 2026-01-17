@@ -111,4 +111,122 @@
     </div>
 </div>
 {% endif %}
+
+<!-- API Usage & Extraction Logs Section -->
+<div class="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <!-- API Usage -->
+    <div class="bg-white rounded-lg shadow p-6" x-data="apiUsage()">
+        <h3 class="text-lg font-semibold text-gray-800 mb-4">API Usage (Today)</h3>
+        <div x-show="loading" class="text-gray-400 text-sm">Loading...</div>
+        <div x-show="!loading && usage.length === 0" class="text-gray-400 text-sm">No usage data yet</div>
+        <div x-show="!loading && usage.length > 0" class="space-y-3">
+            <template x-for="model in usage" :key="model.model">
+                <div class="border rounded p-3">
+                    <div class="flex justify-between items-center mb-1">
+                        <span class="text-sm font-medium" x-text="model.model"></span>
+                        <span class="text-xs" :class="model.exhausted ? 'text-red-600' : 'text-gray-500'">
+                            <span x-text="model.used"></span>/<span x-text="model.limit"></span>
+                            <span x-show="model.exhausted" class="ml-1 font-medium">(EXHAUSTED)</span>
+                        </span>
+                    </div>
+                    <div class="w-full bg-gray-200 rounded-full h-2">
+                        <div class="h-2 rounded-full transition-all"
+                             :class="model.exhausted ? 'bg-red-500' : (model.used / model.limit > 0.8 ? 'bg-yellow-500' : 'bg-green-500')"
+                             :style="'width: ' + Math.min(100, (model.used / model.limit) * 100) + '%'"></div>
+                    </div>
+                </div>
+            </template>
+        </div>
+    </div>
+
+    <!-- Extraction Logs -->
+    <div class="bg-white rounded-lg shadow p-6" x-data="extractionLogs()">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-lg font-semibold text-gray-800">Recent Extractions</h3>
+            <div x-show="stats" class="text-xs text-gray-500">
+                Today: <span class="text-green-600" x-text="stats?.success_count || 0"></span> success,
+                <span class="text-red-600" x-text="stats?.error_count || 0"></span> errors
+            </div>
+        </div>
+        <div x-show="loading" class="text-gray-400 text-sm">Loading...</div>
+        <div x-show="!loading && logs.length === 0" class="text-gray-400 text-sm">No extraction logs yet</div>
+        <div x-show="!loading && logs.length > 0" class="space-y-2 max-h-64 overflow-y-auto">
+            <template x-for="log in logs" :key="log.id">
+                <div class="border rounded p-2 text-sm" :class="log.status === 'error' ? 'border-red-200 bg-red-50' : 'border-green-200 bg-green-50'">
+                    <div class="flex justify-between">
+                        <span class="font-medium" :class="log.status === 'error' ? 'text-red-700' : 'text-green-700'">
+                            <span x-text="log.status === 'success' ? '✓' : '✗'"></span>
+                            Item #<span x-text="log.tracked_item_id"></span>
+                        </span>
+                        <span class="text-gray-500 text-xs" x-text="formatTime(log.created_at)"></span>
+                    </div>
+                    <div class="text-xs text-gray-600 mt-1">
+                        <span x-show="log.status === 'success'">
+                            <span x-text="log.currency"></span> <span x-text="log.price?.toFixed(2)"></span>
+                            via <span x-text="log.model_used"></span>
+                            (<span x-text="log.duration_ms"></span>ms)
+                        </span>
+                        <span x-show="log.status === 'error'" class="text-red-600" x-text="log.error_message?.substring(0, 100)"></span>
+                    </div>
+                </div>
+            </template>
+        </div>
+    </div>
+</div>
+
+<script>
+function apiUsage() {
+    return {
+        usage: [],
+        loading: true,
+        init() {
+            this.loadUsage();
+        },
+        async loadUsage() {
+            try {
+                const res = await fetch('/api/usage');
+                this.usage = await res.json();
+            } catch (e) {
+                console.error('Failed to load usage:', e);
+            } finally {
+                this.loading = false;
+            }
+        }
+    }
+}
+
+function extractionLogs() {
+    return {
+        logs: [],
+        stats: null,
+        loading: true,
+        init() {
+            this.loadLogs();
+            this.loadStats();
+        },
+        async loadLogs() {
+            try {
+                const res = await fetch('/api/logs?limit=20');
+                this.logs = await res.json();
+            } catch (e) {
+                console.error('Failed to load logs:', e);
+            } finally {
+                this.loading = false;
+            }
+        },
+        async loadStats() {
+            try {
+                const res = await fetch('/api/logs/stats');
+                this.stats = await res.json();
+            } catch (e) {
+                console.error('Failed to load stats:', e);
+            }
+        },
+        formatTime(isoString) {
+            const date = new Date(isoString);
+            return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+        }
+    }
+}
+</script>
 {% endblock %}

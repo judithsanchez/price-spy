@@ -164,7 +164,7 @@ class TestExtractEndpoint:
         with patch('app.core.browser.capture_screenshot', new_callable=AsyncMock) as mock_screenshot, \
              patch('app.core.vision.extract_with_structured_output', new_callable=AsyncMock) as mock_extract:
             mock_screenshot.return_value = b"fake_image_bytes"
-            mock_extract.return_value = mock_result
+            mock_extract.return_value = (mock_result, "gemini-2.5-flash")
 
             response = client_with_data.post("/api/extract/1")
             assert response.status_code == 200

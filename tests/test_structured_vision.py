@@ -99,12 +99,13 @@ class TestStructuredVisionAPI:
 
             mock_session_class.return_value = mock_session
 
-            result = await extract_with_structured_output(b"fake_image_bytes", "fake_api_key")
+            result, model_used = await extract_with_structured_output(b"fake_image_bytes", "fake_api_key")
 
             assert isinstance(result, ExtractionResult)
             assert result.price == 13.44
             assert result.is_available is True
             assert result.product_name == "INSTITUTO ESPAÑOL Urea lotion 950ml"
+            assert model_used == "gemini-2.5-flash"
 
     @pytest.mark.asyncio
     async def test_extract_with_structured_output_invalid_json(self):

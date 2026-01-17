@@ -1,7 +1,9 @@
-"""Gemini API configuration and model definitions."""
+"""Gemini API configuration, rate limits, and provider management."""
 
 from enum import Enum
 from dataclasses import dataclass
+from typing import Optional
+from datetime import datetime, timezone
 
 
 class GeminiModel(str, Enum):
@@ -10,11 +12,11 @@ class GeminiModel(str, Enum):
     See: https://ai.google.dev/gemini-api/docs/models
     """
     # Full models
-    FLASH_2_5 = "gemini-2.5-flash"           # Best for complex tasks, vision
-    PRO_2_5 = "gemini-2.5-pro"               # Highest capability
+    FLASH_2_5 = "gemini-2.5-flash"
+    PRO_2_5 = "gemini-2.5-pro"
 
-    # Lite models (faster, lower cost)
-    FLASH_2_5_LITE = "gemini-2.5-flash-lite" # Faster, cheaper, still has vision
+    # Lite models (faster, lower cost, higher limits)
+    FLASH_2_5_LITE = "gemini-2.5-flash-lite"
 
     # Legacy
     FLASH_2_0 = "gemini-2.0-flash"
@@ -22,12 +24,37 @@ class GeminiModel(str, Enum):
 
 
 @dataclass
+class RateLimits:
+    """Rate limits for a model (Free Tier).
+
+    See: https://ai.google.dev/gemini-api/docs/rate-limits
+    RPD resets at midnight Pacific time.
+    """
+    rpm: int   # Requests per minute
+    tpm: int   # Tokens per minute
+    rpd: int   # Requests per day
+
+
+@dataclass
 class ModelConfig:
-    """Configuration for a specific use case."""
+    """Configuration for a specific model."""
     model: GeminiModel
     description: str
+    rate_limits: RateLimits
     supports_vision: bool = True
     supports_structured_output: bool = True
+    priority: int = 0  # Lower = try first
+
+
+# Free tier rate limits (as of late 2025)
+# Source: https://ai.google.dev/gemini-api/docs/rate-limits
+RATE_LIMITS = {
+    GeminiModel.PRO_2_5: RateLimits(rpm=5, tpm=250_000, rpd=100),
+    GeminiModel.FLASH_2_5: RateLimits(rpm=10, tpm=250_000, rpd=250),
+    GeminiModel.FLASH_2_5_LITE: RateLimits(rpm=15, tpm=250_000, rpd=1000),
+    GeminiModel.FLASH_2_0: RateLimits(rpm=10, tpm=250_000, rpd=500),
+    GeminiModel.FLASH_1_5: RateLimits(rpm=15, tpm=1_000_000, rpd=1500),
+}
 
 
 class GeminiModels:
@@ -36,57 +63,75 @@ class GeminiModels:
     Usage:
         from app.core.gemini import GeminiModels
 
-        model = GeminiModels.VISION_EXTRACTION
-        url = GeminiModels.get_api_url(model, api_key)
+        config = GeminiModels.VISION_EXTRACTION
+        url = GeminiModels.get_api_url(config, api_key)
+        print(f"Daily limit: {config.rate_limits.rpd}")
     """
 
-    # Model assignments for different tasks
+    # Primary model for vision tasks (best quality)
     VISION_EXTRACTION = ModelConfig(
         model=GeminiModel.FLASH_2_5,
-        description="Screenshot price extraction with structured output",
+        description="Screenshot price extraction (best quality)",
+        rate_limits=RATE_LIMITS[GeminiModel.FLASH_2_5],
         supports_vision=True,
         supports_structured_output=True,
+        priority=0,
     )
 
+    # Fallback for vision tasks (4x more daily requests)
+    VISION_FALLBACK = ModelConfig(
+        model=GeminiModel.FLASH_2_5_LITE,
+        description="Screenshot extraction fallback (higher limits)",
+        rate_limits=RATE_LIMITS[GeminiModel.FLASH_2_5_LITE],
+        supports_vision=True,
+        supports_structured_output=True,
+        priority=1,
+    )
+
+    # For API testing (cheapest option)
     API_TEST = ModelConfig(
         model=GeminiModel.FLASH_2_5_LITE,
-        description="Quick API key validation (no vision needed)",
+        description="Quick API key validation",
+        rate_limits=RATE_LIMITS[GeminiModel.FLASH_2_5_LITE],
         supports_vision=False,
         supports_structured_output=True,
+        priority=0,
     )
 
+    # Text-only tasks
     TEXT_ONLY = ModelConfig(
         model=GeminiModel.FLASH_2_5_LITE,
         description="Text-only tasks (cheaper/faster)",
+        rate_limits=RATE_LIMITS[GeminiModel.FLASH_2_5_LITE],
         supports_vision=False,
         supports_structured_output=True,
+        priority=0,
     )
 
     # API Base URL
     API_BASE = "https://generativelanguage.googleapis.com/v1beta/models"
 
+    # Vision-capable models in priority order (for fallback)
+    VISION_MODELS = [VISION_EXTRACTION, VISION_FALLBACK]
+
     @classmethod
     def get_api_url(cls, config: ModelConfig, api_key: str) -> str:
-        """Build the API URL for a model config.
-
-        Args:
-            config: ModelConfig instance
-            api_key: Gemini API key
-
-        Returns:
-            Full API URL for generateContent endpoint
-        """
+        """Build the API URL for a model config."""
         return f"{cls.API_BASE}/{config.model.value}:generateContent?key={api_key}"
 
     @classmethod
     def get_model_url(cls, model: GeminiModel, api_key: str) -> str:
-        """Build the API URL for a specific model.
-
-        Args:
-            model: GeminiModel enum value
-            api_key: Gemini API key
-
-        Returns:
-            Full API URL for generateContent endpoint
-        """
+        """Build the API URL for a specific model."""
         return f"{cls.API_BASE}/{model.value}:generateContent?key={api_key}"
+
+    @classmethod
+    def get_rate_limits(cls, model: GeminiModel) -> RateLimits:
+        """Get rate limits for a model."""
+        return RATE_LIMITS.get(model, RateLimits(rpm=5, tpm=100_000, rpd=50))
+
+
+def is_rate_limit_error(error_message: str) -> bool:
+    """Check if an error message indicates a rate limit (429)."""
+    indicators = ["429", "quota", "rate limit", "resource_exhausted", "too many requests"]
+    error_lower = error_message.lower()
+    return any(indicator in error_lower for indicator in indicators)

@@ -135,6 +135,36 @@ class TrackedItemResponse(BaseModel):
     alerts_enabled: bool = True
 
 
+class ExtractionLogResponse(BaseModel):
+    """Response model for extraction log."""
+    id: int
+    tracked_item_id: int
+    status: str
+    model_used: Optional[str] = None
+    price: Optional[float] = None
+    currency: Optional[str] = None
+    error_message: Optional[str] = None
+    duration_ms: Optional[int] = None
+    created_at: str
+
+
+class ExtractionStatsResponse(BaseModel):
+    """Response model for extraction statistics."""
+    total_today: int
+    success_count: int
+    error_count: int
+    avg_duration_ms: int
+
+
+class ApiUsageResponse(BaseModel):
+    """Response model for API usage per model."""
+    model: str
+    used: int
+    limit: int
+    remaining: int
+    exhausted: bool
+
+
 @app.get("/api/health")
 async def health():
     """Health check endpoint."""
@@ -270,15 +300,23 @@ async def run_extraction(item_id: int, db_path: str):
 
 @app.post("/api/extract/{item_id}", response_model=ExtractResponse)
 async def trigger_extraction(item_id: int):
-    """Run price extraction for a tracked item (synchronous for error feedback)."""
+    """Run price extraction for a tracked item with rate limiting and logging."""
+    import time
     from app.core.browser import capture_screenshot
     from app.core.vision import extract_with_structured_output
-    from app.models.schemas import PriceHistoryRecord
+    from app.models.schemas import PriceHistoryRecord, ExtractionLog
+    from app.storage.repositories import ExtractionLogRepository
+    from app.core.rate_limiter import RateLimitTracker
 
     db = get_db()
+    start_time = time.time()
+    model_used = None
+
     try:
         tracked_repo = TrackedItemRepository(db)
         price_repo = PriceHistoryRepository(db)
+        log_repo = ExtractionLogRepository(db)
+        tracker = RateLimitTracker(db)
         item = tracked_repo.get_by_id(item_id)
 
         if not item:
@@ -286,6 +324,11 @@ async def trigger_extraction(item_id: int):
 
         api_key = os.getenv("GEMINI_API_KEY")
         if not api_key:
+            log_repo.insert(ExtractionLog(
+                tracked_item_id=item_id,
+                status="error",
+                error_message="GEMINI_API_KEY not configured"
+            ))
             return ExtractResponse(
                 status="error",
                 item_id=item_id,
@@ -301,8 +344,12 @@ async def trigger_extraction(item_id: int):
             screenshot_path.parent.mkdir(parents=True, exist_ok=True)
             screenshot_path.write_bytes(screenshot_bytes)
 
-            # Extract price
-            result = await extract_with_structured_output(screenshot_bytes, api_key)
+            # Extract price with rate limiting
+            result, model_used = await extract_with_structured_output(
+                screenshot_bytes, api_key, tracker
+            )
+
+            duration_ms = int((time.time() - start_time) * 1000)
 
             # Save to price history
             record = PriceHistoryRecord(
@@ -315,6 +362,16 @@ async def trigger_extraction(item_id: int):
             )
             price_repo.insert(record)
 
+            # Log successful extraction
+            log_repo.insert(ExtractionLog(
+                tracked_item_id=item_id,
+                status="success",
+                model_used=model_used,
+                price=result.price,
+                currency=result.currency,
+                duration_ms=duration_ms
+            ))
+
             # Update last checked time
             tracked_repo.set_last_checked(item_id)
 
@@ -326,12 +383,25 @@ async def trigger_extraction(item_id: int):
             )
 
         except Exception as e:
+            duration_ms = int((time.time() - start_time) * 1000)
             error_msg = str(e)
+
+            # Log failed extraction
+            log_repo.insert(ExtractionLog(
+                tracked_item_id=item_id,
+                status="error",
+                model_used=model_used,
+                error_message=error_msg[:2000],
+                duration_ms=duration_ms
+            ))
+
             # Parse common errors for friendlier messages
             if "429" in error_msg or "quota" in error_msg.lower():
-                error_msg = "Gemini API quota exceeded. Try again tomorrow or upgrade your plan."
+                error_msg = "Gemini API quota exceeded. Try again later."
             elif "401" in error_msg or "API key" in error_msg.lower():
                 error_msg = "Invalid Gemini API key."
+            elif "exhausted" in error_msg.lower():
+                error_msg = "All AI models exhausted for today. Try again tomorrow."
 
             return ExtractResponse(
                 status="error",
@@ -800,5 +870,81 @@ async def delete_tracked_item(item_id: int):
         if not existing:
             raise HTTPException(status_code=404, detail="Tracked item not found")
         repo.delete(item_id)
+    finally:
+        db.close()
+
+
+# --- Extraction Logs & API Usage ---
+
+@app.get("/api/logs", response_model=List[ExtractionLogResponse])
+async def get_extraction_logs(limit: int = 50):
+    """Get recent extraction logs."""
+    from app.storage.repositories import ExtractionLogRepository
+
+    db = get_db()
+    try:
+        repo = ExtractionLogRepository(db)
+        logs = repo.get_recent(limit=limit)
+        return [
+            ExtractionLogResponse(
+                id=log.id,
+                tracked_item_id=log.tracked_item_id,
+                status=log.status,
+                model_used=log.model_used,
+                price=log.price,
+                currency=log.currency,
+                error_message=log.error_message,
+                duration_ms=log.duration_ms,
+                created_at=log.created_at.isoformat(),
+            )
+            for log in logs
+        ]
+    finally:
+        db.close()
+
+
+@app.get("/api/logs/stats", response_model=ExtractionStatsResponse)
+async def get_extraction_stats():
+    """Get extraction statistics for today."""
+    from app.storage.repositories import ExtractionLogRepository
+
+    db = get_db()
+    try:
+        repo = ExtractionLogRepository(db)
+        stats = repo.get_stats()
+        return ExtractionStatsResponse(**stats)
+    finally:
+        db.close()
+
+
+@app.get("/api/usage", response_model=List[ApiUsageResponse])
+async def get_api_usage():
+    """Get API usage for all models today."""
+    from app.core.rate_limiter import RateLimitTracker
+    from app.core.gemini import GeminiModels
+
+    db = get_db()
+    try:
+        tracker = RateLimitTracker(db)
+        status = tracker.get_status()
+
+        # Include all vision models even if not used today
+        result = []
+        for config in GeminiModels.VISION_MODELS:
+            model_name = config.model.value
+            if model_name in status:
+                result.append(ApiUsageResponse(
+                    model=model_name,
+                    **status[model_name]
+                ))
+            else:
+                result.append(ApiUsageResponse(
+                    model=model_name,
+                    used=0,
+                    limit=config.rate_limits.rpd,
+                    remaining=config.rate_limits.rpd,
+                    exhausted=False,
+                ))
+        return result
     finally:
         db.close()

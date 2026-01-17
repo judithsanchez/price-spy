@@ -136,18 +136,16 @@ Analyze the image and extract:
 Return the data as JSON."""
 
 
-async def extract_with_structured_output(image_bytes: bytes, api_key: str) -> ExtractionResult:
-    """
-    Extract price using Gemini's structured output mode.
+from app.core.gemini import ModelConfig, is_rate_limit_error
 
-    Uses response_mime_type: "application/json" with response_schema
-    to guarantee valid JSON output that matches our schema.
 
-    Raises:
-        Exception: If API call fails or response is invalid
-    """
-    url = GeminiModels.get_api_url(GeminiModels.VISION_EXTRACTION, api_key)
-
+async def _call_gemini_api(
+    image_bytes: bytes,
+    api_key: str,
+    config: ModelConfig
+) -> ExtractionResult:
+    """Make a single API call to Gemini with the given model config."""
+    url = GeminiModels.get_api_url(config, api_key)
     image_base64 = base64.b64encode(image_bytes).decode("utf-8")
 
     payload = {
@@ -170,7 +168,10 @@ async def extract_with_structured_output(image_bytes: bytes, api_key: str) -> Ex
         }
     }
 
-    logger.info("Sending image to Gemini API (structured output)", extra={"image_size": len(image_bytes)})
+    logger.info(
+        "Sending image to Gemini API",
+        extra={"model": config.model.value, "image_size": len(image_bytes)}
+    )
 
     async with aiohttp.ClientSession() as session:
         async with session.post(url, json=payload, timeout=60) as response:
@@ -178,24 +179,89 @@ async def extract_with_structured_output(image_bytes: bytes, api_key: str) -> Ex
                 error_text = await response.text()
                 logger.error(
                     "Gemini API error",
-                    extra={"status": response.status, "error": error_text[:200]}
+                    extra={"status": response.status, "model": config.model.value}
                 )
                 raise Exception(f"Gemini API error {response.status}: {error_text}")
 
             data = await response.json()
 
     text = data["candidates"][0]["content"]["parts"][0]["text"].strip()
-
-    # Parse with Pydantic for validation
     result = ExtractionResult.model_validate_json(text)
 
     logger.info(
-        "Structured extraction successful",
+        "Extraction successful",
         extra={
+            "model": config.model.value,
             "product": result.product_name[:50],
-            "price": result.price,
-            "is_available": result.is_available
+            "price": result.price
         }
     )
 
     return result
+
+
+from typing import Tuple
+
+async def extract_with_structured_output(
+    image_bytes: bytes,
+    api_key: str,
+    tracker=None
+) -> Tuple[ExtractionResult, str]:
+    """
+    Extract price using Gemini's structured output mode with automatic fallback.
+
+    Tries models in priority order, falling back on rate limit errors.
+    If a tracker is provided, records usage and marks exhausted models.
+
+    Args:
+        image_bytes: Screenshot image data
+        api_key: Gemini API key
+        tracker: Optional RateLimitTracker for usage tracking
+
+    Returns:
+        Tuple of (ExtractionResult, model_name) with price info and model used
+
+    Raises:
+        Exception: If all models fail or are exhausted
+    """
+    models_to_try = GeminiModels.VISION_MODELS
+
+    # If tracker provided, filter to available models
+    if tracker:
+        available = tracker.get_available_model(models_to_try)
+        if available:
+            models_to_try = [available] + [m for m in models_to_try if m != available]
+        else:
+            raise Exception("All Gemini models exhausted for today. Try again tomorrow.")
+
+    last_error = None
+
+    for config in models_to_try:
+        try:
+            result = await _call_gemini_api(image_bytes, api_key, config)
+
+            # Record successful usage
+            if tracker:
+                tracker.record_usage(config)
+
+            return result, config.model.value
+
+        except Exception as e:
+            last_error = e
+            error_msg = str(e)
+
+            # Check if rate limited
+            if is_rate_limit_error(error_msg):
+                logger.warning(
+                    "Rate limit hit, trying fallback",
+                    extra={"model": config.model.value}
+                )
+                if tracker:
+                    tracker.mark_exhausted(config)
+                continue  # Try next model
+
+            # Non-rate-limit error, don't try fallback
+            raise
+
+    # All models failed
+    raise last_error or Exception("All models failed")
