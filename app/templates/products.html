@@ -27,11 +27,15 @@
             <tbody class="bg-white divide-y divide-gray-200">
                 <template x-for="product in products" :key="product.id">
                     <tr>
-                        <td class="px-6 py-4 whitespace-nowrap" x-text="product.name"></td>
-                        <td class="px-6 py-4 whitespace-nowrap" x-text="product.category || '-'"></td>
+                        <td class="px-6 py-4 max-w-xs">
+                            <span class="block truncate" x-text="product.name" :title="product.name"></span>
+                        </td>
+                        <td class="px-6 py-4 max-w-[120px]">
+                            <span class="block truncate" x-text="product.category || '-'" :title="product.category"></span>
+                        </td>
                         <td class="px-6 py-4 whitespace-nowrap" x-text="product.target_price ? '€' + product.target_price.toFixed(2) : '-'"></td>
                         <td class="px-6 py-4 whitespace-nowrap" x-text="product.current_stock"></td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm">
+                        <td class="px-6 py-4 whitespace-nowrap text-sm flex-shrink-0">
                             <button @click="editProduct(product)" class="text-blue-600 hover:underline mr-3">Edit</button>
                             <button @click="deleteProduct(product.id)" class="text-red-600 hover:underline">Delete</button>
                         </td>
@@ -48,6 +52,7 @@
     <div x-show="showForm" x-cloak class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
         <div class="bg-white rounded-lg shadow-xl p-6 w-full max-w-md" @click.away="showForm = false">
             <h3 class="text-lg font-bold mb-4" x-text="editingProduct ? 'Edit Product' : 'Add Product'"></h3>
+            <div x-show="error" class="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded text-sm" x-text="error"></div>
             <form @submit.prevent="saveProduct()">
                 <div class="mb-4">
                     <label class="block text-sm font-medium text-gray-700 mb-1">Name *</label>
@@ -70,10 +75,13 @@
                            class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
                 </div>
                 <div class="flex justify-end gap-3">
-                    <button type="button" @click="showForm = false"
-                            class="px-4 py-2 border border-gray-300 rounded hover:bg-gray-50">Cancel</button>
-                    <button type="submit"
-                            class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Save</button>
+                    <button type="button" @click="showForm = false" :disabled="saving"
+                            class="px-4 py-2 border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50">Cancel</button>
+                    <button type="submit" :disabled="saving"
+                            class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50">
+                        <span x-show="!saving">Save</span>
+                        <span x-show="saving">Saving...</span>
+                    </button>
                 </div>
             </form>
         </div>
@@ -86,6 +94,8 @@ function productsManager() {
         products: [],
         showForm: false,
         editingProduct: null,
+        saving: false,
+        error: null,
         formData: {
             name: '',
             category: '',
@@ -94,51 +104,70 @@ function productsManager() {
         },
 
         async loadProducts() {
-            const response = await fetch('/api/products');
-            this.products = await response.json();
+            try {
+                const response = await fetch('/api/products');
+                this.products = await response.json();
+            } catch (e) {
+                console.error('Failed to load products:', e);
+            }
         },
 
         editProduct(product) {
             this.editingProduct = product;
+            this.error = null;
             this.formData = {
                 name: product.name,
                 category: product.category || '',
-                target_price: product.target_price || '',
-                current_stock: product.current_stock || 0
+                target_price: product.target_price ?? '',
+                current_stock: product.current_stock ?? 0
             };
             this.showForm = true;
         },
 
         async saveProduct() {
+            this.saving = true;
+            this.error = null;
+
             const data = {
                 name: this.formData.name,
                 category: this.formData.category || null,
-                target_price: this.formData.target_price ? parseFloat(this.formData.target_price) : null,
+                target_price: this.formData.target_price !== '' ? parseFloat(this.formData.target_price) : null,
                 current_stock: parseInt(this.formData.current_stock) || 0
             };
 
-            if (this.editingProduct) {
-                await fetch(`/api/products/${this.editingProduct.id}`, {
-                    method: 'PUT',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify(data)
-                });
-            } else {
-                await fetch('/api/products', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify(data)
-                });
-            }
+            try {
+                const url = this.editingProduct ? `/api/products/${this.editingProduct.id}` : '/api/products';
+                const method = this.editingProduct ? 'PUT' : 'POST';
 
-            this.showForm = false;
-            await this.loadProducts();
+                const response = await fetch(url, {
+                    method: method,
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(data)
+                });
+
+                if (!response.ok) {
+                    const err = await response.json();
+                    throw new Error(err.detail || 'Failed to save product');
+                }
+
+                this.showForm = false;
+                await this.loadProducts();
+            } catch (e) {
+                this.error = e.message;
+                console.error('Save error:', e);
+            } finally {
+                this.saving = false;
+            }
         },
 
         async deleteProduct(id) {
             if (confirm('Delete this product?')) {
-                await fetch(`/api/products/${id}`, {method: 'DELETE'});
-                await this.loadProducts();
+                try {
+                    await fetch(`/api/products/${id}`, {method: 'DELETE'});
+                    await this.loadProducts();
+                } catch (e) {
+                    console.error('Delete error:', e);
+                }
             }
         }
     };

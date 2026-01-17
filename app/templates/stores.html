@@ -27,10 +27,14 @@
             <tbody class="bg-white divide-y divide-gray-200">
                 <template x-for="store in stores" :key="store.id">
                     <tr>
-                        <td class="px-6 py-4 whitespace-nowrap" x-text="store.name"></td>
-                        <td class="px-6 py-4 whitespace-nowrap" x-text="store.shipping_cost_standard ? '€' + store.shipping_cost_standard.toFixed(2) : 'Free'"></td>
-                        <td class="px-6 py-4 whitespace-nowrap" x-text="store.free_shipping_threshold ? '€' + store.free_shipping_threshold.toFixed(2) : '-'"></td>
-                        <td class="px-6 py-4" x-text="store.notes || '-'"></td>
+                        <td class="px-6 py-4 max-w-xs">
+                            <span class="block truncate" x-text="store.name" :title="store.name"></span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap" x-text="formatCurrency(store.shipping_cost_standard)"></td>
+                        <td class="px-6 py-4 whitespace-nowrap" x-text="formatCurrency(store.free_shipping_threshold)"></td>
+                        <td class="px-6 py-4 max-w-xs">
+                            <span class="block truncate" x-text="store.notes || '-'" :title="store.notes"></span>
+                        </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm">
                             <button @click="editStore(store)" class="text-blue-600 hover:underline mr-3">Edit</button>
                             <button @click="deleteStore(store.id)" class="text-red-600 hover:underline">Delete</button>
@@ -48,6 +52,7 @@
     <div x-show="showForm" x-cloak class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
         <div class="bg-white rounded-lg shadow-xl p-6 w-full max-w-md" @click.away="showForm = false">
             <h3 class="text-lg font-bold mb-4" x-text="editingStore ? 'Edit Store' : 'Add Store'"></h3>
+            <div x-show="error" class="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded text-sm" x-text="error"></div>
             <form @submit.prevent="saveStore()">
                 <div class="mb-4">
                     <label class="block text-sm font-medium text-gray-700 mb-1">Name *</label>
@@ -70,10 +75,13 @@
                               class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
                 </div>
                 <div class="flex justify-end gap-3">
-                    <button type="button" @click="showForm = false"
-                            class="px-4 py-2 border border-gray-300 rounded hover:bg-gray-50">Cancel</button>
-                    <button type="submit"
-                            class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Save</button>
+                    <button type="button" @click="showForm = false" :disabled="saving"
+                            class="px-4 py-2 border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50">Cancel</button>
+                    <button type="submit" :disabled="saving"
+                            class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50">
+                        <span x-show="!saving">Save</span>
+                        <span x-show="saving">Saving...</span>
+                    </button>
                 </div>
             </form>
         </div>
@@ -86,6 +94,8 @@ function storesManager() {
         stores: [],
         showForm: false,
         editingStore: null,
+        saving: false,
+        error: null,
         formData: {
             name: '',
             shipping_cost_standard: '',
@@ -94,52 +104,76 @@ function storesManager() {
         },
 
         async loadStores() {
-            const response = await fetch('/api/stores');
-            this.stores = await response.json();
+            try {
+                const response = await fetch('/api/stores');
+                this.stores = await response.json();
+            } catch (e) {
+                console.error('Failed to load stores:', e);
+            }
         },
 
         editStore(store) {
             this.editingStore = store;
+            this.error = null;
             this.formData = {
                 name: store.name,
-                shipping_cost_standard: store.shipping_cost_standard || '',
-                free_shipping_threshold: store.free_shipping_threshold || '',
+                shipping_cost_standard: store.shipping_cost_standard ?? '',
+                free_shipping_threshold: store.free_shipping_threshold ?? '',
                 notes: store.notes || ''
             };
             this.showForm = true;
         },
 
         async saveStore() {
+            this.saving = true;
+            this.error = null;
+
             const data = {
                 name: this.formData.name,
-                shipping_cost_standard: this.formData.shipping_cost_standard ? parseFloat(this.formData.shipping_cost_standard) : null,
-                free_shipping_threshold: this.formData.free_shipping_threshold ? parseFloat(this.formData.free_shipping_threshold) : null,
+                shipping_cost_standard: this.formData.shipping_cost_standard !== '' ? parseFloat(this.formData.shipping_cost_standard) : null,
+                free_shipping_threshold: this.formData.free_shipping_threshold !== '' ? parseFloat(this.formData.free_shipping_threshold) : null,
                 notes: this.formData.notes || null
             };
 
-            if (this.editingStore) {
-                await fetch(`/api/stores/${this.editingStore.id}`, {
-                    method: 'PUT',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify(data)
-                });
-            } else {
-                await fetch('/api/stores', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify(data)
-                });
-            }
+            try {
+                const url = this.editingStore ? `/api/stores/${this.editingStore.id}` : '/api/stores';
+                const method = this.editingStore ? 'PUT' : 'POST';
 
-            this.showForm = false;
-            await this.loadStores();
+                const response = await fetch(url, {
+                    method: method,
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(data)
+                });
+
+                if (!response.ok) {
+                    const err = await response.json();
+                    throw new Error(err.detail || 'Failed to save store');
+                }
+
+                this.showForm = false;
+                await this.loadStores();
+            } catch (e) {
+                this.error = e.message;
+                console.error('Save error:', e);
+            } finally {
+                this.saving = false;
+            }
         },
 
         async deleteStore(id) {
             if (confirm('Delete this store?')) {
-                await fetch(`/api/stores/${id}`, {method: 'DELETE'});
-                await this.loadStores();
+                try {
+                    await fetch(`/api/stores/${id}`, {method: 'DELETE'});
+                    await this.loadStores();
+                } catch (e) {
+                    console.error('Delete error:', e);
+                }
             }
+        },
+
+        formatCurrency(value) {
+            if (value === null || value === undefined) return '-';
+            return '€' + parseFloat(value).toFixed(2);
         }
     };
 }
