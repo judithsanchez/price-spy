@@ -3,6 +3,7 @@
 {% block title %}Dashboard - Price Spy{% endblock %}
 
 {% block content %}
+<div x-data="{ ...priceHistoryMixin() }">
 <div class="mb-6">
     <h2 class="text-2xl font-bold text-gray-800">Dashboard</h2>
     <p class="text-gray-600 text-sm sm:text-base">Track and monitor product prices</p>
@@ -71,13 +72,20 @@
             </div>
             {% endif %}
         </div>
-        <div class="flex items-center gap-3">
+        <div class="flex items-center gap-2">
             {% if item.screenshot_path %}
                 <img src="/screenshots/{{ item.id }}.png"
                      alt="Screenshot"
-                     class="w-16 h-12 object-cover rounded border cursor-pointer"
+                     class="w-12 h-10 object-cover rounded border cursor-pointer"
                      @click="window.open('/screenshots/{{ item.id }}.png', '_blank')">
             {% endif %}
+            <button @click="openPriceHistory({{ item.id }})"
+                    class="bg-gray-100 hover:bg-gray-200 text-gray-700 p-3 rounded transition-colors min-h-[44px]"
+                    title="View price history">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                </svg>
+            </button>
             <button
                 @click="loading = true; error = null; success = null;
                     fetch('/api/extract/{{ item.id }}', {method: 'POST'})
@@ -174,25 +182,34 @@
                     </td>
                     <td class="px-4 py-3">
                         <div class="flex flex-col gap-1">
-                            <button
-                                @click="loading = true; error = null; success = null;
-                                    fetch('/api/extract/{{ item.id }}', {method: 'POST'})
-                                    .then(r => r.json())
-                                    .then(data => {
-                                        loading = false;
-                                        if (data.status === 'error') {
-                                            error = data.error;
-                                        } else {
-                                            success = data.message;
-                                            setTimeout(() => location.reload(), 2000);
-                                        }
-                                    })
-                                    .catch(e => { loading = false; error = e.message; })"
-                                :disabled="loading"
-                                class="bg-blue-500 hover:bg-blue-600 disabled:bg-blue-300 text-white text-sm px-3 py-2 rounded transition-colors whitespace-nowrap">
-                                <span x-show="!loading">Spy Now</span>
-                                <span x-show="loading">Extracting...</span>
-                            </button>
+                            <div class="flex gap-1">
+                                <button @click="openPriceHistory({{ item.id }})"
+                                        class="bg-gray-100 hover:bg-gray-200 text-gray-700 p-2 rounded transition-colors"
+                                        title="View price history">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                                    </svg>
+                                </button>
+                                <button
+                                    @click="loading = true; error = null; success = null;
+                                        fetch('/api/extract/{{ item.id }}', {method: 'POST'})
+                                        .then(r => r.json())
+                                        .then(data => {
+                                            loading = false;
+                                            if (data.status === 'error') {
+                                                error = data.error;
+                                            } else {
+                                                success = data.message;
+                                                setTimeout(() => location.reload(), 2000);
+                                            }
+                                        })
+                                        .catch(e => { loading = false; error = e.message; })"
+                                    :disabled="loading"
+                                    class="bg-blue-500 hover:bg-blue-600 disabled:bg-blue-300 text-white text-sm px-3 py-2 rounded transition-colors whitespace-nowrap">
+                                    <span x-show="!loading">Spy Now</span>
+                                    <span x-show="loading">Extracting...</span>
+                                </button>
+                            </div>
                             <span x-show="error" x-text="error" class="text-red-600 text-xs max-w-[150px] break-words"></span>
                             <span x-show="success" x-text="success" class="text-green-600 text-xs"></span>
                         </div>
@@ -462,4 +479,7 @@ function schedulerPanel() {
     }
 }
 </script>
+
+{% include "partials/price-history-modal.html" %}
+</div>
 {% endblock %}

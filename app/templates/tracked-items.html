@@ -3,7 +3,7 @@
 {% block title %}Tracked Items - Price Spy{% endblock %}
 
 {% block content %}
-<div x-data="trackedItemsManager()" x-init="init()">
+<div x-data="{ ...trackedItemsManager(), ...priceHistoryMixin() }" x-init="init()">
     <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-6">
         <h2 class="text-2xl font-bold text-gray-800">Tracked Items</h2>
         <button @click="openAddForm()"
@@ -33,6 +33,13 @@
                     <a :href="item.url" target="_blank" class="text-blue-500 hover:underline text-xs truncate block" x-text="item.url" :title="item.url"></a>
                 </div>
                 <div class="flex gap-2">
+                    <button @click="openPriceHistory(item.id)"
+                            class="bg-gray-100 text-gray-700 px-3 py-2 rounded hover:bg-gray-200 min-h-[44px]"
+                            title="View price history">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                        </svg>
+                    </button>
                     <button @click="editItem(item)"
                             class="flex-1 bg-blue-100 text-blue-700 px-3 py-2 rounded hover:bg-blue-200 min-h-[44px]">
                         Edit
@@ -82,7 +89,14 @@
                                 <span x-show="!item.is_active" class="text-gray-400 text-sm">No</span>
                             </td>
                             <td class="px-4 md:px-6 py-4 whitespace-nowrap text-sm">
-                                <div class="flex gap-2">
+                                <div class="flex gap-2 items-center">
+                                    <button @click="openPriceHistory(item.id)"
+                                            class="text-gray-500 hover:text-gray-700 p-1"
+                                            title="View price history">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                                        </svg>
+                                    </button>
                                     <button @click="editItem(item)" class="text-blue-600 hover:underline">Edit</button>
                                     <button @click="deleteItem(item.id)" class="text-red-600 hover:underline">Delete</button>
                                 </div>
@@ -338,6 +352,8 @@ function trackedItemsManager() {
     };
 }
 </script>
+
+{% include "partials/price-history-modal.html" %}
 
 <style>
 [x-cloak] { display: none !important; }

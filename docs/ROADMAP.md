@@ -122,29 +122,44 @@
   - [x] Test email endpoint works
   - [x] 215 tests passing
 
-## Slice 9: Responsive UI for Web & Mobile (Planned)
+## Slice 9: Responsive UI for Web & Mobile (Complete)
 * **Goal:** Make the entire UI fully responsive for all devices.
-* **Status:** Planned.
+* **Status:** Complete.
 * **Scope:**
-    * Mobile hamburger menu navigation
+    * Mobile hamburger menu navigation with Alpine.js
     * Horizontal scrolling tables on small screens
-    * Card layouts for list pages on mobile
-    * Full-screen modals on mobile
+    * Card layouts for list pages on mobile (Products, Stores, Tracked Items, Logs)
+    * Slide-up modals on mobile with transitions
     * Touch-friendly button sizes (44px minimum)
     * Responsive form grids
+    * Responsive filter panels
 * **Success Criteria:**
-  - [ ] All pages usable on mobile (320px - 480px)
-  - [ ] All pages usable on tablet (768px - 1024px)
-  - [ ] No horizontal page overflow
-  - [ ] All existing tests pass
+  - [x] All pages usable on mobile (320px - 480px)
+  - [x] All pages usable on tablet (768px - 1024px)
+  - [x] No horizontal page overflow
+  - [x] All existing tests pass (215 tests)
+
+## Slice 10: Price History Graphs (Complete)
+* **Goal:** Display price history graphs for each tracked item.
+* **Status:** Complete.
+* **Scope:**
+    * API endpoint for price history data (`GET /api/items/{id}/price-history`)
+    * Line chart visualization with Chart.js
+    * Stats panel (min, max, avg, current price)
+    * Target price line overlay (dashed green line)
+    * Price drop percentage indicator
+    * Access from dashboard and tracked items page
+    * Responsive modal for mobile/desktop
+* **Success Criteria:**
+  - [x] API endpoint returns price history with stats
+  - [x] Chart shows price trend over time
+  - [x] Target price shown as reference line
+  - [x] Modal works on mobile and desktop
+  - [x] 223 tests passing
 
 ---
 
 ## Future Enhancements (Planned)
-
-### Price History View
-* View price history graph/table per tracked item
-* Trend visualization over time
 
 ### Quick Add Flow
 * Combined form to add product + tracked item in one step
@@ -161,11 +176,11 @@
 * **Backend:** Python 3.11, FastAPI, SQLite
 * **Browser:** Playwright with Chromium (stealth mode)
 * **AI:** Google Gemini 2.5 Flash/Lite (structured output)
-* **Frontend:** Jinja2 templates, Tailwind CSS, Alpine.js
+* **Frontend:** Jinja2 templates, Tailwind CSS, Alpine.js, Chart.js
 * **Scheduler:** APScheduler (daily extraction)
 * **Email:** SMTP (Gmail compatible)
 * **Infrastructure:** Docker, Docker Compose
 
 ---
 
-## Current Test Count: 215 tests
+## Current Test Count: 223 tests

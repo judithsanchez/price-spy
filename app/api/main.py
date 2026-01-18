@@ -266,6 +266,74 @@ async def get_item(item_id: int):
         db.close()
 
 
+@app.get("/api/items/{item_id}/price-history")
+async def get_price_history(item_id: int, days: int = 30):
+    """Get price history for a tracked item."""
+    db = get_db()
+    try:
+        product_repo = ProductRepository(db)
+        tracked_repo = TrackedItemRepository(db)
+        price_repo = PriceHistoryRepository(db)
+
+        item = tracked_repo.get_by_id(item_id)
+        if not item:
+            raise HTTPException(status_code=404, detail="Item not found")
+
+        product = product_repo.get_by_id(item.product_id)
+
+        # Get all prices for this URL
+        all_prices = price_repo.get_by_url(item.url)
+
+        # Filter by days
+        from datetime import datetime, timedelta
+
+        cutoff = datetime.now() - timedelta(days=days)
+        prices = [p for p in all_prices if p.created_at >= cutoff]
+
+        # Sort chronologically (oldest first)
+        prices.sort(key=lambda p: p.created_at)
+
+        # Format prices for response
+        price_list = [
+            {"date": p.created_at.strftime("%Y-%m-%d"), "price": p.price}
+            for p in prices
+        ]
+
+        # Calculate stats
+        if prices:
+            price_values = [p.price for p in prices]
+            min_price = min(price_values)
+            max_price = max(price_values)
+            avg_price = round(sum(price_values) / len(price_values), 2)
+            current_price = prices[-1].price
+            price_drop_pct = round(((current_price - max_price) / max_price) * 100, 2)
+            currency = prices[0].currency
+        else:
+            min_price = None
+            max_price = None
+            avg_price = None
+            current_price = None
+            price_drop_pct = None
+            currency = "EUR"
+
+        return {
+            "item_id": item_id,
+            "product_name": product.name if product else "Unknown",
+            "currency": currency,
+            "target_price": product.target_price if product else None,
+            "prices": price_list,
+            "stats": {
+                "min": min_price,
+                "max": max_price,
+                "avg": avg_price,
+                "current": current_price,
+                "price_drop_pct": price_drop_pct,
+            },
+        }
+    finally:
+        db.close()
+
+
 async def run_extraction(item_id: int, db_path: str):
     """Background task to run price extraction."""
     from app.core.browser import capture_screenshot

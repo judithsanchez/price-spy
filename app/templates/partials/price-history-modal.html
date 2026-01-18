@@ -1,0 +1,227 @@
+<!-- Price History Modal -->
+<div x-show="showPriceHistory" x-cloak
+     class="fixed inset-0 bg-black bg-opacity-50 flex items-end sm:items-center justify-center z-50"
+     @keydown.escape.window="closePriceHistory()">
+    <div class="bg-white w-full sm:rounded-lg shadow-xl sm:w-full sm:max-w-2xl max-h-[90vh] overflow-y-auto rounded-t-xl sm:rounded-xl"
+         @click.away="closePriceHistory()"
+         x-transition:enter="transition ease-out duration-200"
+         x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
+         x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100"
+         x-transition:leave="transition ease-in duration-150"
+         x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100"
+         x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95">
+
+        <!-- Drag handle for mobile -->
+        <div class="sm:hidden flex justify-center py-2">
+            <div class="w-12 h-1.5 bg-gray-300 rounded-full"></div>
+        </div>
+
+        <div class="p-4 sm:p-6">
+            <!-- Header -->
+            <div class="flex justify-between items-start mb-4">
+                <div>
+                    <h3 class="text-lg font-bold text-gray-900" x-text="priceHistoryData.product_name || 'Price History'"></h3>
+                    <p class="text-sm text-gray-500">Price trend over time</p>
+                </div>
+                <button @click="closePriceHistory()" class="text-gray-400 hover:text-gray-600 p-1">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
+
+            <!-- Loading state -->
+            <div x-show="priceHistoryLoading" class="flex items-center justify-center py-12">
+                <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            </div>
+
+            <!-- No data state -->
+            <div x-show="!priceHistoryLoading && priceHistoryData.prices && priceHistoryData.prices.length === 0"
+                 class="text-center py-12 text-gray-500">
+                <svg class="w-12 h-12 mx-auto mb-3 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                </svg>
+                <p>No price history yet</p>
+                <p class="text-sm">Run an extraction to start tracking prices</p>
+            </div>
+
+            <!-- Chart -->
+            <div x-show="!priceHistoryLoading && priceHistoryData.prices && priceHistoryData.prices.length > 0">
+                <div class="h-64 sm:h-80 mb-4">
+                    <canvas id="priceHistoryChart"></canvas>
+                </div>
+
+                <!-- Stats Grid -->
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mt-4">
+                    <div class="bg-green-50 rounded-lg p-3 text-center">
+                        <div class="text-xs text-green-600 font-medium">Lowest</div>
+                        <div class="text-lg font-bold text-green-700" x-text="formatPrice(priceHistoryData.stats?.min, priceHistoryData.currency)"></div>
+                    </div>
+                    <div class="bg-red-50 rounded-lg p-3 text-center">
+                        <div class="text-xs text-red-600 font-medium">Highest</div>
+                        <div class="text-lg font-bold text-red-700" x-text="formatPrice(priceHistoryData.stats?.max, priceHistoryData.currency)"></div>
+                    </div>
+                    <div class="bg-gray-50 rounded-lg p-3 text-center">
+                        <div class="text-xs text-gray-600 font-medium">Average</div>
+                        <div class="text-lg font-bold text-gray-700" x-text="formatPrice(priceHistoryData.stats?.avg, priceHistoryData.currency)"></div>
+                    </div>
+                    <div class="bg-blue-50 rounded-lg p-3 text-center">
+                        <div class="text-xs text-blue-600 font-medium">Current</div>
+                        <div class="text-lg font-bold text-blue-700" x-text="formatPrice(priceHistoryData.stats?.current, priceHistoryData.currency)"></div>
+                    </div>
+                </div>
+
+                <!-- Price change indicator -->
+                <div x-show="priceHistoryData.stats?.price_drop_pct" class="mt-4 text-center">
+                    <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium"
+                          :class="priceHistoryData.stats?.price_drop_pct < 0 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'">
+                        <svg x-show="priceHistoryData.stats?.price_drop_pct < 0" class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6"/>
+                        </svg>
+                        <svg x-show="priceHistoryData.stats?.price_drop_pct >= 0" class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
+                        </svg>
+                        <span x-text="Math.abs(priceHistoryData.stats?.price_drop_pct).toFixed(1) + '% from highest'"></span>
+                    </span>
+                </div>
+
+                <!-- Target price info -->
+                <div x-show="priceHistoryData.target_price" class="mt-4 text-center text-sm text-gray-500">
+                    Target price: <span class="font-medium" x-text="formatPrice(priceHistoryData.target_price, priceHistoryData.currency)"></span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function priceHistoryMixin() {
+    return {
+        showPriceHistory: false,
+        priceHistoryLoading: false,
+        priceHistoryData: {},
+        priceHistoryChart: null,
+
+        async openPriceHistory(itemId) {
+            this.showPriceHistory = true;
+            this.priceHistoryLoading = true;
+            this.priceHistoryData = {};
+
+            try {
+                const response = await fetch(`/api/items/${itemId}/price-history?days=90`);
+                if (!response.ok) throw new Error('Failed to load price history');
+                this.priceHistoryData = await response.json();
+
+                // Wait for DOM to update, then render chart
+                await this.$nextTick();
+                this.renderPriceChart();
+            } catch (e) {
+                console.error('Error loading price history:', e);
+            } finally {
+                this.priceHistoryLoading = false;
+            }
+        },
+
+        closePriceHistory() {
+            this.showPriceHistory = false;
+            if (this.priceHistoryChart) {
+                this.priceHistoryChart.destroy();
+                this.priceHistoryChart = null;
+            }
+        },
+
+        renderPriceChart() {
+            const canvas = document.getElementById('priceHistoryChart');
+            if (!canvas || !this.priceHistoryData.prices?.length) return;
+
+            const ctx = canvas.getContext('2d');
+
+            // Destroy existing chart if any
+            if (this.priceHistoryChart) {
+                this.priceHistoryChart.destroy();
+            }
+
+            const prices = this.priceHistoryData.prices;
+            const targetPrice = this.priceHistoryData.target_price;
+
+            const datasets = [{
+                label: 'Price',
+                data: prices.map(p => ({ x: p.date, y: p.price })),
+                borderColor: 'rgb(59, 130, 246)',
+                backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                fill: true,
+                tension: 0.3,
+                pointRadius: 4,
+                pointHoverRadius: 6,
+            }];
+
+            // Add target price line if available
+            if (targetPrice) {
+                datasets.push({
+                    label: 'Target',
+                    data: prices.map(p => ({ x: p.date, y: targetPrice })),
+                    borderColor: 'rgb(34, 197, 94)',
+                    borderDash: [5, 5],
+                    pointRadius: 0,
+                    fill: false,
+                });
+            }
+
+            this.priceHistoryChart = new Chart(ctx, {
+                type: 'line',
+                data: { datasets },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        intersect: false,
+                        mode: 'index',
+                    },
+                    plugins: {
+                        legend: {
+                            display: targetPrice ? true : false,
+                            position: 'top',
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: (context) => {
+                                    const currency = this.priceHistoryData.currency || 'EUR';
+                                    const symbol = currency === 'EUR' ? '\u20AC' : currency === 'USD' ? '$' : currency === 'GBP' ? '\u00A3' : currency;
+                                    return `${context.dataset.label}: ${symbol}${context.parsed.y.toFixed(2)}`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            type: 'time',
+                            time: {
+                                unit: 'day',
+                                displayFormats: {
+                                    day: 'MMM d'
+                                }
+                            },
+                            title: {
+                                display: false
+                            }
+                        },
+                        y: {
+                            beginAtZero: false,
+                            title: {
+                                display: true,
+                                text: this.priceHistoryData.currency || 'EUR'
+                            }
+                        }
+                    }
+                }
+            });
+        },
+
+        formatPrice(value, currency) {
+            if (value === null || value === undefined) return '-';
+            const symbol = currency === 'EUR' ? '\u20AC' : currency === 'USD' ? '$' : currency === 'GBP' ? '\u00A3' : currency || '\u20AC';
+            return symbol + parseFloat(value).toFixed(2);
+        }
+    };
+}
+</script>

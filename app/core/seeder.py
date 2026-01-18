@@ -1,5 +1,6 @@
 """Test data seeder for Price Spy."""
 
+from datetime import datetime, timedelta
 from app.storage.database import Database
 from app.storage.repositories import (
     ProductRepository,
@@ -107,46 +108,104 @@ def seed_test_data(db: Database) -> dict:
     )
     tracked3_id = tracked_repo.insert(tracked3)
 
-    # Create price history
-    # Product 1: Price BELOW target (DEAL) - 12.99 < 15.00
-    price1 = PriceHistoryRecord(
-        product_name="Eucerin UreaRepair PLUS 5% Urea Body Lotion",
-        price=12.99,
-        currency="EUR",
-        confidence=1.0,
-        url="https://www.amazon.nl/dp/B015OAQEHI",
-        store_name="Amazon.nl"
-    )
-    price_repo.insert(price1)
+    # Create price history with multiple data points for graphs
+    now = datetime.now()
+    price_count = 0
 
-    # Product 2: Price ABOVE target - 6.49 > 5.00
-    price2 = PriceHistoryRecord(
-        product_name="Coca-Cola Original 6x330ml",
-        price=6.49,
-        currency="EUR",
-        confidence=1.0,
-        url="https://www.bol.com/nl/p/coca-cola-6pack",
-        store_name="Bol.com"
-    )
-    price_repo.insert(price2)
+    # Product 1: Eucerin - Price dropping over time (DEAL scenario)
+    # Started at 18.99, dropped to 12.99 (below target of 15.00)
+    eucerin_prices = [
+        (18.99, 30),  # 30 days ago
+        (17.49, 25),  # 25 days ago
+        (17.49, 20),  # 20 days ago
+        (16.99, 15),  # 15 days ago
+        (15.99, 10),  # 10 days ago
+        (14.49, 7),   # 7 days ago
+        (13.99, 4),   # 4 days ago
+        (12.99, 1),   # 1 day ago (current - DEAL!)
+    ]
+    for price, days_ago in eucerin_prices:
+        record = PriceHistoryRecord(
+            product_name="Eucerin UreaRepair PLUS 5% Urea Body Lotion",
+            price=price,
+            currency="EUR",
+            confidence=1.0,
+            url="https://www.amazon.nl/dp/B015OAQEHI",
+            store_name="Amazon.nl"
+        )
+        # Insert with custom date
+        db.execute(
+            """INSERT INTO price_history
+               (product_name, price, currency, confidence, url, store_name, created_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?)""",
+            (record.product_name, record.price, record.currency, record.confidence,
+             record.url, record.store_name, (now - timedelta(days=days_ago)).isoformat())
+        )
+        price_count += 1
 
-    # Product 3: Has price but no target
-    price3 = PriceHistoryRecord(
-        product_name="Kitchen Gadget Pro 3000",
-        price=29.99,
-        currency="EUR",
-        confidence=1.0,
-        url="https://www.amazon.nl/dp/BXXXXXXX",
-        store_name="Amazon.nl"
-    )
-    price_repo.insert(price3)
+    # Product 2: Coca-Cola - Price fluctuating (above target)
+    # Target is 5.00, prices hover around 6-7
+    cola_prices = [
+        (6.99, 28),
+        (6.49, 21),
+        (7.29, 14),  # Price spike
+        (6.99, 10),
+        (6.49, 7),
+        (6.49, 3),
+        (6.49, 0),   # Current
+    ]
+    for price, days_ago in cola_prices:
+        record = PriceHistoryRecord(
+            product_name="Coca-Cola Original 6x330ml",
+            price=price,
+            currency="EUR",
+            confidence=1.0,
+            url="https://www.bol.com/nl/p/coca-cola-6pack",
+            store_name="Bol.com"
+        )
+        db.execute(
+            """INSERT INTO price_history
+               (product_name, price, currency, confidence, url, store_name, created_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?)""",
+            (record.product_name, record.price, record.currency, record.confidence,
+             record.url, record.store_name, (now - timedelta(days=days_ago)).isoformat())
+        )
+        price_count += 1
+
+    # Product 3: Kitchen Gadget - Stable price (no target)
+    gadget_prices = [
+        (34.99, 21),
+        (34.99, 14),
+        (29.99, 7),   # Price drop
+        (29.99, 2),
+        (29.99, 0),   # Current
+    ]
+    for price, days_ago in gadget_prices:
+        record = PriceHistoryRecord(
+            product_name="Kitchen Gadget Pro 3000",
+            price=price,
+            currency="EUR",
+            confidence=1.0,
+            url="https://www.amazon.nl/dp/BXXXXXXX",
+            store_name="Amazon.nl"
+        )
+        db.execute(
+            """INSERT INTO price_history
+               (product_name, price, currency, confidence, url, store_name, created_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?)""",
+            (record.product_name, record.price, record.currency, record.confidence,
+             record.url, record.store_name, (now - timedelta(days=days_ago)).isoformat())
+        )
+        price_count += 1
+
+    db.commit()
 
     return {
         "status": "success",
         "products_created": 3,
         "stores_created": 2,
         "tracked_items_created": 3,
-        "price_records_created": 3,
+        "price_records_created": price_count,
         "deals": 1,
         "above_target": 1,
         "no_target": 1
