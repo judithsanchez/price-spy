@@ -37,6 +37,7 @@ COPY tests/ ./tests/
 COPY data/ ./data/
 COPY spy.py .
 COPY pyproject.toml .
+COPY test_email.py .
 
 # Create screenshots and data directories
 RUN mkdir -p screenshots tests/screenshots data

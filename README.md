@@ -19,6 +19,7 @@ A personal price tracking assistant that monitors online product prices and aler
 - **Web Dashboard** - Full CRUD UI for products, stores, and tracked items
 - **Price Drop Alerts** - DEAL badge and alert banner when price ≤ target
 - **Scheduled Extraction** - Daily automated price checking with configurable time
+- **Daily Email Reports** - Get notified of deals found and extraction results
 - **Smart Queue Management** - Limits concurrent extractions to respect API rate limits
 - **Batch Extraction** - Extract all items at once via CLI or API
 - **Unit Price Display** - Shows price per L/kg for easy comparison
@@ -140,6 +141,12 @@ Access the dashboard at `http://localhost:8000`:
 | POST | `/api/scheduler/pause` | Pause scheduled extractions |
 | POST | `/api/scheduler/resume` | Resume scheduled extractions |
 
+### Email
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/email/status` | Email configuration status |
+| POST | `/api/email/test` | Send test email to verify config |
+
 ## Seed Data (Demo Mode)
 
 To see how Price Spy looks with data, load sample products:
@@ -217,6 +224,7 @@ price-spy/
 │   │   ├── batch_extraction.py # Batch extraction for all items
 │   │   ├── extraction_queue.py # Concurrent extraction with semaphore
 │   │   ├── scheduler.py       # APScheduler daily extraction
+│   │   ├── email_report.py    # Daily email report after extraction
 │   │   ├── seeder.py          # Test data generation
 │   │   └── price_calculator.py
 │   ├── models/
@@ -272,6 +280,7 @@ Price Spy includes a built-in scheduler that automatically checks all your track
                    - Processes items in batches (max 10 concurrent)
                    - Saves prices to history
                    - Logs results to scheduler_runs table
+                   - Sends daily email report (if configured)
                    - Sleeps until tomorrow
 ```
 
@@ -339,6 +348,50 @@ curl -X POST http://localhost:8000/api/scheduler/resume
 SELECT * FROM scheduler_runs ORDER BY started_at DESC LIMIT 5;
 ```
 
+## Daily Email Reports
+
+Get a summary email after each scheduled extraction with deals found, prices checked, and any errors.
+
+### Setup
+
+Add these to your `.env` file:
+
+```bash
+# Required for email reports
+EMAIL_ENABLED=true
+EMAIL_RECIPIENT=you@email.com
+EMAIL_SENDER=your_sender@gmail.com
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=your_sender@gmail.com
+SMTP_PASSWORD=your_app_password
+EMAIL_DASHBOARD_URL=http://your-pi-ip:8000
+```
+
+**Gmail Users:** Create an App Password at https://myaccount.google.com/apppasswords (requires 2FA enabled).
+
+### Email Content
+
+Each daily report includes:
+- **Deals Found** - Items that hit your target price (highlighted green)
+- **All Items Checked** - Price for each tracked item with status
+- **Errors** - Any extraction failures
+- **Summary** - Total counts and next scheduled run
+
+### API Endpoints
+
+```bash
+# Check email configuration status
+curl http://localhost:8000/api/email/status
+
+# Send a test email
+curl -X POST http://localhost:8000/api/email/test
+```
+
+### Disable Email Reports
+
+Set `EMAIL_ENABLED=false` or leave email variables unconfigured.
+
 ## Rate Limiting
 
 The system automatically manages Gemini API quotas:
@@ -381,7 +434,7 @@ pytest tests/ -v -s
 
 ## Test Coverage
 
-**199 tests** covering:
+**212 tests** covering:
 - Database operations and repositories
 - API endpoints (Products, Stores, Tracked Items, Logs, Batch Extraction)
 - Scheduler and extraction queue
@@ -391,3 +444,4 @@ pytest tests/ -v -s
 - Price drop alerts UI (DEAL badge)
 - Test data seeding
 - Batch extraction functionality
+- Daily email reports

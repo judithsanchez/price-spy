@@ -69,6 +69,14 @@ async def run_scheduled_extraction():
             items_failed=summary["error_count"]
         )
 
+        # Send daily email report
+        email_sent = False
+        try:
+            from app.core.email_report import send_daily_report
+            email_sent = send_daily_report(summary["results"], db)
+        except Exception as e:
+            print(f"Failed to send email report: {e}")
+
         _last_run_result = {
             "started_at": datetime.now(timezone.utc).isoformat(),
             "completed_at": datetime.now(timezone.utc).isoformat(),
@@ -76,6 +84,7 @@ async def run_scheduled_extraction():
             "items_total": summary["total"],
             "items_success": summary["success_count"],
             "items_failed": summary["error_count"],
+            "email_sent": email_sent,
         }
 
         return _last_run_result
