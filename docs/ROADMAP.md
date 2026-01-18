@@ -73,31 +73,86 @@
   - [x] Unit price displayed on dashboard
   - [x] 160 tests passing
 
-## Slice 6: Scheduled Extraction & Price Drop Alerts (In Progress)
-* **Goal:** Automated daily price checks with visual alerts.
-* **Status:** In Progress (Phases 1-3 complete, Phase 4 pending).
+## Slice 6: Batch Extraction & Price Drop Alerts (Complete)
+* **Goal:** Batch extraction with visual price drop alerts.
+* **Status:** Complete.
 * **Scope:**
-    * Scheduled extraction job (APScheduler) - TODO
-    * Batch extraction for all active items - DONE
-    * Price drop alerts on dashboard (DEAL badge + alert banner) - DONE
-    * CLI commands for batch extraction and test data seeding - DONE
+    * Batch extraction for all active items
+    * Price drop alerts on dashboard (DEAL badge + alert banner)
+    * CLI commands for batch extraction and test data seeding
 * **Success Criteria:**
-  - [ ] Scheduler runs daily extraction automatically
   - [x] Dashboard shows "DEAL" badge when price ≤ target
   - [x] CLI commands: `extract-all`, `seed-test-data`
   - [x] API endpoint: `POST /api/extract/all`
   - [x] 179 tests passing
 
-## Slice 7: Price History & Notifications (Planned)
-* **Goal:** View price history and get notified on price drops.
+## Slice 7: Scheduled Extraction with Smart Queue (Complete)
+* **Goal:** Automated daily price checks with smart queue management.
+* **Status:** Complete.
+* **Scope:**
+    * APScheduler integration for daily extraction
+    * Smart queue with concurrency limit (max 10 concurrent)
+    * Scheduler status panel in dashboard
+    * Run Now / Pause / Resume controls
+    * Skip items already checked today (manual "Spy Now")
+* **Success Criteria:**
+  - [x] Scheduler runs daily at configurable time (default 08:00)
+  - [x] Max 10 concurrent extractions enforced
+  - [x] Dashboard shows scheduler status with next run time
+  - [x] Run Now / Pause / Resume buttons work
+  - [x] scheduler_runs table logs all runs
+  - [x] 199 tests passing
+
+## Slice 8: Daily Email Reports (Complete)
+* **Goal:** Receive daily email summary after scheduled extraction.
+* **Status:** Complete.
+* **Scope:**
+    * Email report sent after each scheduler run
+    * HTML and plain text email templates
+    * Deals highlighted prominently
+    * Errors listed for troubleshooting
+    * Configurable SMTP settings via environment variables
+    * Test email endpoint for configuration verification
+* **Success Criteria:**
+  - [x] Email sent after each scheduler run with results
+  - [x] Deals prominently highlighted in email
+  - [x] Both HTML and plain text versions work
+  - [x] Email skipped when no items checked
+  - [x] Gmail SMTP setup documented
+  - [x] Test email endpoint works
+  - [x] 215 tests passing
+
+## Slice 9: Responsive UI for Web & Mobile (Planned)
+* **Goal:** Make the entire UI fully responsive for all devices.
 * **Status:** Planned.
 * **Scope:**
-    * Price history view per tracked item (chart/table)
-    * Email notifications on price drops
-    * Home Assistant integration (webhooks/MQTT)
+    * Mobile hamburger menu navigation
+    * Horizontal scrolling tables on small screens
+    * Card layouts for list pages on mobile
+    * Full-screen modals on mobile
+    * Touch-friendly button sizes (44px minimum)
+    * Responsive form grids
 * **Success Criteria:**
-  - [ ] View price history graph for any tracked item
-  - [ ] Receive notification when price drops below target
+  - [ ] All pages usable on mobile (320px - 480px)
+  - [ ] All pages usable on tablet (768px - 1024px)
+  - [ ] No horizontal page overflow
+  - [ ] All existing tests pass
+
+---
+
+## Future Enhancements (Planned)
+
+### Price History View
+* View price history graph/table per tracked item
+* Trend visualization over time
+
+### Quick Add Flow
+* Combined form to add product + tracked item in one step
+* Auto-detect store from URL domain
+
+### Home Assistant Integration
+* Webhooks for price drop notifications
+* MQTT integration for smart home automations
 
 ---
 
@@ -107,8 +162,10 @@
 * **Browser:** Playwright with Chromium (stealth mode)
 * **AI:** Google Gemini 2.5 Flash/Lite (structured output)
 * **Frontend:** Jinja2 templates, Tailwind CSS, Alpine.js
+* **Scheduler:** APScheduler (daily extraction)
+* **Email:** SMTP (Gmail compatible)
 * **Infrastructure:** Docker, Docker Compose
 
 ---
 
-## Current Test Count: 179 tests
+## Current Test Count: 215 tests

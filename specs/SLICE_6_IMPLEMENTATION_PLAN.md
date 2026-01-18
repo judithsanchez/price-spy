@@ -1,6 +1,6 @@
 # Slice 6: Scheduled Extraction & Price Drop Alerts
 
-**STATUS: IN PROGRESS** (January 2026)
+**STATUS: COMPLETE** (January 2026)
 
 ## Overview
 
@@ -8,7 +8,7 @@
 
 **Success Criteria:**
 
-- [ ] Scheduled job runs daily and extracts prices for all active items
+- [x] Scheduled job runs daily and extracts prices for all active items (completed in Slice 7)
 - [x] Price drop alerts visible on dashboard when price ≤ target (DEAL badge + alert banner)
 - [x] CLI command to trigger batch extraction manually (`python -m app.cli extract-all`)
 - [x] Test data seeding for UI testing (`python -m app.cli seed-test-data`)
@@ -149,12 +149,12 @@ Creates:
 4. [x] Handle rate limits across batch (uses existing RateLimitTracker)
 5. [x] Tests: 6 tests in test_batch_extraction.py
 
-### Phase 4: Scheduler (TODO)
-1. [ ] Add APScheduler dependency
-2. [ ] Create `app/core/scheduler.py`
-3. [ ] Configure daily job (default: 08:00)
-4. [ ] Add scheduler status endpoint
-5. [ ] Environment variable for schedule time
+### Phase 4: Scheduler (Completed in Slice 7)
+1. [x] Add APScheduler dependency
+2. [x] Create `app/core/scheduler.py`
+3. [x] Configure daily job (default: 08:00)
+4. [x] Add scheduler status endpoint
+5. [x] Environment variable for schedule time
 
 ---
 
@@ -260,8 +260,8 @@ Slice 6 is complete when:
 - [x] `seed-test-data` CLI creates test scenarios
 - [x] `extract-all` CLI triggers batch extraction
 - [x] `POST /api/extract/all` API endpoint
-- [ ] Scheduler runs daily extraction automatically (deferred)
-- [ ] Scheduler status visible in dashboard (deferred)
+- [x] Scheduler runs daily extraction automatically (completed in Slice 7)
+- [x] Scheduler status visible in dashboard (completed in Slice 7)
 - [x] All tests pass (179 tests)
 - [x] Documentation updated
 
@@ -310,4 +310,4 @@ curl -X POST http://localhost:8000/api/extract/all
 
 ---
 
-**Status: IN PROGRESS** (January 2026) - Phases 1-3 complete, Phase 4 (Scheduler) deferred
+**Status: COMPLETE** (January 2026) - All phases complete. Scheduler implemented in Slice 7.

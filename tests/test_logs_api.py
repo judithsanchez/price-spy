@@ -12,6 +12,9 @@ client = TestClient(app)
 def test_db():
     db = get_db()
     db.initialize()
+    # Clean up extraction_logs table for test isolation
+    db.execute("DELETE FROM extraction_logs")
+    db.commit()
     yield db
     db.close()
 
@@ -112,19 +115,16 @@ def test_get_extraction_logs_with_date_filters(test_db):
     today = datetime.utcnow()
     yesterday = today - timedelta(days=1)
 
-    # This is a bit of a hack to manually set the created_at timestamp
-    # In a real scenario, the DB would handle this.
-    conn = test_db.get_connection()
-    conn.execute(
+    # Manually set the created_at timestamp for testing date filters
+    test_db.execute(
         "INSERT INTO extraction_logs (tracked_item_id, status, created_at) VALUES (?, ?, ?)",
         (1, "success", yesterday.isoformat())
     )
-    conn.execute(
+    test_db.execute(
         "INSERT INTO extraction_logs (tracked_item_id, status, created_at) VALUES (?, ?, ?)",
         (2, "success", today.isoformat())
     )
-    conn.commit()
-    conn.close()
+    test_db.commit()
 
 
     # Act
