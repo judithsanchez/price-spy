@@ -502,6 +502,96 @@ class TestTrackedItemRepository:
         items = item_repo.get_by_product(product_id)
         assert len(items) == 2
 
+    def test_get_due_for_check_excludes_checked_today(self, temp_db):
+        """Should exclude items already checked today."""
+        db = Database(temp_db)
+        db.initialize()
+
+        product_repo = ProductRepository(db)
+        store_repo = StoreRepository(db)
+        item_repo = TrackedItemRepository(db)
+
+        product_id = product_repo.insert(Product(name="Test"))
+        store_id = store_repo.insert(Store(name="Test Store"))
+
+        # Item checked today (should be excluded)
+        checked_id = item_repo.insert(TrackedItem(
+            product_id=product_id,
+            store_id=store_id,
+            url="https://example.com/checked",
+            quantity_size=100,
+            quantity_unit="ml"
+        ))
+        item_repo.set_last_checked(checked_id)
+
+        # Item never checked (should be included)
+        item_repo.insert(TrackedItem(
+            product_id=product_id,
+            store_id=store_id,
+            url="https://example.com/never-checked",
+            quantity_size=100,
+            quantity_unit="ml"
+        ))
+
+        due_items = item_repo.get_due_for_check()
+        assert len(due_items) == 1
+        assert due_items[0].url == "https://example.com/never-checked"
+
+    def test_get_due_for_check_includes_checked_yesterday(self, temp_db):
+        """Should include items checked yesterday."""
+        db = Database(temp_db)
+        db.initialize()
+
+        product_repo = ProductRepository(db)
+        store_repo = StoreRepository(db)
+        item_repo = TrackedItemRepository(db)
+
+        product_id = product_repo.insert(Product(name="Test"))
+        store_id = store_repo.insert(Store(name="Test Store"))
+
+        # Item checked yesterday (should be included)
+        item_id = item_repo.insert(TrackedItem(
+            product_id=product_id,
+            store_id=store_id,
+            url="https://example.com/yesterday",
+            quantity_size=100,
+            quantity_unit="ml"
+        ))
+        # Manually set last_checked to yesterday
+        db.execute(
+            "UPDATE tracked_items SET last_checked_at = datetime('now', '-1 day') WHERE id = ?",
+            (item_id,)
+        )
+        db.commit()
+
+        due_items = item_repo.get_due_for_check()
+        assert len(due_items) == 1
+
+    def test_get_due_for_check_excludes_inactive(self, temp_db):
+        """Should exclude inactive items even if not checked today."""
+        db = Database(temp_db)
+        db.initialize()
+
+        product_repo = ProductRepository(db)
+        store_repo = StoreRepository(db)
+        item_repo = TrackedItemRepository(db)
+
+        product_id = product_repo.insert(Product(name="Test"))
+        store_id = store_repo.insert(Store(name="Test Store"))
+
+        # Inactive item never checked (should still be excluded)
+        item_repo.insert(TrackedItem(
+            product_id=product_id,
+            store_id=store_id,
+            url="https://example.com/inactive",
+            quantity_size=100,
+            quantity_unit="ml",
+            is_active=False
+        ))
+
+        due_items = item_repo.get_due_for_check()
+        assert len(due_items) == 0
+
 
 class TestExtractionLogRepository:
     """Tests for ExtractionLogRepository."""

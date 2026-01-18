@@ -1,6 +1,16 @@
 # Price Spy
 
-A professional-grade, visual-first price tracking system. Uses computer vision (Gemini 2.5 Flash) and stealth browser automation (Playwright) to monitor prices without being blocked by anti-bot measures.
+A personal price tracking assistant that monitors online product prices and alerts you when they drop to your target. Uses AI-powered screenshot analysis to work on any website without getting blocked.
+
+## What Does It Do?
+
+1. **You add products** you want to track with a target price (the price you'd buy at)
+2. **Every day at 8:00 AM**, Price Spy visits each product page and takes a screenshot
+3. **AI reads the screenshot** and extracts the current price
+4. **If the price hits your target**, you see a DEAL alert on the dashboard
+5. **All prices are stored** so you can see trends over time
+
+**Why screenshots?** Traditional scrapers get blocked by anti-bot measures. By using a real browser and AI vision, Price Spy works on virtually any website.
 
 ## Features
 
@@ -21,7 +31,7 @@ A professional-grade, visual-first price tracking system. Uses computer vision (
 ### 1. Prerequisites
 
 - Docker and Docker Compose installed
-- Gemini API key from [Google AI Studio](https://aistudio.google.com/)
+- Gemini API key from [Google AI Studio](https://aistudio.google.com/) (free tier works fine)
 
 ### 2. Configuration
 
@@ -34,17 +44,27 @@ GEMINI_API_KEY=your_api_key_here
 ### 3. Build and Run
 
 ```bash
-# Build the container
+# Build the container (first time takes a few minutes)
 docker compose -f infrastructure/docker-compose.yml build
 
 # Start the service
 docker compose -f infrastructure/docker-compose.yml up -d
 
-# Access the web UI
+# Open the dashboard
 open http://localhost:8000
 ```
 
-### 4. Run Tests
+### 4. See It In Action (Optional)
+
+Load sample data to see how the UI looks with products and deals:
+
+```bash
+docker compose -f infrastructure/docker-compose.yml run --rm price-spy python -m app.cli seed-test-data
+```
+
+Refresh the dashboard - you'll see sample products with prices, including a DEAL alert.
+
+### 5. Run Tests
 
 ```bash
 docker compose -f infrastructure/docker-compose.yml run --rm price-spy pytest tests/ -v
@@ -120,12 +140,37 @@ Access the dashboard at `http://localhost:8000`:
 | POST | `/api/scheduler/pause` | Pause scheduled extractions |
 | POST | `/api/scheduler/resume` | Resume scheduled extractions |
 
+## Seed Data (Demo Mode)
+
+To see how Price Spy looks with data, load sample products:
+
+```bash
+docker compose -f infrastructure/docker-compose.yml run --rm price-spy python -m app.cli seed-test-data
+```
+
+This creates:
+- **3 sample products** (Eucerin lotion, Coca-Cola, Kitchen gadget)
+- **2 sample stores** (Amazon.nl, Bol.com)
+- **3 tracked items** linking products to stores
+- **Price history** with one item showing as a DEAL
+
+The seed data is idempotent - running it multiple times won't create duplicates.
+
+To start fresh:
+```bash
+# Remove the database
+rm data/pricespy.db
+
+# Restart the service (recreates empty database)
+docker compose -f infrastructure/docker-compose.yml restart
+```
+
 ## CLI Commands
 
 ### Management CLI
 
 ```bash
-# Seed test data for UI testing (creates products, stores, items with deals)
+# Seed test data for UI testing
 docker compose -f infrastructure/docker-compose.yml run --rm price-spy python -m app.cli seed-test-data
 
 # Extract prices for all active tracked items
@@ -184,7 +229,7 @@ price-spy/
 │       └── logging.py         # Structured JSON logging
 ├── data/                      # SQLite database storage
 ├── screenshots/               # Captured screenshots
-├── tests/                     # Test suites (195 tests)
+├── tests/                     # Test suites (199 tests)
 ├── infrastructure/            # Docker configuration
 ├── docs/                      # Documentation
 ├── specs/                     # Technical specifications
@@ -214,18 +259,85 @@ SQLite database (`data/pricespy.db`):
 - **Frontend:** Jinja2 templates, Tailwind CSS, Alpine.js
 - **Infrastructure:** Docker, Docker Compose
 
-## Scheduler Configuration
+## Scheduler (Automatic Daily Extraction)
 
-The scheduler runs daily price extractions automatically. Configure via environment variables:
+Price Spy includes a built-in scheduler that automatically checks all your tracked items once per day.
+
+### How It Works
+
+```
+08:00 AM (default) - Scheduler wakes up
+                   - Queries database for items due for check
+                   - Skips items already checked today (manual "Spy Now")
+                   - Processes items in batches (max 10 concurrent)
+                   - Saves prices to history
+                   - Logs results to scheduler_runs table
+                   - Sleeps until tomorrow
+```
+
+### Configuration
+
+Set these environment variables in your `.env` file or Docker Compose:
 
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `SCHEDULER_ENABLED` | `true` | Enable/disable automatic scheduling |
-| `SCHEDULER_HOUR` | `8` | Hour to run (0-23) |
+| `SCHEDULER_HOUR` | `8` | Hour to run (0-23, in container's timezone) |
 | `SCHEDULER_MINUTE` | `0` | Minute to run (0-59) |
-| `MAX_CONCURRENT_EXTRACTIONS` | `10` | Max concurrent API requests |
+| `MAX_CONCURRENT_EXTRACTIONS` | `10` | Max parallel API requests |
 
-The queue manager ensures never more than 10 concurrent requests to Gemini, respecting the 15 RPM rate limit.
+Example `.env` to run at 6:30 PM:
+```bash
+SCHEDULER_HOUR=18
+SCHEDULER_MINUTE=30
+```
+
+### Smart Skip Feature
+
+If you manually click "Spy Now" on an item, the scheduler won't check it again the same day:
+
+| Action | Result |
+|--------|--------|
+| Manual check at 10:00 AM, scheduler at 8:00 PM | Item skipped (already checked today) |
+| Manual check at 10:00 AM, scheduler at 8:00 AM next day | Item included (checked yesterday) |
+| Item never checked | Always included |
+
+This prevents wasting API quota on duplicate extractions.
+
+### Queue Management
+
+The scheduler uses an async semaphore to limit concurrent extractions:
+- **Max 10 requests at once** (configurable)
+- **Respects Gemini's 15 RPM limit** with safety margin
+- **Continues on failure** - one failed item doesn't stop the others
+- **Logs everything** - success/failure recorded per item
+
+### Monitoring the Scheduler
+
+**Dashboard panel** shows:
+- Next scheduled run time
+- Last run status (completed/failed, items processed)
+- Number of items to check
+
+**API endpoints:**
+```bash
+# Get status
+curl http://localhost:8000/api/scheduler/status
+
+# Trigger immediate run
+curl -X POST http://localhost:8000/api/scheduler/run-now
+
+# Pause scheduler
+curl -X POST http://localhost:8000/api/scheduler/pause
+
+# Resume scheduler
+curl -X POST http://localhost:8000/api/scheduler/resume
+```
+
+**Database table** `scheduler_runs` stores run history:
+```sql
+SELECT * FROM scheduler_runs ORDER BY started_at DESC LIMIT 5;
+```
 
 ## Rate Limiting
 
@@ -258,14 +370,18 @@ pytest tests/ -v -s
 
 ## Documentation
 
+### Getting Started
+- [User Guide](docs/USER_GUIDE.md) - How to use Price Spy (adding products, understanding the UI)
+- [Raspberry Pi Setup](docs/RASPBERRY_PI_SETUP.md) - Step-by-step guide to run on a Pi
+
+### Technical
+- [Data Structure](docs/DATA_STRUCTURE.md) - Database schema and design
 - [Roadmap](docs/ROADMAP.md) - Project milestones and progress
 - [Product Vision](docs/PRODUCT_VISION.md) - High-level goals
-- [Data Structure](docs/DATA_STRUCTURE.md) - Database design
-- [Usage Guide](docs/USAGE_GUIDE.md) - Detailed usage instructions
 
 ## Test Coverage
 
-**195 tests** covering:
+**199 tests** covering:
 - Database operations and repositories
 - API endpoints (Products, Stores, Tracked Items, Logs, Batch Extraction)
 - Scheduler and extraction queue

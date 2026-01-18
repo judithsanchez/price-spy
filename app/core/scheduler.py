@@ -40,8 +40,8 @@ async def run_scheduled_extraction():
         tracked_repo = TrackedItemRepository(db)
         scheduler_repo = SchedulerRunRepository(db)
 
-        # Get all active items
-        items = tracked_repo.get_active()
+        # Get items due for check (active and not checked today)
+        items = tracked_repo.get_due_for_check()
 
         if not items:
             _last_run_result = {
@@ -51,7 +51,7 @@ async def run_scheduled_extraction():
                 "items_total": 0,
                 "items_success": 0,
                 "items_failed": 0,
-                "message": "No active items to process"
+                "message": "No items due for check (all already checked today)"
             }
             return _last_run_result
 

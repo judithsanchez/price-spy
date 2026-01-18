@@ -107,6 +107,48 @@ class TestSchedulerRuns:
         assert last_run["id"] == run_id
 
 
+class TestSchedulerSkipsCheckedToday:
+    """Tests for scheduler skipping already-checked items."""
+
+    @pytest.mark.asyncio
+    async def test_scheduler_skips_items_checked_today(self, db_with_scheduler):
+        """Scheduler should skip items already checked today."""
+        from app.storage.repositories import (
+            TrackedItemRepository,
+            ProductRepository,
+            StoreRepository,
+        )
+        from app.models.schemas import TrackedItem, Product, Store
+        from app.core.scheduler import run_scheduled_extraction
+
+        product_repo = ProductRepository(db_with_scheduler)
+        store_repo = StoreRepository(db_with_scheduler)
+        tracked_repo = TrackedItemRepository(db_with_scheduler)
+
+        product_id = product_repo.insert(Product(name="Test Product"))
+        store_id = store_repo.insert(Store(name="Test Store"))
+
+        # Create item and mark as checked today
+        item_id = tracked_repo.insert(TrackedItem(
+            product_id=product_id,
+            store_id=store_id,
+            url="https://example.com/checked-today",
+            quantity_size=100,
+            quantity_unit="ml"
+        ))
+        tracked_repo.set_last_checked(item_id)
+
+        # Run scheduler with mocked database path
+        with patch.dict(os.environ, {"DATABASE_PATH": db_with_scheduler.db_path}):
+            with patch('app.core.extraction_queue.process_extraction_queue') as mock_queue:
+                result = await run_scheduled_extraction()
+
+        # Queue should not be called (no items to process)
+        mock_queue.assert_not_called()
+        assert result["items_total"] == 0
+        assert "already checked today" in result.get("message", "")
+
+
 @pytest.fixture
 def client_with_scheduler():
     """Create test client with scheduler initialized."""

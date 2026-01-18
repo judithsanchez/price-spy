@@ -405,6 +405,17 @@ class TrackedItemRepository:
         )
         return [self._row_to_record(row) for row in cursor.fetchall()]
 
+    def get_due_for_check(self) -> List[TrackedItem]:
+        """Get active items not checked today (for scheduled extraction)."""
+        cursor = self.db.execute(
+            """
+            SELECT * FROM tracked_items
+            WHERE is_active = 1
+            AND (last_checked_at IS NULL OR date(last_checked_at) < date('now'))
+            """
+        )
+        return [self._row_to_record(row) for row in cursor.fetchall()]
+
     def set_last_checked(self, item_id: int) -> None:
         """Update the last_checked_at timestamp."""
         self.db.execute(
