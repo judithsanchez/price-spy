@@ -16,11 +16,19 @@ from app.storage.repositories import (
     TrackedItemRepository,
     PriceHistoryRepository,
 )
+from app.core.scheduler import (
+    get_scheduler_status,
+    trigger_run_now,
+    pause_scheduler,
+    resume_scheduler,
+    lifespan_scheduler,
+)
 
 app = FastAPI(
     title="Price Spy",
     description="Visual price tracking with AI",
-    version="0.3.0"
+    version="0.3.0",
+    lifespan=lifespan_scheduler
 )
 
 # Templates directory
@@ -1062,3 +1070,58 @@ async def get_api_usage():
         return result
     finally:
         db.close()
+
+
+# --- Scheduler API ---
+
+class SchedulerStatusResponse(BaseModel):
+    """Response model for scheduler status."""
+    running: bool
+    enabled: bool
+    next_run: Optional[str] = None
+    last_run: Optional[dict] = None
+    items_count: int
+    config: dict
+
+
+class SchedulerRunResponse(BaseModel):
+    """Response model for scheduler run trigger."""
+    status: str
+    message: Optional[str] = None
+
+
+@app.get("/api/scheduler/status", response_model=SchedulerStatusResponse)
+async def scheduler_status():
+    """Get current scheduler status."""
+    status = get_scheduler_status()
+    return SchedulerStatusResponse(**status)
+
+
+@app.post("/api/scheduler/run-now", response_model=SchedulerRunResponse)
+async def scheduler_run_now(background_tasks: BackgroundTasks):
+    """Trigger an immediate extraction run."""
+    background_tasks.add_task(trigger_run_now)
+    return SchedulerRunResponse(
+        status="started",
+        message="Extraction run started in background"
+    )
+
+
+@app.post("/api/scheduler/pause", response_model=SchedulerRunResponse)
+async def scheduler_pause():
+    """Pause the scheduler."""
+    pause_scheduler()
+    return SchedulerRunResponse(
+        status="paused",
+        message="Scheduler paused"
+    )
+
+
+@app.post("/api/scheduler/resume", response_model=SchedulerRunResponse)
+async def scheduler_resume():
+    """Resume the scheduler."""
+    resume_scheduler()
+    return SchedulerRunResponse(
+        status="resumed",
+        message="Scheduler resumed"
+    )

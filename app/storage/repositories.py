@@ -605,3 +605,88 @@ class ExtractionLogRepository:
             duration_ms=row["duration_ms"],
             created_at=datetime.fromisoformat(row["created_at"]),
         )
+
+
+class SchedulerRunRepository:
+    """Repository for scheduler run logging."""
+
+    def __init__(self, db: Database):
+        self.db = db
+
+    def start_run(self, items_total: int) -> int:
+        """Start a new scheduler run and return its ID."""
+        cursor = self.db.execute(
+            """
+            INSERT INTO scheduler_runs (items_total, status)
+            VALUES (?, 'running')
+            """,
+            (items_total,)
+        )
+        self.db.commit()
+        return cursor.lastrowid
+
+    def complete_run(
+        self,
+        run_id: int,
+        items_success: int,
+        items_failed: int,
+        error_message: Optional[str] = None
+    ) -> None:
+        """Mark a scheduler run as completed."""
+        status = "failed" if error_message else "completed"
+        self.db.execute(
+            """
+            UPDATE scheduler_runs
+            SET completed_at = datetime('now'),
+                status = ?,
+                items_success = ?,
+                items_failed = ?,
+                error_message = ?
+            WHERE id = ?
+            """,
+            (status, items_success, items_failed, error_message, run_id)
+        )
+        self.db.commit()
+
+    def fail_run(self, run_id: int, error_message: str) -> None:
+        """Mark a scheduler run as failed."""
+        self.db.execute(
+            """
+            UPDATE scheduler_runs
+            SET completed_at = datetime('now'),
+                status = 'failed',
+                error_message = ?
+            WHERE id = ?
+            """,
+            (error_message, run_id)
+        )
+        self.db.commit()
+
+    def get_by_id(self, run_id: int) -> Optional[dict]:
+        """Get a scheduler run by ID."""
+        cursor = self.db.execute(
+            "SELECT * FROM scheduler_runs WHERE id = ?",
+            (run_id,)
+        )
+        row = cursor.fetchone()
+        if row:
+            return dict(row)
+        return None
+
+    def get_last_run(self) -> Optional[dict]:
+        """Get the most recent scheduler run."""
+        cursor = self.db.execute(
+            "SELECT * FROM scheduler_runs ORDER BY started_at DESC LIMIT 1"
+        )
+        row = cursor.fetchone()
+        if row:
+            return dict(row)
+        return None
+
+    def get_recent(self, limit: int = 10) -> List[dict]:
+        """Get recent scheduler runs."""
+        cursor = self.db.execute(
+            "SELECT * FROM scheduler_runs ORDER BY started_at DESC LIMIT ?",
+            (limit,)
+        )
+        return [dict(row) for row in cursor.fetchall()]

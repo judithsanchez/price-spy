@@ -138,6 +138,58 @@
 </div>
 {% endif %}
 
+<!-- Scheduler Status -->
+<div class="mt-8 bg-white rounded-lg shadow p-6" x-data="schedulerPanel()">
+    <div class="flex justify-between items-center mb-4">
+        <h3 class="text-lg font-semibold text-gray-800">Scheduled Spy</h3>
+        <div class="flex items-center gap-2">
+            <span x-show="status.running" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                Active
+            </span>
+            <span x-show="!status.running && status.enabled" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                Paused
+            </span>
+            <span x-show="!status.enabled" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                Disabled
+            </span>
+        </div>
+    </div>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="text-center p-4 bg-gray-50 rounded">
+            <div class="text-2xl font-bold text-blue-600" x-text="status.items_count || 0"></div>
+            <div class="text-sm text-gray-600">Items to Spy</div>
+        </div>
+        <div class="text-center p-4 bg-gray-50 rounded">
+            <div class="text-lg font-bold text-gray-800" x-text="formatNextRun(status.next_run)"></div>
+            <div class="text-sm text-gray-600">Next Scheduled Spy</div>
+        </div>
+        <div class="text-center p-4 bg-gray-50 rounded">
+            <div class="text-sm font-medium text-gray-800" x-text="status.last_run ? status.last_run.status : 'Never'"></div>
+            <div class="text-sm text-gray-600">Last Run</div>
+            <div x-show="status.last_run" class="text-xs text-gray-500 mt-1">
+                <span x-text="status.last_run?.items_success || 0"></span> success,
+                <span x-text="status.last_run?.items_failed || 0"></span> failed
+            </div>
+        </div>
+    </div>
+    <div class="mt-4 flex justify-end gap-2">
+        <button @click="runNow()" :disabled="running"
+                class="bg-blue-500 hover:bg-blue-600 disabled:bg-blue-300 text-white text-sm px-4 py-2 rounded transition-colors">
+            <span x-show="!running">Run Now</span>
+            <span x-show="running">Running...</span>
+        </button>
+        <button x-show="status.running" @click="pauseScheduler()"
+                class="bg-yellow-500 hover:bg-yellow-600 text-white text-sm px-4 py-2 rounded transition-colors">
+            Pause
+        </button>
+        <button x-show="!status.running && status.enabled" @click="resumeScheduler()"
+                class="bg-green-500 hover:bg-green-600 text-white text-sm px-4 py-2 rounded transition-colors">
+            Resume
+        </button>
+    </div>
+    <div x-show="message" class="mt-2 text-sm text-center" :class="messageType === 'success' ? 'text-green-600' : 'text-red-600'" x-text="message"></div>
+</div>
+
 <!-- API Usage & Extraction Logs Section -->
 <div class="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-6">
     <!-- API Usage -->
@@ -251,6 +303,76 @@ function extractionLogs() {
         formatTime(isoString) {
             const date = new Date(isoString);
             return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+        }
+    }
+}
+
+function schedulerPanel() {
+    return {
+        status: { running: false, enabled: false, next_run: null, last_run: null, items_count: 0 },
+        running: false,
+        message: null,
+        messageType: 'success',
+        init() {
+            this.loadStatus();
+        },
+        async loadStatus() {
+            try {
+                const res = await fetch('/api/scheduler/status');
+                this.status = await res.json();
+            } catch (e) {
+                console.error('Failed to load scheduler status:', e);
+            }
+        },
+        formatNextRun(isoString) {
+            if (!isoString) return 'Not scheduled';
+            const date = new Date(isoString);
+            const now = new Date();
+            const tomorrow = new Date(now);
+            tomorrow.setDate(tomorrow.getDate() + 1);
+
+            let dayStr = '';
+            if (date.toDateString() === now.toDateString()) {
+                dayStr = 'Today';
+            } else if (date.toDateString() === tomorrow.toDateString()) {
+                dayStr = 'Tomorrow';
+            } else {
+                dayStr = date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+            }
+            const timeStr = date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+            return `${dayStr} at ${timeStr}`;
+        },
+        async runNow() {
+            this.running = true;
+            this.message = null;
+            try {
+                const res = await fetch('/api/scheduler/run-now', { method: 'POST' });
+                const data = await res.json();
+                this.message = data.message || 'Extraction started';
+                this.messageType = 'success';
+                setTimeout(() => this.loadStatus(), 2000);
+            } catch (e) {
+                this.message = 'Failed to start extraction';
+                this.messageType = 'error';
+            } finally {
+                this.running = false;
+            }
+        },
+        async pauseScheduler() {
+            try {
+                await fetch('/api/scheduler/pause', { method: 'POST' });
+                await this.loadStatus();
+            } catch (e) {
+                console.error('Failed to pause scheduler:', e);
+            }
+        },
+        async resumeScheduler() {
+            try {
+                await fetch('/api/scheduler/resume', { method: 'POST' });
+                await this.loadStatus();
+            } catch (e) {
+                console.error('Failed to resume scheduler:', e);
+            }
         }
     }
 }

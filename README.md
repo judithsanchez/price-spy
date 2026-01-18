@@ -8,6 +8,8 @@ A professional-grade, visual-first price tracking system. Uses computer vision (
 - **Stealth Browser** - Playwright with anti-detection measures to avoid CAPTCHAs
 - **Web Dashboard** - Full CRUD UI for products, stores, and tracked items
 - **Price Drop Alerts** - DEAL badge and alert banner when price ≤ target
+- **Scheduled Extraction** - Daily automated price checking with configurable time
+- **Smart Queue Management** - Limits concurrent extractions to respect API rate limits
 - **Batch Extraction** - Extract all items at once via CLI or API
 - **Unit Price Display** - Shows price per L/kg for easy comparison
 - **Rate Limit Management** - Auto-fallback between Gemini models when quota exhausted
@@ -65,6 +67,7 @@ Access the dashboard at `http://localhost:8000`:
 - **Deal Alerts** - Green DEAL badge and alert banner when price ≤ target
 - **Tracked Items Table** - View items with prices, unit prices, and target status
 - **Spy Now Button** - Trigger extraction with real-time success/error feedback
+- **Scheduled Spy Panel** - View next scheduled run, trigger manual runs, pause/resume
 - **API Usage Panel** - See quota usage per Gemini model with progress bars
 - **Extraction Logs Panel** - Recent extractions with status, price, and timing
 
@@ -108,6 +111,14 @@ Access the dashboard at `http://localhost:8000`:
 | GET | `/api/logs/stats` | Today's extraction statistics |
 | GET | `/api/errors` | Error logs with filters |
 | GET | `/api/usage` | API usage per model |
+
+### Scheduler
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/scheduler/status` | Scheduler status, next run, last run |
+| POST | `/api/scheduler/run-now` | Trigger immediate extraction run |
+| POST | `/api/scheduler/pause` | Pause scheduled extractions |
+| POST | `/api/scheduler/resume` | Resume scheduled extractions |
 
 ## CLI Commands
 
@@ -159,6 +170,8 @@ price-spy/
 │   │   ├── gemini.py          # Model configuration & rate limits
 │   │   ├── rate_limiter.py    # API usage tracking & fallback
 │   │   ├── batch_extraction.py # Batch extraction for all items
+│   │   ├── extraction_queue.py # Concurrent extraction with semaphore
+│   │   ├── scheduler.py       # APScheduler daily extraction
 │   │   ├── seeder.py          # Test data generation
 │   │   └── price_calculator.py
 │   ├── models/
@@ -171,7 +184,7 @@ price-spy/
 │       └── logging.py         # Structured JSON logging
 ├── data/                      # SQLite database storage
 ├── screenshots/               # Captured screenshots
-├── tests/                     # Test suites (179 tests)
+├── tests/                     # Test suites (195 tests)
 ├── infrastructure/            # Docker configuration
 ├── docs/                      # Documentation
 ├── specs/                     # Technical specifications
@@ -190,6 +203,7 @@ SQLite database (`data/pricespy.db`):
 | `price_history` | Successful extractions with price and timestamp |
 | `extraction_logs` | All extraction attempts (success/error) |
 | `api_usage` | Daily API quota tracking per model |
+| `scheduler_runs` | Scheduled extraction run history |
 | `error_log` | General error logging |
 
 ## Tech Stack
@@ -199,6 +213,19 @@ SQLite database (`data/pricespy.db`):
 - **AI:** Google Gemini 2.5 Flash/Lite (structured output)
 - **Frontend:** Jinja2 templates, Tailwind CSS, Alpine.js
 - **Infrastructure:** Docker, Docker Compose
+
+## Scheduler Configuration
+
+The scheduler runs daily price extractions automatically. Configure via environment variables:
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `SCHEDULER_ENABLED` | `true` | Enable/disable automatic scheduling |
+| `SCHEDULER_HOUR` | `8` | Hour to run (0-23) |
+| `SCHEDULER_MINUTE` | `0` | Minute to run (0-59) |
+| `MAX_CONCURRENT_EXTRACTIONS` | `10` | Max concurrent API requests |
+
+The queue manager ensures never more than 10 concurrent requests to Gemini, respecting the 15 RPM rate limit.
 
 ## Rate Limiting
 
@@ -238,9 +265,10 @@ pytest tests/ -v -s
 
 ## Test Coverage
 
-**179 tests** covering:
+**195 tests** covering:
 - Database operations and repositories
 - API endpoints (Products, Stores, Tracked Items, Logs, Batch Extraction)
+- Scheduler and extraction queue
 - Vision extraction with mocked Gemini API
 - Price calculation and comparison logic
 - Model configuration and validation

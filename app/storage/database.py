@@ -106,6 +106,20 @@ CREATE TABLE IF NOT EXISTS api_usage (
 );
 
 CREATE INDEX IF NOT EXISTS idx_api_usage_date ON api_usage(date);
+
+-- Scheduler Runs Table (tracks scheduled extraction runs)
+CREATE TABLE IF NOT EXISTS scheduler_runs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    started_at TEXT NOT NULL DEFAULT (datetime('now')),
+    completed_at TEXT,
+    status TEXT CHECK(status IN ('running', 'completed', 'failed')) NOT NULL DEFAULT 'running',
+    items_total INTEGER NOT NULL DEFAULT 0,
+    items_success INTEGER NOT NULL DEFAULT 0,
+    items_failed INTEGER NOT NULL DEFAULT 0,
+    error_message TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_scheduler_runs_started_at ON scheduler_runs(started_at);
 """
 
 
