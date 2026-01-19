@@ -1,0 +1,21 @@
+sequenceDiagram
+    autonumber
+    participant U as "User (CLI/Web)"
+    participant I as "spy.py / app/api/main.py"
+    participant B as "app/core/browser.py"
+    participant V as "app/core/vision.py"
+    participant R as "app/storage/repositories.py"
+    participant D as "app/storage/database.py"
+
+    Note over U, D: Usage: Extracting price from a URL (Manual or Auto)
+
+    U->>I: Command: extract <URL>
+    I->>B: capture_screenshot(url)
+    B-->>I: bytes (image content)
+    I->>V: extract_product_info(screenshot)
+    V->>V: Call Google Gemini API
+    V-->>I: ProductInfo (Name, Price, Currency)
+    I->>R: repository.insert(PriceHistoryRecord)
+    R->>D: SQL: INSERT INTO price_history...
+    D-->>R: success
+    I-->>U: Display extracted price and comparison

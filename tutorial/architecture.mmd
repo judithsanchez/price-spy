@@ -1,0 +1,50 @@
+graph TB
+    subgraph "Interface Layer"
+        CLI["spy.py (CLI tool)"]
+        WebServer["FastAPI Web Server"]
+        Dashboard["Jinja2 Dashboard UI"]
+    end
+
+    subgraph "Core Logic Layer"
+        Scheduler["Scheduler (APScheduler)<br/>Daily extraction trigger"]
+        Queue["Extraction Queue (Semaphore)<br/>Concurrency & Rate limiting"]
+        Browser["Browser Controller<br/>Playwright screenshots"]
+        Vision["Vision Engine<br/>Gemini AI Price Extraction"]
+        Calculator["Price Calculator<br/>Unit price & Comparisons"]
+        EmailReport["Email Reporter<br/>Daily status emails"]
+    end
+
+    subgraph "Data Access Layer"
+        Repos["Repositories (CRUD)<br/>Encapsulated SQL logic"]
+        DB[("SQLite Database<br/>(pricespy.db)")]
+    end
+
+    subgraph "External Services"
+        Internet["Internet<br/>Product URLs"]
+        GeminiAPI["Google Gemini API<br/>Visual LLM"]
+        EmailServer["SMTP Server"]
+    end
+
+    %% Flow
+    CLI --> Repos
+    CLI --> Browser
+    CLI --> Vision
+    
+    WebServer --> Repos
+    WebServer --> Dashboard
+    WebServer --> Queue
+    WebServer --> Scheduler
+    
+    Scheduler --> Queue
+    Scheduler --> EmailReport
+    
+    Queue --> Browser
+    Queue --> Vision
+    Queue --> Repos
+    
+    Browser --> Internet
+    Vision --> GeminiAPI
+    EmailReport --> EmailServer
+    EmailReport --> Repos
+    
+    Repos --> DB

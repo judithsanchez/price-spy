@@ -126,6 +126,10 @@ async def extract_single_item(
         }
 
 
+from app.core.config import settings
+
+# ...
+
 async def extract_all_items(
     db: Database,
     delay_seconds: float = 5.0
@@ -140,7 +144,7 @@ async def extract_all_items(
     Returns:
         List of extraction results for each item
     """
-    api_key = os.getenv("GEMINI_API_KEY")
+    api_key = settings.GEMINI_API_KEY
     if not api_key:
         return [{
             "item_id": None,

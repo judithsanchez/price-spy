@@ -1,0 +1,50 @@
+erDiagram
+    PRODUCT ||--o{ TRACKED_ITEM : "to monitor"
+    STORE ||--o{ TRACKED_ITEM : "hosts"
+    TRACKED_ITEM ||--o{ PRICE_HISTORY : "historical data"
+    TRACKED_ITEM ||--o{ EXTRACTION_LOG : "audit trail"
+    
+    PRODUCT {
+        int id PK
+        string name
+        string category
+        float target_price "Alert threshold"
+        int current_stock
+    }
+    
+    STORE {
+        int id PK
+        string name
+        float shipping_cost_standard
+        float free_shipping_threshold
+    }
+    
+    TRACKED_ITEM {
+        int id PK
+        int product_id FK
+        int store_id FK
+        string url
+        float quantity_size "e.g. 250"
+        string quantity_unit "e.g. ml"
+        int items_per_lot "e.g. 6-pack"
+        datetime last_checked_at
+        bool is_active
+    }
+    
+    PRICE_HISTORY {
+        int id PK
+        float price
+        string currency
+        float confidence "LLM confidence"
+        string url
+        datetime created_at
+    }
+
+    EXTRACTION_LOG {
+        int id PK
+        int tracked_item_id FK
+        string status "success/error"
+        string model_used "gemini-1.5-* / 2.0-*"
+        string error_message
+        int duration_ms
+    }

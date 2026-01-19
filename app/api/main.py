@@ -393,6 +393,10 @@ class BatchExtractResponse(BaseModel):
     results: list
 
 
+from app.core.config import settings
+
+# ... imports ...
+
 @app.post("/api/extract/all", response_model=BatchExtractResponse)
 async def trigger_batch_extraction():
     """Run price extraction for all active tracked items."""
@@ -401,7 +405,7 @@ async def trigger_batch_extraction():
     db = get_db()
     try:
         # Use shorter delay in API context (configurable)
-        delay = float(os.getenv("BATCH_DELAY_SECONDS", "2"))
+        delay = settings.BATCH_DELAY_SECONDS
         results = await extract_all_items(db, delay_seconds=delay)
         summary = get_batch_summary(results)
         return BatchExtractResponse(**summary)
@@ -433,7 +437,7 @@ async def trigger_extraction(item_id: int):
         if not item:
             raise HTTPException(status_code=404, detail="Item not found")
 
-        api_key = os.getenv("GEMINI_API_KEY")
+        api_key = settings.GEMINI_API_KEY
         if not api_key:
             log_repo.insert(ExtractionLog(
                 tracked_item_id=item_id,

@@ -19,9 +19,11 @@ from app.core.rate_limiter import RateLimitTracker
 MAX_CONCURRENT = 10
 
 
+from app.core.config import settings
+
 def get_api_key() -> Optional[str]:
     """Get Gemini API key from environment."""
-    return os.getenv("GEMINI_API_KEY")
+    return settings.GEMINI_API_KEY
 
 
 async def extract_single_item(

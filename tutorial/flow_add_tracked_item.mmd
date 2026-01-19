@@ -1,0 +1,20 @@
+sequenceDiagram
+    autonumber
+    participant U as "User (CLI/Web)"
+    participant I as "spy.py / app/api/main.py"
+    participant R as "app/storage/repositories.py"
+    participant M as "app/models/schemas.py"
+    participant D as "app/storage/database.py"
+
+    Note over U, D: Usage: Linking a URL to a Product and Store
+
+    U->>I: Command: track --url <URL> --product-id 1 --store-id 1
+    I->>R: get_product(1), get_store(1)
+    R-->>I: Exists? (Validation)
+    I->>M: Instantiate TrackedItem schema
+    M-->>I: Validated Object
+    I->>R: repository.insert(tracked_item)
+    R->>D: SQL: INSERT INTO tracked_items...
+    D-->>R: row_id
+    R-->>I: item_id
+    I-->>U: Success Message "Tracking URL with ID: X"

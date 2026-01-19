@@ -14,13 +14,15 @@ _scheduler: Optional[AsyncIOScheduler] = None
 _last_run_result: Optional[Dict[str, Any]] = None
 
 
+from app.core.config import settings
+
 def get_scheduler_config() -> Dict[str, Any]:
     """Get scheduler configuration from environment."""
     return {
-        "enabled": os.getenv("SCHEDULER_ENABLED", "true").lower() == "true",
-        "hour": int(os.getenv("SCHEDULER_HOUR", "8")),
-        "minute": int(os.getenv("SCHEDULER_MINUTE", "0")),
-        "max_concurrent": int(os.getenv("MAX_CONCURRENT_EXTRACTIONS", "10")),
+        "enabled": settings.SCHEDULER_ENABLED,
+        "hour": settings.SCHEDULER_HOUR,
+        "minute": settings.SCHEDULER_MINUTE,
+        "max_concurrent": settings.MAX_CONCURRENT_EXTRACTIONS,
     }
 
 
@@ -32,8 +34,7 @@ async def run_scheduled_extraction():
     from app.storage.repositories import TrackedItemRepository, SchedulerRunRepository
     from app.core.extraction_queue import process_extraction_queue, get_queue_summary
 
-    db_path = os.getenv("DATABASE_PATH", "data/pricespy.db")
-    db = Database(db_path)
+    db = Database(settings.DATABASE_PATH)
     db.initialize()
 
     try:

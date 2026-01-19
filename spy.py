@@ -8,54 +8,22 @@ import sys
 import traceback
 from urllib.parse import urlparse
 
-from dotenv import load_dotenv
-
+from app.core.config import settings
 from app.core.browser import capture_screenshot
-from app.core.vision import extract_product_info
+from app.core.vision import extract_with_structured_output
 from app.core.price_calculator import calculate_volume_price, compare_prices
 from app.models.schemas import (
-    ProductInfo,
     ErrorRecord,
     PriceHistoryRecord,
     Product,
     Store,
     TrackedItem,
 )
-from app.storage.database import Database
-from app.storage.repositories import (
-    PriceHistoryRepository,
-    ErrorLogRepository,
-    ProductRepository,
-    StoreRepository,
-    TrackedItemRepository,
-)
-from app.utils.logging import get_logger
-
-
-load_dotenv()
-
-logger = get_logger(__name__)
-
-
-def validate_url(url: str) -> bool:
-    """Check if URL is valid."""
-    try:
-        result = urlparse(url)
-        return all([result.scheme in ("http", "https"), result.netloc])
-    except Exception:
-        return False
-
-
-def get_database() -> Database:
-    """Initialize and return database connection."""
-    db = Database("data/pricespy.db")
-    db.initialize()
-    return db
-
+# ...
 
 async def cmd_extract(args) -> int:
     """Extract price from URL."""
-    api_key = os.getenv("GEMINI_API_KEY")
+    api_key = settings.GEMINI_API_KEY
     if not api_key:
         logger.error("GEMINI_API_KEY not set in environment")
         print("Error: GEMINI_API_KEY not set in environment", file=sys.stderr)
@@ -77,62 +45,62 @@ async def cmd_extract(args) -> int:
         screenshot = await capture_screenshot(args.url)
 
         print("Extracting product info with Gemini...", file=sys.stderr)
-        result = await extract_product_info(screenshot, api_key)
+        result, model_used = await extract_with_structured_output(screenshot, api_key)
+        
+        # Check for tracked item to get volume info
+        tracked = tracked_repo.get_by_url(args.url)
 
-        if isinstance(result, ProductInfo):
-            # Check for tracked item to get volume info
-            tracked = tracked_repo.get_by_url(args.url)
+        # Get previous price for comparison
+        previous = price_repo.get_latest_by_url(args.url)
 
-            # Get previous price for comparison
-            previous = price_repo.get_latest_by_url(args.url)
+        # Save to database
+        record = PriceHistoryRecord(
+            product_name=result.product_name,
+            price=result.price,
+            currency=result.currency,
+            confidence=1.0,  # Structured output assumes high confidence
+            url=args.url,
+            store_name=result.store_name,
+            page_type="single_product",
+        )
+        record_id = price_repo.insert(record)
+        logger.info("Price saved to database", extra={"record_id": record_id})
 
-            # Save to database
-            record = PriceHistoryRecord(
-                product_name=result.product_name,
-                price=result.price,
-                currency=result.currency,
-                confidence=result.confidence,
-                url=args.url,
-                store_name=result.store_name,
-                page_type=result.page_type,
+        # Output structured result
+        print(f"\nProduct: {result.product_name}")
+        print(f"Price: {result.currency} {result.price}")
+        if result.store_name:
+            print(f"Store: {result.store_name}")
+        print(f"Stock: {'Available' if result.is_available else 'Out of stock'}")
+        print(f"Model used: {model_used}")
+
+        # Show volume price if tracked
+        if tracked:
+            vol_price, vol_unit = calculate_volume_price(
+                result.price,
+                tracked.items_per_lot,
+                tracked.quantity_size,
+                tracked.quantity_unit,
             )
-            record_id = price_repo.insert(record)
-            logger.info("Price saved to database", extra={"record_id": record_id})
+            print(f"Unit price: {result.currency} {vol_price:.2f}/{vol_unit}")
 
-            # Output structured result
-            print(f"\nProduct: {result.product_name}")
-            print(f"Price: {result.currency} {result.price}")
-            if result.store_name:
-                print(f"Store: {result.store_name}")
-            print(f"Confidence: {result.confidence:.0%}")
-
-            # Show volume price if tracked
-            if tracked:
-                vol_price, vol_unit = calculate_volume_price(
-                    result.price,
-                    tracked.items_per_lot,
-                    tracked.quantity_size,
-                    tracked.quantity_unit,
+        # Show price comparison
+        if previous:
+            comparison = compare_prices(result.price, previous.price)
+            if comparison.price_change != 0:
+                direction = "↓" if comparison.is_price_drop else "↑"
+                print(
+                    f"Price change: {direction} {abs(comparison.price_change):.2f} "
+                    f"({comparison.price_change_percent:+.1f}%)"
                 )
-                print(f"Unit price: {result.currency} {vol_price:.2f}/{vol_unit}")
-
-            # Show price comparison
-            if previous:
-                comparison = compare_prices(result.price, previous.price)
-                if comparison.price_change != 0:
-                    direction = "↓" if comparison.is_price_drop else "↑"
-                    print(
-                        f"Price change: {direction} {abs(comparison.price_change):.2f} "
-                        f"({comparison.price_change_percent:+.1f}%)"
-                    )
-                    if comparison.is_price_drop:
-                        print("*** PRICE DROP DETECTED ***")
-                else:
-                    print("Price unchanged")
-        else:
-            print(result)
+                if comparison.is_price_drop:
+                    print("*** PRICE DROP DETECTED ***")
+            else:
+                print("Price unchanged")
 
         return 0
+
+    except Exception as e:
 
     except Exception as e:
         error_msg = str(e)

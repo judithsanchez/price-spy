@@ -1,0 +1,18 @@
+sequenceDiagram
+    autonumber
+    participant U as "User (CLI/Web)"
+    participant I as "spy.py / app/api/main.py"
+    participant M as "app/models/schemas.py (Product)"
+    participant R as "app/storage/repositories.py (ProductRepository)"
+    participant D as "app/storage/database.py (SQLite)"
+
+    Note over U, D: Usage: Adding a new core product definition
+
+    U->>I: Command: add-product "Coffee"
+    I->>M: Instantiate Product schema
+    M-->>I: Validated Object
+    I->>R: repository.insert(product)
+    R->>D: SQL: INSERT INTO products...
+    D-->>R: row_id
+    R-->>I: product_id
+    I-->>U: Success Message "Product added with ID: X"

@@ -15,18 +15,20 @@ from app.storage.repositories import (
 )
 
 
+from app.core.config import settings
+
 def get_email_config() -> Dict[str, Any]:
     """Get email configuration from environment."""
     return {
-        "enabled": os.getenv("EMAIL_ENABLED", "false").lower() == "true",
-        "recipient": os.getenv("EMAIL_RECIPIENT"),
-        "sender": os.getenv("EMAIL_SENDER"),
-        "smtp_host": os.getenv("SMTP_HOST"),
-        "smtp_port": int(os.getenv("SMTP_PORT", "587")),
-        "smtp_user": os.getenv("SMTP_USER"),
-        "smtp_password": os.getenv("SMTP_PASSWORD"),
-        "use_tls": os.getenv("SMTP_USE_TLS", "true").lower() == "true",
-        "dashboard_url": os.getenv("EMAIL_DASHBOARD_URL", "http://localhost:8000"),
+        "enabled": settings.EMAIL_ENABLED,
+        "recipient": settings.EMAIL_RECIPIENT,
+        "sender": settings.EMAIL_SENDER,
+        "smtp_host": settings.SMTP_HOST,
+        "smtp_port": settings.SMTP_PORT,
+        "smtp_user": settings.SMTP_USER,
+        "smtp_password": settings.SMTP_PASSWORD,
+        "use_tls": settings.SMTP_USE_TLS,
+        "dashboard_url": settings.EMAIL_DASHBOARD_URL,
     }
 
 
