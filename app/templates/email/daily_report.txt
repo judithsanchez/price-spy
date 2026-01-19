@@ -1,0 +1,42 @@
+PRICE SPY DAILY REPORT
+{{ report.date }}
+
+{% if report.deals %}
+🎉 DEALS FOUND
+----------------------------------------
+{% for deal in report.deals %}
+* {{ deal.product_name }} - {{ deal.store_name }} - {{ deal.currency }} {{ "%.2f"|format(deal.price) }} (target: {{ deal.currency }} {{ "%.2f"|format(deal.target_price) }})
+{% endfor %}
+{% endif %}
+
+ALL ITEMS CHECKED
+----------------------------------------
+{% for item in report.items %}
+{% if item.is_deal %}
+{% set status = "DEAL" %}
+{% elif item.target_price %}
+{% set status = "Above target" %}
+{% else %}
+{% set status = "No target" %}
+{% endif %}
+✓ {{ item.product_name }} ({{ item.store_name }}): {{ item.currency }} {{ "%.2f"|format(item.price) }} - {{ status }}
+{% endfor %}
+
+{% for err in report.errors %}
+✗ {{ err.product_name }} ({{ err.store_name }}): Error - {{ err.error }}
+{% endfor %}
+
+{% if report.errors %}
+ERRORS
+----------------------------------------
+{% for err in report.errors %}
+* {{ err.product_name }}: {{ err.error }}
+{% endfor %}
+{% endif %}
+
+SUMMARY
+----------------------------------------
+Items checked: {{ report.total }} | Successful: {{ report.success_count }} | Errors: {{ report.error_count }} | Deals: {{ report.deals_count }}
+Next check: {{ report.next_run }}
+
+Open dashboard: {{ dashboard_url }}

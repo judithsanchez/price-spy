@@ -170,200 +170,25 @@ def build_subject(report_data: Dict[str, Any]) -> str:
     return " ".join(parts)
 
 
+from jinja2 import Environment, FileSystemLoader
+
+# Initialize Jinja2 environment for email templates
+template_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "templates", "email")
+env = Environment(loader=FileSystemLoader(template_dir))
+
+
 def render_html_email(report_data: Dict[str, Any], config: Dict[str, Any]) -> str:
     """Render HTML email template."""
     dashboard_url = config.get("dashboard_url", "http://localhost:8000")
-
-    # Build deals section
-    deals_html = ""
-    if report_data["deals"]:
-        deals_items = ""
-        for deal in report_data["deals"]:
-            deals_items += f"""
-            <div style="background: #dcfce7; border-radius: 8px; padding: 12px; margin-bottom: 8px;">
-                <div style="font-weight: bold; color: #166534;">{deal['product_name']}</div>
-                <div style="color: #15803d; font-size: 14px;">
-                    {deal['store_name']} &bull; {deal['currency']} {deal['price']:.2f}
-                    <span style="color: #166534;">(target: {deal['currency']} {deal['target_price']:.2f})</span>
-                </div>
-                {f'<a href="{deal["url"]}" style="color: #16a34a; font-size: 12px;">View Product</a>' if deal.get('url') else ''}
-            </div>
-            """
-        deals_html = f"""
-        <div style="margin-bottom: 24px;">
-            <h2 style="color: #166534; font-size: 18px; margin-bottom: 12px;">🎉 DEALS FOUND</h2>
-            {deals_items}
-        </div>
-        """
-
-    # Build items table
-    items_rows = ""
-    for item in report_data["items"]:
-        status_badge = ""
-        if item["is_deal"]:
-            status_badge = '<span style="background: #16a34a; color: white; padding: 2px 8px; border-radius: 4px; font-size: 12px;">DEAL</span>'
-        elif item["target_price"]:
-            status_badge = '<span style="color: #dc2626;">Above target</span>'
-        else:
-            status_badge = '<span style="color: #6b7280;">No target</span>'
-
-        items_rows += f"""
-        <tr>
-            <td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">{item['product_name']}</td>
-            <td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">{item['store_name']}</td>
-            <td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">{item['currency']} {item['price']:.2f}</td>
-            <td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">{status_badge}</td>
-        </tr>
-        """
-
-    # Build errors section
-    errors_html = ""
-    if report_data["errors"]:
-        error_items = ""
-        for err in report_data["errors"]:
-            error_items += f"""
-            <div style="background: #fef2f2; border-radius: 8px; padding: 12px; margin-bottom: 8px;">
-                <div style="font-weight: bold; color: #991b1b;">{err['product_name']} ({err['store_name']})</div>
-                <div style="color: #dc2626; font-size: 14px;">Error: {err.get('error', 'Unknown error')}</div>
-            </div>
-            """
-        errors_html = f"""
-        <div style="margin-bottom: 24px;">
-            <h2 style="color: #991b1b; font-size: 18px; margin-bottom: 12px;">⚠️ ERRORS ({report_data['error_count']})</h2>
-            {error_items}
-        </div>
-        """
-
-    html = f"""
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-</head>
-<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f3f4f6; padding: 20px; margin: 0;">
-    <div style="max-width: 600px; margin: 0 auto; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
-        <!-- Header -->
-        <div style="background: #2563eb; color: white; padding: 24px; text-align: center;">
-            <h1 style="margin: 0; font-size: 24px;">Price Spy Daily Report</h1>
-            <div style="opacity: 0.9; margin-top: 4px;">{report_data['date']}</div>
-        </div>
-
-        <!-- Content -->
-        <div style="padding: 24px;">
-            {deals_html}
-
-            <!-- All Items -->
-            <div style="margin-bottom: 24px;">
-                <h2 style="color: #374151; font-size: 18px; margin-bottom: 12px;">📊 ALL ITEMS CHECKED</h2>
-                <table style="width: 100%; border-collapse: collapse;">
-                    <thead>
-                        <tr style="background: #f9fafb;">
-                            <th style="padding: 8px; text-align: left; font-size: 12px; color: #6b7280;">Product</th>
-                            <th style="padding: 8px; text-align: left; font-size: 12px; color: #6b7280;">Store</th>
-                            <th style="padding: 8px; text-align: left; font-size: 12px; color: #6b7280;">Price</th>
-                            <th style="padding: 8px; text-align: left; font-size: 12px; color: #6b7280;">Status</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {items_rows}
-                    </tbody>
-                </table>
-            </div>
-
-            {errors_html}
-
-            <!-- Summary -->
-            <div style="background: #f9fafb; border-radius: 8px; padding: 16px; margin-bottom: 24px;">
-                <h2 style="color: #374151; font-size: 18px; margin-bottom: 12px;">📈 SUMMARY</h2>
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 14px;">
-                    <div>Items checked: <strong>{report_data['total']}</strong></div>
-                    <div>Successful: <strong style="color: #16a34a;">{report_data['success_count']}</strong></div>
-                    <div>Errors: <strong style="color: #dc2626;">{report_data['error_count']}</strong></div>
-                    <div>Deals found: <strong style="color: #2563eb;">{report_data['deals_count']}</strong></div>
-                </div>
-                <div style="margin-top: 12px; font-size: 14px; color: #6b7280;">
-                    Next check: {report_data['next_run']}
-                </div>
-            </div>
-
-            <!-- CTA -->
-            <div style="text-align: center;">
-                <a href="{dashboard_url}" style="display: inline-block; background: #2563eb; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: bold;">
-                    Open Dashboard
-                </a>
-            </div>
-        </div>
-
-        <!-- Footer -->
-        <div style="background: #f9fafb; padding: 16px; text-align: center; font-size: 12px; color: #6b7280;">
-            Price Spy - Your Personal Price Tracker
-        </div>
-    </div>
-</body>
-</html>
-"""
-    return html
+    template = env.get_template("daily_report.html")
+    return template.render(report=report_data, dashboard_url=dashboard_url)
 
 
 def render_text_email(report_data: Dict[str, Any], config: Dict[str, Any]) -> str:
     """Render plain text email template."""
     dashboard_url = config.get("dashboard_url", "http://localhost:8000")
-
-    lines = [
-        "PRICE SPY DAILY REPORT",
-        report_data['date'],
-        "",
-    ]
-
-    # Deals section
-    if report_data["deals"]:
-        lines.append("🎉 DEALS FOUND")
-        lines.append("-" * 40)
-        for deal in report_data["deals"]:
-            lines.append(
-                f"* {deal['product_name']} - {deal['store_name']} - "
-                f"{deal['currency']} {deal['price']:.2f} (target: {deal['currency']} {deal['target_price']:.2f})"
-            )
-        lines.append("")
-
-    # All items section
-    lines.append("ALL ITEMS CHECKED")
-    lines.append("-" * 40)
-    for item in report_data["items"]:
-        status = "DEAL" if item["is_deal"] else ("Above target" if item["target_price"] else "No target")
-        lines.append(
-            f"✓ {item['product_name']} ({item['store_name']}): "
-            f"{item['currency']} {item['price']:.2f} - {status}"
-        )
-    for err in report_data["errors"]:
-        lines.append(
-            f"✗ {err['product_name']} ({err['store_name']}): Error - {err.get('error', 'Unknown')}"
-        )
-    lines.append("")
-
-    # Errors section
-    if report_data["errors"]:
-        lines.append("ERRORS")
-        lines.append("-" * 40)
-        for err in report_data["errors"]:
-            lines.append(f"* {err['product_name']}: {err.get('error', 'Unknown error')}")
-        lines.append("")
-
-    # Summary
-    lines.append("SUMMARY")
-    lines.append("-" * 40)
-    lines.append(
-        f"Items checked: {report_data['total']} | "
-        f"Successful: {report_data['success_count']} | "
-        f"Errors: {report_data['error_count']} | "
-        f"Deals: {report_data['deals_count']}"
-    )
-    lines.append(f"Next check: {report_data['next_run']}")
-    lines.append("")
-    lines.append(f"Open dashboard: {dashboard_url}")
-
-    return "\n".join(lines)
+    template = env.get_template("daily_report.txt")
+    return template.render(report=report_data, dashboard_url=dashboard_url)
 
 
 def send_email(
