@@ -139,9 +139,19 @@ class Database:
         return self._conn
 
     def initialize(self) -> None:
-        """Initialize database schema."""
+        """Initialize database schema and perform migrations."""
         conn = self._connect()
         conn.executescript(SCHEMA)
+        
+        # Schema evolution: add columns that might be missing from older versions
+        cursor = conn.cursor()
+        
+        # Check tracked_items for preferred_model
+        cursor.execute("PRAGMA table_info(tracked_items)")
+        columns = [row["name"] for row in cursor.fetchall()]
+        if "preferred_model" not in columns:
+            cursor.execute("ALTER TABLE tracked_items ADD COLUMN preferred_model TEXT")
+            
         conn.commit()
 
     def execute(self, query: str, params: tuple = ()) -> sqlite3.Cursor:

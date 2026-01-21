@@ -2,6 +2,7 @@ FROM python:3.11-slim-bookworm
 
 # Install system dependencies for Playwright/Chromium
 RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
     libnss3 \
     libnspr4 \
     libatk1.0-0 \
