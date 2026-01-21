@@ -1,17 +1,25 @@
 PRICE SPY DAILY REPORT
 {{ report.date }}
 
-{% if report.deals %}
-🎉 DEALS FOUND
+{% if report.price_drops %}
+📉 PRICE DROPS
 ----------------------------------------
-{% for deal in report.deals %}
-* {{ deal.product_name }} - {{ deal.store_name }} - {{ deal.currency }} {{ "%.2f"|format(deal.price) }} (target: {{ deal.currency }} {{ "%.2f"|format(deal.target_price) }})
+{% for item in report.price_drops %}
+* {{ item.product_name }}: {{ item.currency }} {{ "%.2f"|format(item.price) }} ({{ "%.1f"|format(item.price_change_pct) }}%)
 {% endfor %}
 {% endif %}
 
-ALL ITEMS CHECKED
+{% if report.price_increases %}
+📈 PRICE INCREASES
 ----------------------------------------
-{% for item in report.items %}
+{% for item in report.price_increases %}
+* {{ item.product_name }}: {{ item.currency }} {{ "%.2f"|format(item.price) }} (+{{ "%.1f"|format(item.price_change_pct) }}%)
+{% endfor %}
+{% endif %}
+
+📋 ALL ITEMS
+----------------------------------------
+{% for item in report.all_items %}
 {% if item.is_deal %}
 {% set status = "DEAL" %}
 {% elif item.target_price %}
@@ -19,7 +27,7 @@ ALL ITEMS CHECKED
 {% else %}
 {% set status = "No target" %}
 {% endif %}
-✓ {{ item.product_name }} ({{ item.store_name }}): {{ item.currency }} {{ "%.2f"|format(item.price) }} - {{ status }}
+✓ {{ item.product_name }} ({{ item.store_name }}): {{ item.currency }} {{ "%.2f"|format(item.price) }} [{{ "%.1f"|format(item.price_change_pct) }}%] - {{ status }}
 {% endfor %}
 
 {% for err in report.errors %}

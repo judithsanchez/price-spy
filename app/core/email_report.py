@@ -67,6 +67,8 @@ def generate_report_data(
     db: Database
 ) -> Dict[str, Any]:
     """Generate report data from extraction results."""
+    from app.storage.repositories import PriceHistoryRepository
+
     if not results:
         return {
             "date": datetime.now().strftime("%B %d, %Y"),
@@ -75,13 +77,18 @@ def generate_report_data(
             "error_count": 0,
             "deals_count": 0,
             "deals": [],
+            "price_drops": [],
+            "price_increases": [],
             "items": [],
             "errors": [],
-            "next_run": "Tomorrow 08:00",
+            "next_run": "Tomorrow 23:00",
         }
 
+    price_repo = PriceHistoryRepository(db)
     items = []
     deals = []
+    price_drops = []
+    price_increases = []
     errors = []
 
     for result in results:
@@ -105,6 +112,22 @@ def generate_report_data(
             target_price = None
             url = None
 
+        # Calculate price change
+        price_change = 0
+        price_change_pct = 0
+        prev_price = None
+
+        if status == "success" and url:
+            # Get previous price
+            history = price_repo.get_by_url(url)
+            if len(history) > 1:
+                # history[0] is the current one just saved
+                prev_record = history[1]
+                prev_price = prev_record.price
+                price_change = price - prev_price
+                if prev_price > 0:
+                    price_change_pct = (price_change / prev_price) * 100
+
         # Check if it's a deal
         is_deal = (
             status == "success"
@@ -118,6 +141,9 @@ def generate_report_data(
             "product_name": product_name,
             "store_name": store_name,
             "price": price,
+            "prev_price": prev_price,
+            "price_change": price_change,
+            "price_change_pct": price_change_pct,
             "currency": currency,
             "target_price": target_price,
             "url": url,
@@ -130,8 +156,17 @@ def generate_report_data(
             items.append(item_data)
             if is_deal:
                 deals.append(item_data)
+            
+            # Categorize changes
+            if price_change < -0.01:
+                price_drops.append(item_data)
+            elif price_change > 0.01:
+                price_increases.append(item_data)
         else:
             errors.append(item_data)
+
+    # Sort price drops by most significant drop
+    price_drops.sort(key=lambda x: x["price_change_pct"])
 
     success_count = len([r for r in results if r.get("status") == "success"])
     error_count = len([r for r in results if r.get("status") == "error"])
@@ -143,9 +178,11 @@ def generate_report_data(
         "error_count": error_count,
         "deals_count": len(deals),
         "deals": deals,
-        "items": items,
+        "price_drops": price_drops,
+        "price_increases": price_increases,
+        "all_items": items,
         "errors": errors,
-        "next_run": "Tomorrow 08:00",
+        "next_run": "Tomorrow 23:00",
     }
 
 
