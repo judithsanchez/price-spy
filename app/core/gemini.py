@@ -112,7 +112,30 @@ class GeminiModels:
     API_BASE = "https://generativelanguage.googleapis.com/v1beta/models"
 
     # Vision-capable models in priority order (for fallback)
-    VISION_MODELS = [VISION_EXTRACTION, VISION_FALLBACK]
+    # Default is now Lite model as requested
+    VISION_MODELS = [VISION_FALLBACK, VISION_EXTRACTION]
+
+    @classmethod
+    def get_config_by_model(cls, model_name: str) -> Optional[ModelConfig]:
+        """Get ModelConfig by model name string (e.g., 'gemini-2.5-flash')."""
+        try:
+            model = GeminiModel(model_name)
+            # Check existing predefined configs
+            configs = [cls.VISION_EXTRACTION, cls.VISION_FALLBACK, cls.TEXT_ONLY, cls.API_TEST]
+            for config in configs:
+                if config.model == model:
+                    return config
+            
+            # Generic config for valid model
+            if model in RATE_LIMITS:
+                return ModelConfig(
+                    model=model,
+                    description=f"Generic config for {model_name}",
+                    rate_limits=RATE_LIMITS[model]
+                )
+        except ValueError:
+            pass
+        return None
 
     @classmethod
     def get_api_url(cls, config: ModelConfig, api_key: str) -> str:

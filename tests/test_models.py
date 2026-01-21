@@ -282,6 +282,18 @@ class TestTrackedItem:
                 items_per_lot=0
             )
 
+    def test_tracked_item_with_preferred_model(self):
+        """TrackedItem should support an optional preferred_model."""
+        item = TrackedItem(
+            product_id=1,
+            store_id=1,
+            url="https://example.com",
+            quantity_size=100,
+            quantity_unit="ml",
+            preferred_model="gemini-2.5-flash-lite"
+        )
+        assert item.preferred_model == "gemini-2.5-flash-lite"
+
     def test_tracked_item_requires_product_and_store(self):
         """Product ID and Store ID are required."""
         with pytest.raises(ValidationError):

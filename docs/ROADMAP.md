@@ -157,6 +157,27 @@
   - [x] Modal works on mobile and desktop
   - [x] 223 tests passing
 
+## Slice 11: Admin Dashboard & Hard Delete (Planned)
+* **Goal:** Powerful admin tools for data management.
+* **Scope:**
+    * "Hard delete" capability for all entities (cascading deletes)
+    * Bulk data cleanup tools
+    * Advanced system monitoring
+
+## Slice 12: Soft Delete & Archiving (Planned)
+* **Goal:** Allow users to hide items without deleting data.
+* **Scope:**
+    * Implement `is_archived` status for products and tracked items
+    * Filter archived items from the main dashboard
+    * Option to "unarchive" items
+    * Pause/Resume cron job spies directly from the dashboard
+
+## Slice 13: Bol.com Extraction Fix (Next Priority)
+* **Goal:** Resolve issues with Bol.com price extraction.
+* **Scope:**
+    * Investigate rendering or selector issues on Bol.com
+    * Update vision extraction or browser stealth settings if needed
+
 ---
 
 ## Future Enhancements (Planned)

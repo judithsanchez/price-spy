@@ -56,6 +56,10 @@ async def extract_single_item(
     model_used = None
 
     try:
+        # Fetch item to get model preference
+        item = tracked_repo.get_by_id(item_id)
+        preferred_model = item.preferred_model if item else None
+
         # Capture screenshot
         screenshot_bytes = await capture_screenshot(url)
 
@@ -66,7 +70,7 @@ async def extract_single_item(
 
         # Extract price with rate limiting
         result, model_used = await extract_with_structured_output(
-            screenshot_bytes, api_key, tracker
+            screenshot_bytes, api_key, tracker, preferred_model=preferred_model
         )
 
         duration_ms = int((time.time() - start_time) * 1000)
