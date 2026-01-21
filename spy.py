@@ -45,7 +45,8 @@ async def cmd_extract(args) -> int:
         screenshot = await capture_screenshot(args.url)
 
         print("Extracting product info with Gemini...", file=sys.stderr)
-        result, model_used = await extract_with_structured_output(screenshot, api_key)
+        preferred_model = getattr(args, "model", None)
+        result, model_used = await extract_with_structured_output(screenshot, api_key, preferred_model=preferred_model)
         
         # Check for tracked item to get volume info
         tracked = tracked_repo.get_by_url(args.url)
@@ -99,8 +100,6 @@ async def cmd_extract(args) -> int:
                 print("Price unchanged")
 
         return 0
-
-    except Exception as e:
 
     except Exception as e:
         error_msg = str(e)
@@ -211,6 +210,7 @@ def cmd_track(args) -> int:
             quantity_size=args.size,
             quantity_unit=args.unit,
             items_per_lot=args.lot or 1,
+            preferred_model=getattr(args, "model", None)
         )
         item_id = tracked_repo.insert(item)
 
@@ -294,6 +294,7 @@ def main():
     # Extract command (also default if URL given directly)
     extract_parser = subparsers.add_parser("extract", help="Extract price from URL")
     extract_parser.add_argument("url", help="Product page URL to analyze")
+    extract_parser.add_argument("--model", "-m", help="Gemini model to use (e.g., 'gemini-2.5-flash-lite')")
 
     # Add product command
     product_parser = subparsers.add_parser("add-product", help="Add a new product")
@@ -316,6 +317,7 @@ def main():
     track_parser.add_argument("--size", type=float, required=True, help="Quantity size (e.g., 250)")
     track_parser.add_argument("--unit", "-u", required=True, help="Unit (e.g., 'ml', 'g', 'L')")
     track_parser.add_argument("--lot", "-l", type=int, help="Items per lot (default: 1)")
+    track_parser.add_argument("--model", "-m", help="Preferred Gemini model for this item")
 
     # List command
     list_parser = subparsers.add_parser("list", help="List items")

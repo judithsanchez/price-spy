@@ -36,6 +36,7 @@ CREATE TABLE IF NOT EXISTS tracked_items (
     quantity_size REAL NOT NULL,
     quantity_unit TEXT NOT NULL,
     items_per_lot INTEGER DEFAULT 1,
+    preferred_model TEXT,
     last_checked_at TEXT,
     is_active INTEGER DEFAULT 1,
     alerts_enabled INTEGER DEFAULT 1,

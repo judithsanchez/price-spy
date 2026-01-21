@@ -105,7 +105,7 @@ class TestStructuredVisionAPI:
             assert result.price == 13.44
             assert result.is_available is True
             assert result.product_name == "INSTITUTO ESPAÑOL Urea lotion 950ml"
-            assert model_used == "gemini-2.5-flash"
+            assert model_used == "gemini-2.5-flash-lite"
 
     @pytest.mark.asyncio
     async def test_extract_with_structured_output_invalid_json(self):
@@ -166,3 +166,45 @@ class TestStructuredVisionAPI:
                 await extract_with_structured_output(b"fake_image_bytes", "fake_api_key")
 
             assert "500" in str(exc_info.value)
+
+    @pytest.mark.asyncio
+    async def test_extract_with_preferred_model(self):
+        """Should use the preferred model if provided."""
+        from app.core.vision import extract_with_structured_output
+        from app.core.gemini import GeminiModels, ModelConfig, GeminiModel
+
+        mock_response = {
+            "candidates": [{
+                "content": {
+                    "parts": [{
+                        "text": '{"price": 10.0, "currency": "EUR", "is_available": true, "product_name": "Test"}'
+                    }]
+                }
+            }]
+        }
+
+        with patch('app.core.vision.aiohttp.ClientSession') as mock_session_class:
+            mock_response_obj = AsyncMock()
+            mock_response_obj.status = 200
+            mock_response_obj.json = AsyncMock(return_value=mock_response)
+            
+            mock_session = MagicMock()
+            mock_session.__aenter__ = AsyncMock(return_value=mock_session)
+            mock_session.__aexit__ = AsyncMock(return_value=None)
+            
+            mock_post_cm = MagicMock()
+            mock_post_cm.__aenter__ = AsyncMock(return_value=mock_response_obj)
+            mock_post_cm.__aexit__ = AsyncMock(return_value=None)
+            mock_session.post = MagicMock(return_value=mock_post_cm)
+            
+            mock_session_class.return_value = mock_session
+
+            # Call with preferred model
+            preferred = "gemini-2.5-pro"
+            result, model_used = await extract_with_structured_output(
+                b"fake_image_bytes", 
+                "fake_api_key",
+                preferred_model=preferred
+            )
+
+            assert model_used == preferred

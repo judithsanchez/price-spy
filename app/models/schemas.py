@@ -95,6 +95,7 @@ class TrackedItem(BaseModel):
     quantity_size: float = Field(..., gt=0)
     quantity_unit: str = Field(..., min_length=1, max_length=20)
     items_per_lot: int = Field(default=1, ge=1)
+    preferred_model: Optional[str] = Field(default=None, max_length=50)
     last_checked_at: Optional[datetime] = None
     is_active: bool = True
     alerts_enabled: bool = True

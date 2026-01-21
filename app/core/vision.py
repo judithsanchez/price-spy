@@ -3,7 +3,7 @@
 import base64
 import json
 import aiohttp
-from typing import Union
+from typing import Union, Optional, Tuple
 
 from app.models.schemas import ProductInfo, ExtractionResult
 from app.utils.logging import get_logger
@@ -205,18 +205,21 @@ from typing import Tuple
 async def extract_with_structured_output(
     image_bytes: bytes,
     api_key: str,
-    tracker=None
+    tracker=None,
+    preferred_model: Optional[str] = None
 ) -> Tuple[ExtractionResult, str]:
     """
     Extract price using Gemini's structured output mode with automatic fallback.
 
     Tries models in priority order, falling back on rate limit errors.
     If a tracker is provided, records usage and marks exhausted models.
+    If preferred_model is provided, it is tried first.
 
     Args:
         image_bytes: Screenshot image data
         api_key: Gemini API key
         tracker: Optional RateLimitTracker for usage tracking
+        preferred_model: Optional model name to try first
 
     Returns:
         Tuple of (ExtractionResult, model_name) with price info and model used
@@ -224,12 +227,22 @@ async def extract_with_structured_output(
     Raises:
         Exception: If all models fail or are exhausted
     """
-    models_to_try = GeminiModels.VISION_MODELS
+    models_to_try = list(GeminiModels.VISION_MODELS)
+
+    # If preferred_model provided, move it to the front
+    if preferred_model:
+        config = GeminiModels.get_config_by_model(preferred_model)
+        if config:
+            # Remove if already in list to avoid duplicates
+            models_to_try = [config] + [m for m in models_to_try if m.model.value != preferred_model]
+        else:
+            logger.warning(f"Preferred model '{preferred_model}' not found, using defaults")
 
     # If tracker provided, filter to available models
     if tracker:
         available = tracker.get_available_model(models_to_try)
         if available:
+            # Reorder to put available first, but maintain priority
             models_to_try = [available] + [m for m in models_to_try if m != available]
         else:
             raise Exception("All Gemini models exhausted for today. Try again tomorrow.")

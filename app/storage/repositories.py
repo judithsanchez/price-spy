@@ -358,8 +358,8 @@ class TrackedItemRepository:
             """
             INSERT INTO tracked_items
             (product_id, store_id, url, item_name_on_site, quantity_size,
-             quantity_unit, items_per_lot, is_active, alerts_enabled)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+             quantity_unit, items_per_lot, preferred_model, is_active, alerts_enabled)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 item.product_id,
@@ -369,6 +369,7 @@ class TrackedItemRepository:
                 item.quantity_size,
                 item.quantity_unit,
                 item.items_per_lot,
+                item.preferred_model,
                 1 if item.is_active else 0,
                 1 if item.alerts_enabled else 0,
             )
@@ -436,6 +437,7 @@ class TrackedItemRepository:
                 quantity_size = ?,
                 quantity_unit = ?,
                 items_per_lot = ?,
+                preferred_model = ?,
                 is_active = ?,
                 alerts_enabled = ?
             WHERE id = ?
@@ -448,6 +450,7 @@ class TrackedItemRepository:
                 item.quantity_size,
                 item.quantity_unit,
                 item.items_per_lot,
+                item.preferred_model,
                 1 if item.is_active else 0,
                 1 if item.alerts_enabled else 0,
                 item_id,
@@ -483,6 +486,7 @@ class TrackedItemRepository:
             quantity_size=row["quantity_size"],
             quantity_unit=row["quantity_unit"],
             items_per_lot=row["items_per_lot"],
+            preferred_model=row["preferred_model"],
             last_checked_at=last_checked,
             is_active=bool(row["is_active"]),
             alerts_enabled=bool(row["alerts_enabled"]),
