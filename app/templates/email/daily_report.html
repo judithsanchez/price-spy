@@ -3,9 +3,35 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        @media only screen and (max-width: 600px) {
+            .container {
+                width: 100% !important;
+                border-radius: 0 !important;
+            }
+            .content {
+                padding: 16px !important;
+            }
+            .summary-item {
+                width: 100% !important;
+                margin-bottom: 8px !important;
+            }
+            .mobile-hide {
+                display: none !important;
+            }
+            .mobile-stack {
+                display: block !important;
+                width: 100% !important;
+            }
+            .price-change-pill {
+                display: inline-block !important;
+                margin-top: 4px !important;
+            }
+        }
+    </style>
 </head>
-<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f3f4f6; padding: 20px; margin: 0;">
-    <div style="max-width: 600px; margin: 0 auto; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f3f4f6; padding: 0; margin: 0;">
+    <div class="container" style="max-width: 600px; margin: 0 auto; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
         <!-- Header -->
         <div style="background: #2563eb; color: white; padding: 24px; text-align: center;">
             <h1 style="margin: 0; font-size: 24px;">Price Spy Daily Report</h1>
@@ -13,7 +39,7 @@
         </div>
 
         <!-- Content -->
-        <div style="padding: 24px;">
+        <div class="content" style="padding: 24px;">
             <!-- Price Drops Section -->
             {% if report.price_drops %}
             <div style="margin-bottom: 24px;">
@@ -21,11 +47,11 @@
                 {% for item in report.price_drops %}
                 <div style="background: #dcfce7; border-radius: 8px; padding: 12px; margin-bottom: 8px;">
                     <div style="font-weight: bold; color: #166534;">{{ item.product_name }}</div>
-                    <div style="color: #15803d; font-size: 14px;">
+                    <div style="color: #15803d; font-size: 14px; margin-top: 4px;">
                         {{ item.store_name }} &bull; 
                         <span style="text-decoration: line-through; opacity: 0.6;">{{ item.currency }} {{ "%.2f"|format(item.prev_price) }}</span>
                         <strong>{{ item.currency }} {{ "%.2f"|format(item.price) }}</strong>
-                        <span style="background: #16a34a; color: white; padding: 1px 6px; border-radius: 4px; font-size: 11px; margin-left: 4px;">
+                        <span class="price-change-pill" style="background: #16a34a; color: white; padding: 1px 6px; border-radius: 4px; font-size: 11px; margin-left: 4px;">
                             {{ "%.1f"|format(item.price_change_pct) }}%
                         </span>
                     </div>
@@ -41,11 +67,11 @@
                 {% for item in report.price_increases %}
                 <div style="background: #fef2f2; border-radius: 8px; padding: 12px; margin-bottom: 8px;">
                     <div style="font-weight: bold; color: #991b1b;">{{ item.product_name }}</div>
-                    <div style="color: #dc2626; font-size: 14px;">
+                    <div style="color: #dc2626; font-size: 14px; margin-top: 4px;">
                         {{ item.store_name }} &bull; 
                         <span style="opacity: 0.6;">{{ item.currency }} {{ "%.2f"|format(item.prev_price) }}</span> →
                         <strong>{{ item.currency }} {{ "%.2f"|format(item.price) }}</strong>
-                        <span style="background: #dc2626; color: white; padding: 1px 6px; border-radius: 4px; font-size: 11px; margin-left: 4px;">
+                        <span class="price-change-pill" style="background: #dc2626; color: white; padding: 1px 6px; border-radius: 4px; font-size: 11px; margin-left: 4px;">
                             +{{ "%.1f"|format(item.price_change_pct) }}%
                         </span>
                     </div>
@@ -62,8 +88,8 @@
                         <tr style="background: #f9fafb;">
                             <th style="padding: 8px; text-align: left; font-size: 12px; color: #6b7280;">Product</th>
                             <th style="padding: 8px; text-align: left; font-size: 12px; color: #6b7280;">Price</th>
-                            <th style="padding: 8px; text-align: left; font-size: 12px; color: #6b7280;">Change</th>
-                            <th style="padding: 8px; text-align: left; font-size: 12px; color: #6b7280;">Status</th>
+                            <th class="mobile-hide" style="padding: 8px; text-align: left; font-size: 12px; color: #6b7280;">Change</th>
+                            <th class="mobile-hide" style="padding: 8px; text-align: left; font-size: 12px; color: #6b7280;">Status</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -76,7 +102,7 @@
                             <td style="padding: 8px; border-bottom: 1px solid #e5e7eb; font-size: 13px;">
                                 {{ item.currency }} {{ "%.2f"|format(item.price) }}
                             </td>
-                            <td style="padding: 8px; border-bottom: 1px solid #e5e7eb; font-size: 12px;">
+                            <td class="mobile-hide" style="padding: 8px; border-bottom: 1px solid #e5e7eb; font-size: 12px;">
                                 {% if item.price_change_pct < -0.01 %}
                                 <span style="color: #16a34a;">{{ "%.1f"|format(item.price_change_pct) }}%</span>
                                 {% elif item.price_change_pct > 0.01 %}
@@ -85,7 +111,7 @@
                                 <span style="color: #9ca3af;">-</span>
                                 {% endif %}
                             </td>
-                            <td style="padding: 8px; border-bottom: 1px solid #e5e7eb; font-size: 12px;">
+                            <td class="mobile-hide" style="padding: 8px; border-bottom: 1px solid #e5e7eb; font-size: 12px;">
                                 {% if item.is_deal %}
                                 <span style="background: #16a34a; color: white; padding: 2px 6px; border-radius: 4px;">DEAL</span>
                                 {% elif item.target_price %}
@@ -116,11 +142,19 @@
             <!-- Summary -->
             <div style="background: #f9fafb; border-radius: 8px; padding: 16px; margin-bottom: 24px;">
                 <h2 style="color: #374151; font-size: 18px; margin-bottom: 12px;">📈 SUMMARY</h2>
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 14px;">
-                    <div>Items checked: <strong>{{ report.total }}</strong></div>
-                    <div>Successful: <strong style="color: #16a34a;">{{ report.success_count }}</strong></div>
-                    <div>Errors: <strong style="color: #dc2626;">{{ report.error_count }}</strong></div>
-                    <div>Deals found: <strong style="color: #2563eb;">{{ report.deals_count }}</strong></div>
+                <div style="font-size: 0;">
+                    <div class="summary-item" style="display: inline-block; width: 50%; font-size: 14px; margin-bottom: 8px; vertical-align: top;">
+                        Items checked: <strong>{{ report.total }}</strong>
+                    </div>
+                    <div class="summary-item" style="display: inline-block; width: 50%; font-size: 14px; margin-bottom: 8px; vertical-align: top;">
+                        Successful: <strong style="color: #16a34a;">{{ report.success_count }}</strong>
+                    </div>
+                    <div class="summary-item" style="display: inline-block; width: 50%; font-size: 14px; margin-bottom: 8px; vertical-align: top;">
+                        Errors: <strong style="color: #dc2626;">{{ report.error_count }}</strong>
+                    </div>
+                    <div class="summary-item" style="display: inline-block; width: 50%; font-size: 14px; margin-bottom: 8px; vertical-align: top;">
+                        Deals found: <strong style="color: #2563eb;">{{ report.deals_count }}</strong>
+                    </div>
                 </div>
                 <div style="margin-top: 12px; font-size: 14px; color: #6b7280;">
                     Next check: {{ report.next_run }}

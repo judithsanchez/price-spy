@@ -72,7 +72,7 @@ def send_mock_email():
                 "currency": "EUR",
             }
         ],
-        "items": [
+        "all_items": [
             {
                 "product_name": "Premium Coffee Beans 1kg",
                 "store_name": "Amazon",
