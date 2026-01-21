@@ -334,6 +334,85 @@ async def get_price_history(item_id: int, days: int = 30):
         db.close()
 
 
+@app.get("/api/price-history/all")
+async def get_all_price_history(days: int = 30):
+    """Get price history for all tracked items."""
+    from datetime import datetime, timedelta
+
+    db = get_db()
+    try:
+        product_repo = ProductRepository(db)
+        store_repo = StoreRepository(db)
+        tracked_repo = TrackedItemRepository(db)
+        price_repo = PriceHistoryRepository(db)
+
+        # Get all active tracked items
+        cursor = db.execute(
+            "SELECT * FROM tracked_items WHERE is_active = 1"
+        )
+        items = cursor.fetchall()
+
+        cutoff = datetime.now() - timedelta(days=days)
+        products_data = []
+
+        for item_row in items:
+            item_id = item_row["id"]
+            product = product_repo.get_by_id(item_row["product_id"])
+            store = store_repo.get_by_id(item_row["store_id"])
+
+            # Get prices for this item
+            all_prices = price_repo.get_by_url(item_row["url"])
+            prices = [p for p in all_prices if p.created_at >= cutoff]
+            prices.sort(key=lambda p: p.created_at)
+
+            if not prices:
+                continue
+
+            price_values = [p.price for p in prices]
+            currency = prices[0].currency
+
+            products_data.append({
+                "item_id": item_id,
+                "product_name": product.name if product else "Unknown",
+                "store_name": store.name if store else "Unknown",
+                "currency": currency,
+                "target_price": product.target_price if product else None,
+                "color": _get_chart_color(len(products_data)),
+                "prices": [
+                    {"date": p.created_at.strftime("%Y-%m-%d"), "price": p.price}
+                    for p in prices
+                ],
+                "stats": {
+                    "min": min(price_values),
+                    "max": max(price_values),
+                    "current": prices[-1].price,
+                    "change_pct": round(((prices[-1].price - prices[0].price) / prices[0].price) * 100, 1) if len(prices) > 1 else 0
+                }
+            })
+
+        return {
+            "days": days,
+            "products": products_data
+        }
+    finally:
+        db.close()
+
+
+def _get_chart_color(index: int) -> str:
+    """Get a color for chart lines based on index."""
+    colors = [
+        "#3B82F6",  # Blue
+        "#10B981",  # Green
+        "#F59E0B",  # Amber
+        "#EF4444",  # Red
+        "#8B5CF6",  # Purple
+        "#EC4899",  # Pink
+        "#06B6D4",  # Cyan
+        "#84CC16",  # Lime
+    ]
+    return colors[index % len(colors)]
+
+
 async def run_extraction(item_id: int, db_path: str):
     """Background task to run price extraction."""
     from app.core.browser import capture_screenshot

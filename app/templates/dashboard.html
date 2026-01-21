@@ -3,13 +3,102 @@
 {% block title %}Dashboard - Price Spy{% endblock %}
 
 {% block content %}
-<div x-data="{ ...priceHistoryMixin() }">
+<div x-data="{ ...priceHistoryMixin(), ...priceOverviewChart() }">
 <div class="mb-6">
     <h2 class="text-2xl font-bold text-gray-800">Dashboard</h2>
     <p class="text-gray-600 text-sm sm:text-base">Track and monitor product prices</p>
 </div>
 
 {% if items %}
+<!-- Price History Overview Chart -->
+<div class="mb-6 bg-white rounded-lg shadow p-4 sm:p-6">
+    <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4">
+        <h3 class="text-lg font-semibold text-gray-800">Price History Overview</h3>
+        <!-- Time Range Selector -->
+        <div class="flex gap-1 bg-gray-100 rounded-lg p-1">
+            <button @click="setTimeRange(7)"
+                    :class="timeRange === 7 ? 'bg-white shadow text-blue-600' : 'text-gray-600 hover:text-gray-800'"
+                    class="px-3 py-1.5 text-sm font-medium rounded-md transition-all">
+                7D
+            </button>
+            <button @click="setTimeRange(30)"
+                    :class="timeRange === 30 ? 'bg-white shadow text-blue-600' : 'text-gray-600 hover:text-gray-800'"
+                    class="px-3 py-1.5 text-sm font-medium rounded-md transition-all">
+                30D
+            </button>
+            <button @click="setTimeRange(90)"
+                    :class="timeRange === 90 ? 'bg-white shadow text-blue-600' : 'text-gray-600 hover:text-gray-800'"
+                    class="px-3 py-1.5 text-sm font-medium rounded-md transition-all">
+                90D
+            </button>
+            <button @click="setTimeRange(365)"
+                    :class="timeRange === 365 ? 'bg-white shadow text-blue-600' : 'text-gray-600 hover:text-gray-800'"
+                    class="px-3 py-1.5 text-sm font-medium rounded-md transition-all">
+                1Y
+            </button>
+        </div>
+    </div>
+
+    <!-- Loading State -->
+    <div x-show="chartLoading" class="flex items-center justify-center h-64">
+        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+    </div>
+
+    <!-- No Data State -->
+    <div x-show="!chartLoading && chartData.products && chartData.products.length === 0"
+         class="flex flex-col items-center justify-center h-64 text-gray-500">
+        <svg class="w-12 h-12 mb-3 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+        </svg>
+        <p>No price history data yet</p>
+        <p class="text-sm">Run extractions to start tracking prices</p>
+    </div>
+
+    <!-- Chart Container -->
+    <div x-show="!chartLoading && chartData.products && chartData.products.length > 0">
+        <div class="h-64 sm:h-80">
+            <canvas id="priceOverviewChart"></canvas>
+        </div>
+
+        <!-- Product Toggles -->
+        <div class="mt-4 flex flex-wrap gap-2">
+            <template x-for="(product, index) in chartData.products" :key="product.item_id">
+                <button @click="toggleProduct(product.item_id)"
+                        class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium transition-all border"
+                        :class="productVisibility[product.item_id] !== false
+                            ? 'border-transparent text-white'
+                            : 'border-gray-300 bg-white text-gray-500'"
+                        :style="productVisibility[product.item_id] !== false ? 'background-color: ' + product.color : ''">
+                    <span class="w-3 h-3 rounded-full"
+                          :style="'background-color: ' + product.color"
+                          :class="productVisibility[product.item_id] === false ? 'opacity-40' : ''"></span>
+                    <span x-text="product.product_name" class="truncate max-w-[120px] sm:max-w-[180px]"></span>
+                    <span class="text-xs opacity-75" x-text="'€' + product.stats.current?.toFixed(2)"></span>
+                </button>
+            </template>
+        </div>
+
+        <!-- Stats Summary -->
+        <div class="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <template x-for="product in chartData.products" :key="product.item_id + '-stats'">
+                <div class="bg-gray-50 rounded-lg p-3">
+                    <div class="text-xs text-gray-500 truncate" x-text="product.product_name"></div>
+                    <div class="flex items-baseline gap-2 mt-1">
+                        <span class="text-lg font-bold" :style="'color: ' + product.color" x-text="'€' + product.stats.current?.toFixed(2)"></span>
+                        <span class="text-xs"
+                              :class="product.stats.change_pct < 0 ? 'text-green-600' : product.stats.change_pct > 0 ? 'text-red-600' : 'text-gray-500'"
+                              x-text="(product.stats.change_pct >= 0 ? '+' : '') + product.stats.change_pct + '%'"></span>
+                    </div>
+                    <div class="text-xs text-gray-400 mt-1">
+                        Min: €<span x-text="product.stats.min?.toFixed(2)"></span> ·
+                        Max: €<span x-text="product.stats.max?.toFixed(2)"></span>
+                    </div>
+                </div>
+            </template>
+        </div>
+    </div>
+</div>
+
 {% set deals = items | selectattr('price') | selectattr('target_price') | selectattr('is_deal') | list %}
 {% if deals %}
 <div class="mb-4 bg-green-100 border border-green-400 rounded-lg p-3 sm:p-4 deal-alert">
@@ -355,6 +444,233 @@
 </div>
 
 <script>
+function priceOverviewChart() {
+    let overviewChartInstance = null;
+    return {
+        chartLoading: true,
+        chartData: { products: [] },
+        timeRange: 30,
+        productVisibility: {},
+        abortController: null,
+
+        init() {
+            this.loadChartData();
+        },
+
+        async loadChartData() {
+            if (this.abortController) {
+                this.abortController.abort();
+            }
+            this.abortController = new AbortController();
+            const signal = this.abortController.signal;
+
+            this.chartLoading = true;
+            try {
+                const res = await fetch(`/api/price-history/all?days=${this.timeRange}`, { signal });
+                if (!res.ok) throw new Error('Failed to fetch data');
+                this.chartData = await res.json();
+                
+                // Initialize visibility for all products with better reactivity
+                const newVisibility = { ...this.productVisibility };
+                let updated = false;
+                this.chartData.products.forEach(p => {
+                    if (newVisibility[p.item_id] === undefined) {
+                        newVisibility[p.item_id] = true;
+                        updated = true;
+                    }
+                });
+                if (updated) {
+                    this.productVisibility = newVisibility;
+                }
+                
+                // Set loading to false BEFORE rendering so the canvas is visible
+                this.chartLoading = false;
+                
+                await this.$nextTick();
+                if (signal.aborted) return;
+
+                // Add a small extra delay to ensure Alpine has fully updated the DOM visibility
+                await new Promise(r => setTimeout(r, 50));
+                if (signal.aborted) return;
+
+                this.renderOverviewChart();
+            } catch (e) {
+                if (e.name === 'AbortError') return;
+                console.error('Failed to load chart data:', e);
+                if (!signal.aborted) {
+                    this.chartLoading = false;
+                }
+            } finally {
+                // Ensure loading is stopped even on error
+                if (this.abortController && signal === this.abortController.signal && !signal.aborted) {
+                    this.chartLoading = false;
+                }
+            }
+        },
+
+        setTimeRange(days) {
+            this.timeRange = days;
+            this.loadChartData();
+        },
+
+        toggleProduct(itemId) {
+            // Ensure reactivity by creating a new object
+            this.productVisibility = {
+                ...this.productVisibility,
+                [itemId]: !this.productVisibility[itemId]
+            };
+            this.updateChartVisibility();
+        },
+
+        updateChartVisibility() {
+            if (!overviewChartInstance) return;
+            overviewChartInstance.data.datasets.forEach(dataset => {
+                dataset.hidden = this.productVisibility[dataset.item_id] === false;
+            });
+            overviewChartInstance.update();
+        },
+
+        renderOverviewChart() {
+            // ALWAYS destroy old chart if it exists and nullify it
+            if (overviewChartInstance) {
+                try {
+                    overviewChartInstance.destroy();
+                } catch (e) {
+                    console.warn('Error destroying chart:', e);
+                }
+                overviewChartInstance = null;
+            }
+
+            const canvas = document.getElementById('priceOverviewChart');
+            if (!canvas) {
+                console.warn('Canvas element not found for overview chart');
+                return;
+            }
+            const ctx = canvas.getContext('2d');
+            
+            if (!this.chartData.products?.length) {
+                return;
+            }
+
+            // Collect all unique dates
+            const allDates = new Set();
+            this.chartData.products.forEach(p => {
+                p.prices.forEach(price => {
+                    if (price.date) allDates.add(price.date);
+                });
+            });
+            const sortedDates = Array.from(allDates).sort();
+            
+            if (sortedDates.length === 0) {
+                console.warn('No dates found for chart');
+                return;
+            }
+
+            // Create datasets
+            const datasets = this.chartData.products.map((product, i) => {
+                const priceMap = {};
+                product.prices.forEach(p => { priceMap[p.date] = p.price; });
+
+                return {
+                    label: product.product_name,
+                    data: sortedDates.map(date => ({
+                        x: date,
+                        y: priceMap[date] || null
+                    })),
+                    borderColor: product.color,
+                    backgroundColor: product.color + '20',
+                    fill: false,
+                    tension: 0.3,
+                    pointRadius: 3,
+                    pointHoverRadius: 6,
+                    item_id: product.item_id,
+                    hidden: this.productVisibility[product.item_id] === false,
+                    spanGaps: true
+                };
+            });
+
+            const config = {
+                type: 'line',
+                data: { datasets },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        intersect: false,
+                        mode: 'index',
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: (context) => {
+                                    if (context.parsed.y === null) return null;
+                                    return `${context.dataset.label}: €${context.parsed.y.toFixed(2)}`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            type: 'time',
+                            time: {
+                                unit: this.timeRange <= 7 ? 'day' : this.timeRange <= 30 ? 'day' : this.timeRange <= 180 ? 'week' : 'month',
+                                displayFormats: {
+                                    day: 'MMM d',
+                                    week: 'MMM d',
+                                    month: 'MMM yyyy'
+                                }
+                            },
+                            min: new Date(new Date() - this.timeRange * 24 * 60 * 60 * 1000).setHours(0,0,0,0),
+                            max: new Date().setHours(23,59,59,999),
+                            title: {
+                                display: false
+                            },
+                            grid: {
+                                display: false
+                            }
+                        },
+                        y: {
+                            beginAtZero: false,
+                            title: {
+                                display: true,
+                                text: 'EUR'
+                            },
+                            grid: {
+                                color: '#f3f4f6'
+                            }
+                        }
+                    }
+                }
+            };
+
+            // Use JSON.parse(JSON.stringify) to ensure no reactive proxies are passed to Chart.js
+            const cleanConfig = JSON.parse(JSON.stringify(config));
+            
+            // Re-add the tooltip callback which was lost during JSON cloning
+            cleanConfig.options.plugins.tooltip.callbacks = {
+                label: (context) => {
+                    if (context.parsed.y === null) return null;
+                    return `${context.dataset.label}: €${context.parsed.y.toFixed(2)}`;
+                }
+            };
+
+            overviewChartInstance = new Chart(ctx, cleanConfig);
+        },
+
+        async loadChartDataSafe() {
+            try {
+                await this.loadChartData();
+            } catch (e) {
+                console.error('Error in loadChartDataSafe:', e);
+                this.chartLoading = false;
+            }
+        }
+    };
+}
+
 function apiUsage() {
     return {
         usage: [],

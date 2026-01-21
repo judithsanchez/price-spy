@@ -9,6 +9,7 @@ services:
     ports:
       - "8000:8000"
     volumes:
+      - ../app:/app/app
       - ../tests/screenshots:/app/tests/screenshots
       - ../data:/app/data
       - ../screenshots:/app/screenshots
