@@ -169,3 +169,11 @@ class Database:
         if self._conn:
             self._conn.close()
             self._conn = None
+
+def get_database(db_path: Optional[str] = None) -> Database:
+    """Get a database instance."""
+    from app.core.config import settings
+    path = db_path or settings.DATABASE_PATH
+    db = Database(path)
+    db.initialize()
+    return db

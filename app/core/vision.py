@@ -20,7 +20,8 @@ EXTRACTION_SCHEMA = {
         "currency": {"type": "string", "description": "3-letter currency code (e.g., EUR, USD)"},
         "is_available": {"type": "boolean", "description": "Whether the product is in stock"},
         "product_name": {"type": "string", "description": "The name of the product"},
-        "store_name": {"type": "string", "description": "The name of the store/retailer"}
+        "store_name": {"type": "string", "description": "The name of the store/retailer"},
+        "is_blocked": {"type": "boolean", "description": "Whether the page is blocked by a cookie consent modal or login wall"}
     },
     "required": ["price", "currency", "is_available", "product_name"]
 }
@@ -39,8 +40,12 @@ Return ONLY a valid JSON object with these exact fields:
     "currency": "string (3-letter ISO code, e.g., EUR, USD)",
     "store_name": "string or null (the retailer name)",
     "page_type": "single_product" or "search_results",
-    "confidence_score": number (your confidence from 0.0 to 1.0)
+    "confidence_score": number (your confidence from 0.0 to 1.0),
+    "is_blocked": boolean (true if a modal/consent banner blocks major content)
 }
+
+Important:
+- If is_blocked is true, still try to extract what you can, but set is_blocked: true.
 
 Important:
 - Return ONLY the JSON, no markdown, no explanation
@@ -132,8 +137,10 @@ Analyze the image and extract:
 - Whether the product is in stock (available to buy)
 - The product name
 - The store/retailer name (if visible)
+- Whether the page is blocked by a cookie consent modal (is_blocked: boolean)
 
-Return the data as JSON."""
+Return the data as JSON. If is_blocked is true, provide the best guess for other fields.
+"""
 
 
 from app.core.gemini import ModelConfig, is_rate_limit_error

@@ -59,21 +59,52 @@ async def capture_screenshot(url: str) -> bytes:
 
         # Try to dismiss cookie consent popups
         try:
-            # Amazon cookie accept button
-            accept_btn = page.locator('[data-action="a]').first
-            if await accept_btn.is_visible(timeout=2000):
-                await accept_btn.click()
-        except:
-            pass
-
-        try:
-            # Generic "Accept" or "Akzeptieren" buttons
-            for selector in ['button:has-text("Accept")', 'button:has-text("Accepteren")', '#sp-cc-accept']:
-                btn = page.locator(selector).first
-                if await btn.is_visible(timeout=1000):
-                    await btn.click()
+            # Common selectors for Amazon, Bol.com, and others
+            # Some sites like Bol.com have stacked modals (Cookie + Language)
+            # We use a loop and multiple passes to clear them.
+            selectors = [
+                '#sp-cc-accept',  # Amazon NL
+                '#js-first-screen-accept-all-button',  # Bol.com cookie
+                '[data-test="consent-modal-ofc-confirm-btn"]',  # Bol.com alt
+                'button:has-text("Alles accepteren")',  # Generic Dutch
+                '#js-second-screen-accept-all-button',  # Bol.com 2nd screen
+                '[data-test="continue-button"]',  # Bol.com language modal
+                'button:has-text("Doorgaan")',  # Bol.com language manual
+                'button:has-text("Accept all")',  # Generic English
+                'button:has-text("Accepteren")',  # Generic Dutch
+                '[data-action="a-cookie-instruction-close"]',  # Amazon close
+            ]
+            
+            # Run up to 3 passes to clear stacked modals
+            for _ in range(3):
+                clicked_any = False
+                for selector in selectors:
+                    try:
+                        btn = page.locator(selector).first
+                        if await btn.is_visible(timeout=2000):
+                            await btn.click()
+                            await page.wait_for_timeout(1000)
+                            clicked_any = True
+                    except:
+                        continue
+                if not clicked_any:
                     break
-        except:
+            
+            # Additional surgical bypass: inject CSS to hide known modals and force scrolling
+            await page.add_style_tag(content="""
+                #modalWindow, .modal, .cookie-modal, [data-test="modal-window"], wsp-modal-window {
+                    display: none !important;
+                    visibility: hidden !important;
+                    opacity: 0 !important;
+                    pointer-events: none !important;
+                }
+                body, html {
+                    overflow: auto !important;
+                    position: static !important;
+                }
+            """)
+        except Exception as e:
+            logger.warning(f"Error dismissing modals: {str(e)}")
             pass
 
         # Wait for page to stabilize

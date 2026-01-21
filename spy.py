@@ -19,7 +19,26 @@ from app.models.schemas import (
     Store,
     TrackedItem,
 )
-# ...
+
+from app.storage.database import get_database
+from app.storage.repositories import (
+    ProductRepository,
+    StoreRepository,
+    TrackedItemRepository,
+    PriceHistoryRepository,
+    ErrorLogRepository,
+)
+from app.utils.logging import get_logger
+
+logger = get_logger(__name__)
+
+def validate_url(url: str) -> bool:
+    """Check if a string is a valid URL."""
+    try:
+        result = urlparse(url)
+        return all([result.scheme, result.netloc])
+    except:
+        return False
 
 async def cmd_extract(args) -> int:
     """Extract price from URL."""
