@@ -4,13 +4,17 @@ services:
       context: ..
       dockerfile: infrastructure/Dockerfile
     container_name: price_spy
+    restart: unless-stopped
     env_file:
       - ../.env
     ports:
       - "8000:8000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/scheduler/status"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
     volumes:
-      - ../app:/app/app
-      - ../tests/screenshots:/app/tests/screenshots
       - ../data:/app/data
       - ../screenshots:/app/screenshots
     stdin_open: true
