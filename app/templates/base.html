@@ -8,6 +8,9 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <style>
+        [x-cloak] { display: none !important; }
+    </style>
 </head>
 <body class="bg-gray-100 min-h-screen">
     <nav class="bg-blue-600 text-white shadow-md" x-data="{ mobileMenuOpen: false }">
@@ -68,8 +71,6 @@
         {% block content %}{% endblock %}
     </main>
 
-    <style>
-        [x-cloak] { display: none !important; }
-    </style>
+    </main>
 </body>
 </html>
