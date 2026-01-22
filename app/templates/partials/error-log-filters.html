@@ -1,47 +1,47 @@
 <div
   x-data="errorLogFilters()"
-  class="mb-4 p-3 sm:p-4 bg-gray-50 rounded-lg border"
+  class="mb-6 p-4 sm:p-6 bg-jolly/5 rounded-3xl border border-jolly-dark/5"
 >
-  <div class="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
+  <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
     <!-- Error Type Filter -->
-    <div class="col-span-2 sm:col-span-1">
-      <label for="error-type-filter" class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Error Type</label>
+    <div class="col-span-2 lg:col-span-1">
+      <label for="error-type-filter" class="block text-[10px] font-black text-jolly-dark/60 uppercase tracking-widest mb-1.5 ml-1">Error Type</label>
       <select
         id="error-type-filter"
         x-model="errorType"
         @change="applyFilters()"
-        class="block w-full px-3 py-2 sm:py-2 text-base sm:text-sm border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 rounded-md"
+        class="block w-full px-4 py-2.5 text-sm font-bold text-jolly-dark border border-jolly-dark/10 rounded-2xl focus:outline-none focus:ring-4 focus:ring-jolly/20 bg-white"
       >
-        <option value="">All</option>
-        <option value="ScrapingError">Scraping Error</option>
-        <option value="VisionAPIError">Vision API Error</option>
-        <option value="DatabaseError">Database Error</option>
+        <option value="">All Errors</option>
+        <option value="ScrapingError">🕸️ Scraping Error</option>
+        <option value="VisionAPIError">👁️ Vision API Error</option>
+        <option value="DatabaseError">🗄️ Database Error</option>
       </select>
     </div>
 
     <!-- Start Date -->
     <div>
-        <label for="error-start-date-filter" class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Start Date</label>
-        <input type="date" id="error-start-date-filter" x-model="startDate" class="block w-full px-3 py-2 sm:py-2 text-base sm:text-sm border-gray-300 rounded-md shadow-sm">
+        <label for="error-start-date-filter" class="block text-[10px] font-black text-jolly-dark/60 uppercase tracking-widest mb-1.5 ml-1">From Date</label>
+        <input type="date" id="error-start-date-filter" x-model="startDate" class="block w-full px-4 py-2.5 text-sm font-bold text-jolly-dark border border-jolly-dark/10 rounded-2xl focus:outline-none focus:ring-4 focus:ring-jolly/20 bg-white">
     </div>
 
     <!-- End Date -->
     <div>
-        <label for="error-end-date-filter" class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">End Date</label>
-        <input type="date" id="error-end-date-filter" x-model="endDate" class="block w-full px-3 py-2 sm:py-2 text-base sm:text-sm border-gray-300 rounded-md shadow-sm">
+        <label for="error-end-date-filter" class="block text-[10px] font-black text-jolly-dark/60 uppercase tracking-widest mb-1.5 ml-1">To Date</label>
+        <input type="date" id="error-end-date-filter" x-model="endDate" class="block w-full px-4 py-2.5 text-sm font-bold text-jolly-dark border border-jolly-dark/10 rounded-2xl focus:outline-none focus:ring-4 focus:ring-jolly/20 bg-white">
     </div>
 
     <!-- Action Buttons -->
-    <div class="col-span-2 sm:col-span-1 flex items-end gap-2">
+    <div class="col-span-2 lg:col-span-1 flex items-end gap-2">
       <button
         @click="applyFilters()"
-        class="flex-1 inline-flex justify-center py-2 sm:py-2 px-3 sm:px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 min-h-[40px] sm:min-h-0"
+        class="flex-1 inline-flex justify-center items-center py-2.5 px-4 bg-jolly text-jolly-dark font-black rounded-2xl hover:bg-jolly-lime transition-all uppercase tracking-widest text-[10px] border border-jolly-dark/5 shadow-sm"
       >
         Filter
       </button>
       <button
         @click="resetFilters()"
-        class="flex-1 inline-flex justify-center py-2 sm:py-2 px-3 sm:px-4 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 min-h-[40px] sm:min-h-0"
+        class="flex-1 inline-flex justify-center items-center py-2.5 px-4 bg-white text-jolly-dark/40 font-black rounded-2xl hover:bg-gray-100 transition-all uppercase tracking-widest text-[10px] border border-jolly-dark/5 shadow-sm"
       >
         Reset
       </button>

@@ -54,10 +54,12 @@ CREATE TABLE IF NOT EXISTS price_history (
     product_name TEXT NOT NULL,
     price REAL NOT NULL,
     currency TEXT NOT NULL DEFAULT 'EUR',
+    is_available INTEGER DEFAULT 1,
     confidence REAL NOT NULL,
     url TEXT NOT NULL,
     store_name TEXT,
     page_type TEXT,
+    notes TEXT,
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
@@ -151,6 +153,14 @@ class Database:
         columns = [row["name"] for row in cursor.fetchall()]
         if "preferred_model" not in columns:
             cursor.execute("ALTER TABLE tracked_items ADD COLUMN preferred_model TEXT")
+            
+        # Check price_history for new columns
+        cursor.execute("PRAGMA table_info(price_history)")
+        columns = [row["name"] for row in cursor.fetchall()]
+        if "is_available" not in columns:
+            cursor.execute("ALTER TABLE price_history ADD COLUMN is_available INTEGER DEFAULT 1")
+        if "notes" not in columns:
+            cursor.execute("ALTER TABLE price_history ADD COLUMN notes TEXT")
             
         conn.commit()
 

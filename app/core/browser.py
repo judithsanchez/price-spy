@@ -1,11 +1,21 @@
-"""Browser module for stealth screenshot capture."""
-
+import random
+import asyncio
+import logging
 from playwright.async_api import async_playwright, BrowserContext
 
+logger = logging.getLogger(__name__)
+
+# Pool of realistic User-Agents
+USER_AGENTS = [
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36",
+]
 
 # Stealth configuration as per SPECS_EXTRACTION_ENGINE.md
 STEALTH_CONFIG = {
-    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
     "viewport": {"width": 1920, "height": 1080},
     "locale": "nl-NL",
     "timezone_id": "Europe/Amsterdam",
@@ -63,14 +73,33 @@ STEALTH_SCRIPTS = """
 
 async def create_stealth_context(playwright) -> BrowserContext:
     """Create a browser context with stealth settings."""
+    # Randomized viewport (±10px)
+    width = STEALTH_CONFIG["viewport"]["width"] + random.randint(-10, 10)
+    height = STEALTH_CONFIG["viewport"]["height"] + random.randint(-10, 10)
+    
+    # Random User-Agent
+    user_agent = random.choice(USER_AGENTS)
+    
     browser = await playwright.chromium.launch(headless=True)
     context = await browser.new_context(
-        viewport=STEALTH_CONFIG["viewport"],
-        user_agent=STEALTH_CONFIG["user_agent"],
+        viewport={"width": width, "height": height},
+        user_agent=user_agent,
         locale=STEALTH_CONFIG["locale"],
         timezone_id=STEALTH_CONFIG["timezone_id"],
         geolocation=STEALTH_CONFIG["geolocation"],
         permissions=STEALTH_CONFIG["permissions"],
+        # Add extra headers for better stealth
+        extra_http_headers={
+            "Accept-Language": "nl-NL,nl;q=0.9,en-US;q=0.8,en;q=0.7",
+            "Sec-Ch-Ua": '"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"',
+            "Sec-Ch-Ua-Mobile": "?0",
+            "Sec-Ch-Ua-Platform": '"Windows"',
+            "Sec-Fetch-Dest": "document",
+            "Sec-Fetch-Mode": "navigate",
+            "Sec-Fetch-Site": "none",
+            "Sec-Fetch-User": "?1",
+            "Upgrade-Insecure-Requests": "1"
+        }
     )
     return context
 
@@ -83,6 +112,9 @@ async def capture_screenshot(url: str) -> bytes:
 
         # Inject stealth scripts before navigation
         await page.add_init_script(STEALTH_SCRIPTS)
+
+        # Random delay to simulate human timing (1-3 seconds)
+        await asyncio.sleep(random.uniform(1, 3))
 
         await page.goto(url, wait_until="domcontentloaded", timeout=60000)
 

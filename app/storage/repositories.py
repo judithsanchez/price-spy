@@ -25,17 +25,19 @@ class PriceHistoryRepository:
         cursor = self.db.execute(
             """
             INSERT INTO price_history
-            (product_name, price, currency, confidence, url, store_name, page_type)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            (product_name, price, currency, is_available, confidence, url, store_name, page_type, notes)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 record.product_name,
                 record.price,
                 record.currency,
+                1 if record.is_available else 0,
                 record.confidence,
                 record.url,
                 record.store_name,
                 record.page_type,
+                record.notes,
             )
         )
         self.db.commit()
@@ -71,6 +73,14 @@ class PriceHistoryRepository:
             return None
         return self._row_to_record(row)
 
+    def get_recent_history_by_url(self, url: str, limit: int = 30) -> List[PriceHistoryRecord]:
+        """Get the recent price history records for a URL."""
+        cursor = self.db.execute(
+            "SELECT * FROM price_history WHERE url = ? ORDER BY created_at DESC LIMIT ?",
+            (url, limit)
+        )
+        return [self._row_to_record(row) for row in cursor.fetchall()]
+
     def _row_to_record(self, row) -> PriceHistoryRecord:
         """Convert a database row to a PriceHistoryRecord."""
         return PriceHistoryRecord(
@@ -78,10 +88,12 @@ class PriceHistoryRepository:
             product_name=row["product_name"],
             price=row["price"],
             currency=row["currency"],
+            is_available=bool(row["is_available"]),
             confidence=row["confidence"],
             url=row["url"],
             store_name=row["store_name"],
             page_type=row["page_type"],
+            notes=row["notes"],
             created_at=datetime.fromisoformat(row["created_at"]),
         )
 
@@ -398,6 +410,11 @@ class TrackedItemRepository:
         if row is None:
             return None
         return self._row_to_record(row)
+
+    def get_all(self) -> List[TrackedItem]:
+        """Get all tracked items."""
+        cursor = self.db.execute("SELECT * FROM tracked_items")
+        return [self._row_to_record(row) for row in cursor.fetchall()]
 
     def get_active(self) -> List[TrackedItem]:
         """Get all active tracked items."""

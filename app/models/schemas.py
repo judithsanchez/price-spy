@@ -49,10 +49,12 @@ class PriceHistoryRecord(BaseModel):
     product_name: str
     price: float
     currency: str = "EUR"
+    is_available: bool = True
     confidence: float
     url: str
     store_name: Optional[str] = None
     page_type: Optional[str] = None
+    notes: Optional[str] = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
@@ -128,6 +130,7 @@ class ExtractionResult(BaseModel):
     is_available: bool = Field(..., description="In stock status")
     product_name: str = Field(..., min_length=1, max_length=500)
     store_name: Optional[str] = Field(default=None, max_length=100)
+    notes: Optional[str] = Field(default=None, max_length=1000, description="AI notes/observations")
     is_blocked: bool = Field(default=False, description="Whether the page is blocked by a modal")
     detected_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
