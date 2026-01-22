@@ -4,13 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Price Spy{% endblock %}</title>
+    <style>
+        [x-cloak] { display: none !important; }
+    </style>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
-    <style>
-        [x-cloak] { display: none !important; }
-    </style>
 </head>
 <body class="bg-gray-100 min-h-screen">
     <nav class="bg-blue-600 text-white shadow-md" x-data="{ mobileMenuOpen: false }">
@@ -55,6 +55,7 @@
                  x-transition:leave-start="opacity-100 translate-y-0"
                  x-transition:leave-end="opacity-0 -translate-y-2"
                  x-cloak
+                 style="display: none;"
                  class="md:hidden pb-4 border-t border-blue-500">
                 <div class="flex flex-col space-y-1 pt-3">
                     <a href="/" class="px-3 py-3 rounded-lg hover:bg-blue-700 text-base" @click="mobileMenuOpen = false">Dashboard</a>
@@ -69,8 +70,6 @@
     </nav>
     <main class="container mx-auto px-4 py-4">
         {% block content %}{% endblock %}
-    </main>
-
     </main>
 </body>
 </html>
