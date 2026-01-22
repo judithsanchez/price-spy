@@ -4,36 +4,65 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Price Spy{% endblock %}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        jolly: {
+                            DEFAULT: '#82E06D',
+                            lime: '#C1E38C',
+                            sandy: '#E1C18D',
+                            rose: '#D9717C',
+                            vivid: '#EE5270',
+                            dark: '#2D4A22',
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Outfit', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
     <style>
         [x-cloak] { display: none !important; }
+        body { font-family: 'Outfit', sans-serif; background-color: #F8FAF7; }
+        .bg-jolly-gradient { background: linear-gradient(135deg, #82E06D 0%, #C1E38C 100%); }
     </style>
-    <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 </head>
-<body class="bg-gray-100 min-h-screen">
-    <nav class="bg-blue-600 text-white shadow-md" x-data="{ mobileMenuOpen: false }">
+<body class="min-h-screen">
+    <nav class="bg-jolly shadow-lg border-b border-jolly-dark/10" x-data="{ mobileMenuOpen: false }">
         <div class="container mx-auto px-4">
-            <div class="flex justify-between items-center h-14">
+            <div class="flex justify-between items-center h-16">
                 <!-- Logo -->
-                <h1 class="text-xl font-bold">Price Spy</h1>
+                <div class="flex items-center gap-2">
+                    <span class="text-2xl">🕵️‍♂️</span>
+                    <h1 class="text-xl font-black tracking-tight text-jolly-dark">Price Spy</h1>
+                </div>
 
                 <!-- Desktop nav (hidden on mobile) -->
-                <div class="hidden md:flex items-center gap-6">
-                    <div class="flex gap-4 text-sm">
-                        <a href="/" class="hover:underline">Dashboard</a>
-                        <a href="/products" class="hover:underline">Products</a>
-                        <a href="/stores" class="hover:underline">Stores</a>
-                        <a href="/tracked-items" class="hover:underline">Tracked Items</a>
-                        <a href="/logs" class="hover:underline">Logs</a>
+                <div class="hidden md:flex items-center gap-8">
+                    <div class="flex gap-6 text-sm font-bold text-jolly-dark/80">
+                        <a href="/" class="hover:text-jolly-dark transition-colors flex items-center gap-1.5"><span>📊</span> Dashboard</a>
+                        <a href="/products" class="hover:text-jolly-dark transition-colors flex items-center gap-1.5"><span>📦</span> Products</a>
+                        <a href="/stores" class="hover:text-jolly-dark transition-colors flex items-center gap-1.5"><span>🏪</span> Stores</a>
+                        <a href="/tracked-items" class="hover:text-jolly-dark transition-colors flex items-center gap-1.5"><span>🎯</span> Tracked Items</a>
+                        <a href="/logs" class="hover:text-jolly-dark transition-colors flex items-center gap-1.5"><span>📜</span> Logs</a>
                     </div>
-                    <span class="text-sm opacity-75">v0.3.0</span>
+                    <span class="text-[10px] font-black bg-jolly-dark/10 px-2 py-0.5 rounded-full text-jolly-dark/60 uppercase">v0.3.0</span>
                 </div>
 
                 <!-- Mobile menu button (hidden on desktop) -->
                 <button @click="mobileMenuOpen = !mobileMenuOpen"
-                        class="md:hidden p-2 -mr-2 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-white"
+                        class="md:hidden p-2 -mr-2 rounded-xl border border-jolly-dark/10 hover:bg-jolly-dark/5 text-jolly-dark focus:outline-none"
                         aria-label="Toggle menu">
                     <!-- Hamburger icon -->
                     <svg x-show="!mobileMenuOpen" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -56,15 +85,15 @@
                  x-transition:leave-end="opacity-0 -translate-y-2"
                  x-cloak
                  style="display: none;"
-                 class="md:hidden pb-4 border-t border-blue-500">
+                 class="md:hidden pb-4 border-t border-jolly-dark/5">
                 <div class="flex flex-col space-y-1 pt-3">
-                    <a href="/" class="px-3 py-3 rounded-lg hover:bg-blue-700 text-base" @click="mobileMenuOpen = false">Dashboard</a>
-                    <a href="/products" class="px-3 py-3 rounded-lg hover:bg-blue-700 text-base" @click="mobileMenuOpen = false">Products</a>
-                    <a href="/stores" class="px-3 py-3 rounded-lg hover:bg-blue-700 text-base" @click="mobileMenuOpen = false">Stores</a>
-                    <a href="/tracked-items" class="px-3 py-3 rounded-lg hover:bg-blue-700 text-base" @click="mobileMenuOpen = false">Tracked Items</a>
-                    <a href="/logs" class="px-3 py-3 rounded-lg hover:bg-blue-700 text-base" @click="mobileMenuOpen = false">Logs</a>
+                    <a href="/" class="px-3 py-3 rounded-xl hover:bg-jolly-dark/5 text-jolly-dark font-bold flex items-center gap-2" @click="mobileMenuOpen = false"><span>📊</span> Dashboard</a>
+                    <a href="/products" class="px-3 py-3 rounded-xl hover:bg-jolly-dark/5 text-jolly-dark font-bold flex items-center gap-2" @click="mobileMenuOpen = false"><span>📦</span> Products</a>
+                    <a href="/stores" class="px-3 py-3 rounded-xl hover:bg-jolly-dark/5 text-jolly-dark font-bold flex items-center gap-2" @click="mobileMenuOpen = false"><span>🏪</span> Stores</a>
+                    <a href="/tracked-items" class="px-3 py-3 rounded-xl hover:bg-jolly-dark/5 text-jolly-dark font-bold flex items-center gap-2" @click="mobileMenuOpen = false"><span>🎯</span> Tracked Items</a>
+                    <a href="/logs" class="px-3 py-3 rounded-xl hover:bg-jolly-dark/5 text-jolly-dark font-bold flex items-center gap-2" @click="mobileMenuOpen = false"><span>📜</span> Logs</a>
                 </div>
-                <div class="px-3 pt-3 text-sm opacity-75">v0.3.0</div>
+                <div class="px-3 pt-4 text-[10px] font-black text-jolly-dark/40 uppercase tracking-widest">v0.3.0</div>
             </div>
         </div>
     </nav>

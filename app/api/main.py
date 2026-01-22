@@ -643,54 +643,149 @@ async def dashboard(request: Request):
         tracked_repo = TrackedItemRepository(db)
         price_repo = PriceHistoryRepository(db)
 
-        tracked_items = tracked_repo.get_active()
-        items = []
+        tracked_items = tracked_repo.get_all()
+        products_map = {}
+        low_stock_warnings = []
+        price_increase_warnings = []
+        graph_data = {
+            "labels": [],
+            "datasets": []
+        }
+        
+        # Collection of all history points for graph axes
+        all_timestamps = set()
 
         for item in tracked_items:
+            # We only care about active items for the dashboard summary
+            if not item.is_active:
+                continue
+
             product = product_repo.get_by_id(item.product_id)
+            if not product:
+                continue
+                
+            if product.id not in products_map:
+                products_map[product.id] = {
+                    "id": product.id,
+                    "name": product.name,
+                    "category": product.category,
+                    "target_price": product.target_price,
+                    "current_stock": product.current_stock,
+                    "tracked_items": []
+                }
+            
             store = store_repo.get_by_id(item.store_id)
-            latest_price = price_repo.get_latest_by_url(item.url)
+            history = price_repo.get_recent_history_by_url(item.url, limit=30)
+            latest_price_rec = history[0] if history else None
+            
+            # Trend calculation
+            trend = "stable"
+            if len(history) >= 2:
+                prev_price = history[1].price
+                curr_price = history[0].price
+                if curr_price and prev_price:
+                    if curr_price > prev_price:
+                        trend = "up"
+                        price_increase_warnings.append({
+                            "product_name": product.name,
+                            "store_name": store.name if store else "Unknown",
+                            "price": curr_price,
+                            "previous_price": prev_price,
+                            "currency": latest_price_rec.currency if latest_price_rec else "EUR"
+                        })
+                    elif curr_price < prev_price:
+                        trend = "down"
 
             screenshot_path = f"screenshots/{item.id}.png"
             has_screenshot = Path(screenshot_path).exists()
 
-            # Calculate unit price if we have a price
+            # Calculate unit price
             unit_price = None
             unit = None
-            if latest_price and latest_price.price:
+            if latest_price_rec and latest_price_rec.price:
                 unit_price, unit = calculate_volume_price(
-                    latest_price.price,
+                    latest_price_rec.price,
                     item.items_per_lot,
                     item.quantity_size,
                     item.quantity_unit
                 )
                 unit_price = round(unit_price, 2)
 
-            # Determine if this is a deal (price at or below target)
-            price = latest_price.price if latest_price else None
-            target = product.target_price if product else None
-            is_deal = price is not None and target is not None and price <= target
+            # Determine if this is a deal
+            price = latest_price_rec.price if latest_price_rec else None
+            is_deal = price is not None and product.target_price is not None and price <= product.target_price
 
-            items.append({
+            products_map[product.id]["tracked_items"].append({
                 "id": item.id,
-                "product_name": product.name if product else "Unknown",
                 "store_name": store.name if store else "Unknown",
                 "url": item.url,
                 "price": price,
-                "currency": latest_price.currency if latest_price else "EUR",
-                "target_price": target,
+                "currency": latest_price_rec.currency if latest_price_rec else "EUR",
                 "unit_price": unit_price,
                 "unit": unit,
+                "trend": trend,
                 "is_deal": is_deal,
-                "is_available": latest_price.is_available if latest_price else None,
-                "notes": latest_price.notes if latest_price else None,
+                "is_available": latest_price_rec.is_available if latest_price_rec else None,
+                "notes": latest_price_rec.notes if latest_price_rec else None,
                 "screenshot_path": screenshot_path if has_screenshot else None,
             })
+            
+            # Low stock detection
+            if latest_price_rec and latest_price_rec.notes:
+                notes_lower = latest_price_rec.notes.lower()
+                low_stock_keywords = ["low stock", "units left", "stock low", "only", "last units"]
+                if any(kw in notes_lower for kw in low_stock_keywords):
+                    low_stock_warnings.append({
+                        "product_name": product.name,
+                        "store_name": store.name if store else "Unknown",
+                        "notes": latest_price_rec.notes
+                    })
+            
+            # Prepare graph dataset for this item
+            if history:
+                item_label = f"{product.name} ({store.name if store else '?'})"
+                dataset = {
+                    "label": item_label,
+                    "data": [],
+                    "borderColor": f"hsl({(item.id * 137) % 360}, 70%, 50%)",
+                    "fill": False,
+                    "tension": 0.1
+                }
+                for h in reversed(history): # Chronological order
+                    ts = h.created_at.strftime("%Y-%m-%d %H:%M")
+                    all_timestamps.add(ts)
+                    dataset["data"].append({"x": ts, "y": h.price})
+                graph_data["datasets"].append(dataset)
+
+        # Sort all timestamps to create global labels
+        sorted_labels = sorted(list(all_timestamps))
+        graph_data["labels"] = sorted_labels
+        # Sort products by name
+        sorted_products = sorted(products_map.values(), key=lambda p: p["name"])
+        
+        # Calculate global deals for the banner
+        all_deals = []
+        for p in sorted_products:
+            for item in p["tracked_items"]:
+                if item["is_deal"]:
+                    all_deals.append({
+                        "product_name": p["name"],
+                        "price": item["price"],
+                        "currency": item["currency"],
+                        "target_price": p["target_price"]
+                    })
 
         return templates.TemplateResponse(
             request,
             "dashboard.html",
-            {"items": items}
+            {
+                "products": sorted_products,
+                "deals": all_deals,
+                "low_stock": low_stock_warnings,
+                "price_increases": price_increase_warnings,
+                "graph_data": graph_data,
+                "has_any_items": len(tracked_items) > 0
+            }
         )
     finally:
         db.close()

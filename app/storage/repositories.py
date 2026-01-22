@@ -73,6 +73,14 @@ class PriceHistoryRepository:
             return None
         return self._row_to_record(row)
 
+    def get_recent_history_by_url(self, url: str, limit: int = 30) -> List[PriceHistoryRecord]:
+        """Get the recent price history records for a URL."""
+        cursor = self.db.execute(
+            "SELECT * FROM price_history WHERE url = ? ORDER BY created_at DESC LIMIT ?",
+            (url, limit)
+        )
+        return [self._row_to_record(row) for row in cursor.fetchall()]
+
     def _row_to_record(self, row) -> PriceHistoryRecord:
         """Convert a database row to a PriceHistoryRecord."""
         return PriceHistoryRecord(
@@ -402,6 +410,11 @@ class TrackedItemRepository:
         if row is None:
             return None
         return self._row_to_record(row)
+
+    def get_all(self) -> List[TrackedItem]:
+        """Get all tracked items."""
+        cursor = self.db.execute("SELECT * FROM tracked_items")
+        return [self._row_to_record(row) for row in cursor.fetchall()]
 
     def get_active(self) -> List[TrackedItem]:
         """Get all active tracked items."""

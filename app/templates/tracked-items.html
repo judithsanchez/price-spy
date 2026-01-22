@@ -4,11 +4,11 @@
 
 {% block content %}
 <div x-data="{ ...trackedItemsManager(), ...priceHistoryMixin() }" x-init="init()">
-    <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-6">
-        <h2 class="text-2xl font-bold text-gray-800">Tracked Items</h2>
+    <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-8">
+        <h2 class="text-2xl font-black text-jolly-dark">🎯 Tracked Items</h2>
         <button @click="openAddForm()"
-                class="bg-blue-600 text-white px-4 py-3 sm:py-2 rounded hover:bg-blue-700 min-h-[44px] sm:min-h-0">
-            Add Tracked Item
+                class="bg-jolly text-jolly-dark px-6 py-3 sm:py-2 rounded-2xl hover:bg-jolly-lime transition-all font-black uppercase tracking-widest text-[10px] shadow-sm border border-jolly-dark/5">
+            Add New Item
         </button>
     </div>
 
@@ -17,14 +17,12 @@
         <template x-for="group in getGroupedItems()" :key="group.product_id">
             <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
                 <!-- Group Header: Product Name -->
-                <div class="bg-gray-50 px-4 py-3 border-b border-gray-100 flex justify-between items-center">
-                    <div class="flex items-center gap-2">
-                        <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
-                        </svg>
-                        <h3 class="font-bold text-gray-800" x-text="group.product_name"></h3>
+                <div class="bg-gray-50/50 px-5 py-4 border-b border-jolly-dark/5 flex justify-between items-center">
+                    <div class="flex items-center gap-3">
+                        <span class="text-xl">📦</span>
+                        <h3 class="font-black text-jolly-dark tracking-tight" x-text="group.product_name"></h3>
                     </div>
-                    <span class="text-xs font-medium text-gray-500 px-2 py-1 bg-gray-200 rounded-full" x-text="group.items.length + ' item(s)'"></span>
+                    <span class="text-[10px] font-black text-jolly-dark/40 px-3 py-1 bg-jolly-lime/20 rounded-full border border-jolly-dark/5 uppercase tracking-wider" x-text="group.items.length + ' item(s)'"></span>
                 </div>
                 
                 <!-- Items in this group -->
@@ -34,51 +32,49 @@
                             <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                                 <div class="min-w-0 flex-1">
                                     <div class="flex items-center gap-2 mb-1">
-                                        <span class="font-semibold text-blue-600" x-text="getStoreName(item.store_id)"></span>
-                                        <span x-show="item.latest_is_available === true" class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-green-100 text-green-700">IN STOCK</span>
-                                        <span x-show="item.latest_is_available === false" class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-red-100 text-red-700">OUT OF STOCK</span>
+                                        <span class="font-black text-jolly shadow-sm bg-jolly-dark px-2 py-0.5 rounded text-[10px] uppercase tracking-widest" x-text="getStoreName(item.store_id)"></span>
+                                        <span x-show="item.latest_is_available === true" class="px-1.5 py-0.5 rounded text-[9px] font-black border border-jolly/30 bg-jolly/10 text-jolly-dark uppercase tracking-tighter">✅ IN STOCK</span>
+                                        <span x-show="item.latest_is_available === false" class="px-1.5 py-0.5 rounded text-[9px] font-black border border-jolly-rose/30 bg-jolly-rose/10 text-jolly-rose uppercase tracking-tighter">❌ OUT OF STOCK</span>
                                     </div>
-                                    <div class="text-sm text-gray-600 truncate mb-1">
-                                        <span class="font-medium" x-text="item.quantity_size + ' ' + item.quantity_unit"></span>
+                                    <div class="text-[11px] text-jolly-dark/60 font-medium mb-1">
+                                        <span class="font-black text-jolly-dark" x-text="item.quantity_size + ' ' + item.quantity_unit"></span>
                                         <template x-if="item.item_name_on_site">
-                                            <span class="text-gray-400" x-text="' · ' + item.item_name_on_site"></span>
+                                            <span class="text-jolly-dark/30" x-text="' · ' + item.item_name_on_site"></span>
                                         </template>
                                     </div>
-                                    <a :href="item.url" target="_blank" class="text-xs text-blue-400 hover:underline truncate block max-w-sm" x-text="item.url"></a>
+                                    <a :href="item.url" target="_blank" class="text-[10px] text-jolly-dark/40 hover:text-jolly transition-colors truncate block max-w-sm underline decoration-jolly/30 hover:decoration-jolly" x-text="item.url"></a>
                                     
                                     <!-- Latest Notes -->
                                     <template x-if="item.latest_notes">
-                                        <div class="mt-2 text-xs bg-blue-50 text-blue-700 p-2 rounded flex items-start gap-1.5 border border-blue-100">
-                                            <svg class="w-3.5 h-3.5 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                                            </svg>
+                                        <div class="mt-3 text-[10px] bg-jolly-lime/5 text-jolly-dark/60 p-3 rounded-xl flex items-start gap-2 border border-jolly-lime/20 font-medium italic">
+                                            <span class="text-xs mt-0.5">📝</span>
                                             <span x-text="item.latest_notes"></span>
                                         </div>
                                     </template>
                                 </div>
                                 
-                                <div class="flex items-center gap-3">
-                                    <div class="flex flex-col items-end mr-2">
-                                        <span x-show="item.is_active" class="text-[10px] text-green-600 font-bold">ACTIVE</span>
-                                        <span x-show="!item.is_active" class="text-[10px] text-gray-400 font-bold">INACTIVE</span>
+                                <div class="flex items-center gap-4">
+                                    <div class="flex flex-col items-end mr-1">
+                                        <span x-show="item.is_active" class="text-[9px] text-jolly font-black tracking-widest uppercase bg-jolly/10 px-1.5 py-0.5 rounded border border-jolly/20">ACTIVE</span>
+                                        <span x-show="!item.is_active" class="text-[9px] text-jolly-dark/20 font-black tracking-widest uppercase bg-gray-50 px-1.5 py-0.5 rounded border border-gray-100">INACTIVE</span>
                                     </div>
-                                    <div class="flex gap-2">
+                                    <div class="flex gap-1.5 px-2 py-1 bg-gray-50/50 rounded-2xl border border-jolly-dark/5">
                                         <button @click="openPriceHistory(item.id)"
-                                                class="p-2 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100 transition-colors"
+                                                class="p-2 text-jolly-dark/40 hover:text-jolly hover:bg-jolly/5 rounded-xl transition-all"
                                                 title="Price History">
                                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
                                             </svg>
                                         </button>
                                         <button @click="editItem(item)"
-                                                class="p-2 text-blue-400 hover:text-blue-600 rounded-full hover:bg-blue-50 transition-colors"
+                                                class="p-2 text-jolly-sandy hover:text-jolly-sandy/80 hover:bg-jolly-sandy/5 rounded-xl transition-all"
                                                 title="Edit">
                                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
                                             </svg>
                                         </button>
                                         <button @click="deleteItem(item.id)"
-                                                class="p-2 text-red-400 hover:text-red-600 rounded-full hover:bg-red-50 transition-colors"
+                                                class="p-2 text-jolly-rose hover:text-jolly-vivid hover:bg-jolly-rose/5 rounded-xl transition-all"
                                                 title="Delete">
                                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
@@ -93,38 +89,49 @@
             </div>
         </template>
         
-        <div x-show="items.length === 0" class="bg-white rounded-xl shadow-sm border border-dashed border-gray-300 p-12 text-center text-gray-500">
-            <svg class="w-12 h-12 mx-auto mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
-            </svg>
-            <p class="text-lg font-medium">No tracked items yet</p>
-            <p class="text-sm mt-1">Add items to start monitoring prices across different stores.</p>
+        <div x-show="items.length === 0" class="bg-white rounded-3xl shadow-sm border border-dashed border-jolly/30 p-16 text-center">
+            <div class="w-20 h-20 bg-jolly-lime/10 rounded-full flex items-center justify-center mx-auto mb-6 text-jolly-dark/20 border border-jolly-lime/20 shadow-inner">
+                <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
+                </svg>
+            </div>
+            <p class="text-xl font-black text-jolly-dark mb-2">🕵️‍♂️ Nothing to see here... yet</p>
+            <p class="text-jolly-dark/40 max-w-xs mx-auto font-medium">Add items to start monitoring prices across different stores.</p>
         </div>
     </div>
 
     <!-- Modal Form -->
-    <div x-show="showForm" x-cloak style="display: none;" class="fixed inset-0 bg-black bg-opacity-50 flex items-end sm:items-center justify-center z-50">
-        <div class="bg-white w-full sm:rounded-lg shadow-xl sm:w-full sm:max-w-lg max-h-[90vh] overflow-y-auto rounded-t-xl sm:rounded-xl"
+    <div x-show="showForm" x-cloak style="display: none;" class="fixed inset-0 bg-jolly-dark/40 backdrop-blur-sm flex items-end sm:items-center justify-center z-50">
+        <div class="bg-white w-full sm:rounded-3xl shadow-2xl sm:w-full sm:max-w-lg max-h-[90vh] overflow-y-auto rounded-t-3xl border border-jolly-dark/5"
              @click.away="showForm = false"
-             x-transition:enter="transition ease-out duration-200"
-             x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
+             x-transition:enter="transition ease-out duration-300"
+             x-transition:enter-start="opacity-0 translate-y-full sm:translate-y-0 sm:scale-95"
              x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100"
-             x-transition:leave="transition ease-in duration-150"
+             x-transition:leave="transition ease-in duration-200"
              x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100"
-             x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95">
+             x-transition:leave-end="opacity-0 translate-y-full sm:translate-y-0 sm:scale-95">
             <!-- Drag handle for mobile -->
-            <div class="sm:hidden flex justify-center py-2">
-                <div class="w-12 h-1.5 bg-gray-300 rounded-full"></div>
+            <div class="sm:hidden flex justify-center py-3">
+                <div class="w-12 h-1.5 bg-jolly-lime/30 rounded-full"></div>
             </div>
-            <div class="p-4 sm:p-6">
-                <h3 class="text-lg font-bold mb-4" x-text="editingItem ? 'Edit Tracked Item' : 'Add Tracked Item'"></h3>
-                <div x-show="error" class="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded text-sm" x-text="error"></div>
+            <div class="p-6 sm:p-8">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="text-xl font-black text-jolly-dark flex items-center gap-2">
+                        <span x-text="editingItem ? '✏️' : '✨'"></span>
+                        <span x-text="editingItem ? 'Edit Tracked Item' : 'Add Tracked Item'"></span>
+                    </h3>
+                    <button @click="showForm = false" class="text-jolly-dark/20 hover:text-jolly-rose transition-colors">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                    </button>
+                </div>
+                <div x-show="error" class="mb-6 p-4 bg-jolly-rose/10 border border-jolly-rose/20 text-jolly-vivid rounded-2xl text-[11px] font-bold" x-text="error"></div>
                 <form @submit.prevent="saveItem()">
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Product *</label>
+                            <label class="block text-[11px] font-black text-jolly-dark/60 uppercase tracking-widest mb-1.5 ml-1">Product *</label>
                             <select x-model="formData.product_id" required
-                                    class="w-full border border-gray-300 rounded px-3 py-3 sm:py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-base sm:text-sm">
+                                    class="w-full border border-jolly-dark/10 rounded-2xl px-4 py-3 sm:py-2.5 focus:outline-none focus:ring-4 focus:ring-jolly/20 text-base sm:text-sm bg-gray-50/50 font-medium text-jolly-dark">
                                 <option value="">Select Product</option>
                                 <template x-for="product in products" :key="product.id">
                                     <option :value="product.id" x-text="product.name"></option>
@@ -132,9 +139,9 @@
                             </select>
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Store *</label>
+                            <label class="block text-[11px] font-black text-jolly-dark/60 uppercase tracking-widest mb-1.5 ml-1">Store *</label>
                             <select x-model="formData.store_id" required
-                                    class="w-full border border-gray-300 rounded px-3 py-3 sm:py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-base sm:text-sm">
+                                    class="w-full border border-jolly-dark/10 rounded-2xl px-4 py-3 sm:py-2.5 focus:outline-none focus:ring-4 focus:ring-jolly/20 text-base sm:text-sm bg-gray-50/50 font-medium text-jolly-dark">
                                 <option value="">Select Store</option>
                                 <template x-for="store in stores" :key="store.id">
                                     <option :value="store.id" x-text="store.name"></option>
@@ -142,52 +149,58 @@
                             </select>
                         </div>
                     </div>
-                    <div class="mb-4">
-                        <label class="block text-sm font-medium text-gray-700 mb-1">URL *</label>
-                        <input type="url" x-model="formData.url" required
-                               class="w-full border border-gray-300 rounded px-3 py-3 sm:py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-base sm:text-sm">
                     </div>
                     <div class="mb-4">
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Item Name on Site</label>
+                        <label class="block text-[11px] font-black text-jolly-dark/60 uppercase tracking-widest mb-1.5 ml-1">URL *</label>
+                        <input type="url" x-model="formData.url" required
+                               class="w-full border border-jolly-dark/10 rounded-2xl px-4 py-3 sm:py-2.5 focus:outline-none focus:ring-4 focus:ring-jolly/20 text-base sm:text-sm bg-gray-50/50 font-medium text-jolly-dark">
+                    </div>
+                    <div class="mb-4">
+                        <label class="block text-[11px] font-black text-jolly-dark/60 uppercase tracking-widest mb-1.5 ml-1">Item Name on Site</label>
                         <input type="text" x-model="formData.item_name_on_site"
-                               class="w-full border border-gray-300 rounded px-3 py-3 sm:py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-base sm:text-sm">
+                               class="w-full border border-jolly-dark/10 rounded-2xl px-4 py-3 sm:py-2.5 focus:outline-none focus:ring-4 focus:ring-jolly/20 text-base sm:text-sm bg-gray-50/50 font-medium text-jolly-dark">
                     </div>
                     <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4 mb-4">
+                    <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4 mb-6">
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Quantity *</label>
+                            <label class="block text-[11px] font-black text-jolly-dark/60 uppercase tracking-widest mb-1.5 ml-1">Quantity *</label>
                             <input type="number" step="0.01" x-model="formData.quantity_size" required
-                                   class="w-full border border-gray-300 rounded px-3 py-3 sm:py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-base sm:text-sm">
+                                   class="w-full border border-jolly-dark/10 rounded-2xl px-4 py-3 sm:py-2.5 focus:outline-none focus:ring-4 focus:ring-jolly/20 text-base sm:text-sm bg-gray-50/50 font-medium text-jolly-dark">
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Unit *</label>
+                            <label class="block text-[11px] font-black text-jolly-dark/60 uppercase tracking-widest mb-1.5 ml-1">Unit *</label>
                             <input type="text" x-model="formData.quantity_unit" required placeholder="ml, g, kg..."
-                                   class="w-full border border-gray-300 rounded px-3 py-3 sm:py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-base sm:text-sm">
+                                   class="w-full border border-jolly-dark/10 rounded-2xl px-4 py-3 sm:py-2.5 focus:outline-none focus:ring-4 focus:ring-jolly/20 text-base sm:text-sm bg-gray-50/50 font-medium text-jolly-dark placeholder-jolly-dark/20">
                         </div>
                         <div class="col-span-2 sm:col-span-1">
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Items/Lot</label>
+                            <label class="block text-[11px] font-black text-jolly-dark/60 uppercase tracking-widest mb-1.5 ml-1">Items/Lot</label>
                             <input type="number" x-model="formData.items_per_lot" min="1"
-                                   class="w-full border border-gray-300 rounded px-3 py-3 sm:py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-base sm:text-sm">
+                                   class="w-full border border-jolly-dark/10 rounded-2xl px-4 py-3 sm:py-2.5 focus:outline-none focus:ring-4 focus:ring-jolly/20 text-base sm:text-sm bg-gray-50/50 font-medium text-jolly-dark">
                         </div>
                     </div>
-                    <div class="flex flex-col sm:flex-row gap-4 mb-4">
-                        <label class="flex items-center min-h-[44px] sm:min-h-0">
-                            <input type="checkbox" x-model="formData.is_active" class="w-5 h-5 sm:w-4 sm:h-4 mr-2">
-                            <span class="text-sm text-gray-700">Active</span>
+                    </div>
+                    <div class="flex flex-col sm:flex-row gap-6 mb-8 bg-gray-50/50 p-4 rounded-2xl border border-jolly-dark/5">
+                        <label class="flex items-center cursor-pointer group">
+                            <input type="checkbox" x-model="formData.is_active" class="w-6 h-6 sm:w-5 sm:h-5 mr-3 rounded-lg border-jolly-dark/10 text-jolly focus:ring-jolly transition-all">
+                            <span class="text-sm font-bold text-jolly-dark/80">Active</span>
                         </label>
-                        <label class="flex items-center min-h-[44px] sm:min-h-0">
-                            <input type="checkbox" x-model="formData.alerts_enabled" class="w-5 h-5 sm:w-4 sm:h-4 mr-2">
-                            <span class="text-sm text-gray-700">Alerts Enabled</span>
+                        <label class="flex items-center cursor-pointer group">
+                            <input type="checkbox" x-model="formData.alerts_enabled" class="w-6 h-6 sm:w-5 sm:h-5 mr-3 rounded-lg border-jolly-dark/10 text-jolly focus:ring-jolly transition-all">
+                            <span class="text-sm font-bold text-jolly-dark/80">Alerts Enabled</span>
                         </label>
                     </div>
-                    <div class="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 sm:gap-3 mt-6">
+                    <div class="flex flex-col-reverse sm:flex-row justify-end gap-3 px-6 py-5 bg-gray-50/30 border-t border-jolly-dark/5 rounded-b-3xl mt-4 -mx-6 -mb-6 sm:-mx-8 sm:-mb-8">
                         <button type="button" @click="showForm = false" :disabled="saving"
-                                class="px-4 py-3 sm:py-2 border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50 min-h-[44px] sm:min-h-0">
+                                class="px-6 py-3 bg-white text-jolly-dark/60 font-black rounded-2xl hover:bg-gray-100 transition-all uppercase tracking-widest text-[10px] border border-jolly-dark/5 shadow-sm disabled:opacity-50">
                             Cancel
                         </button>
                         <button type="submit" :disabled="saving"
-                                class="px-4 py-3 sm:py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 min-h-[44px] sm:min-h-0">
-                            <span x-show="!saving">Save</span>
-                            <span x-show="saving">Saving...</span>
+                                class="px-8 py-3 bg-jolly text-jolly-dark font-black rounded-2xl hover:bg-jolly-lime hover:shadow-lg hover:shadow-jolly/20 transition-all uppercase tracking-widest text-[10px] border border-jolly-dark/5 shadow-sm disabled:opacity-50">
+                            <span x-show="!saving" x-text="editingItem ? 'Save Changes' : 'Add Item'"></span>
+                            <span x-show="saving" class="flex items-center gap-2">
+                                <svg class="animate-spin h-3 w-3 text-jolly-dark" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                Saving...
+                            </span>
                         </button>
                     </div>
                 </form>
