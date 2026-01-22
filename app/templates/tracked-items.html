@@ -12,102 +12,93 @@
         </button>
     </div>
 
-    <!-- Mobile Card View -->
-    <div class="sm:hidden space-y-3">
-        <template x-for="item in items" :key="item.id">
-            <div class="bg-white rounded-lg shadow p-4">
-                <div class="flex justify-between items-start mb-2">
-                    <div class="min-w-0 flex-1">
-                        <a :href="'/products'" class="font-medium text-blue-600 hover:underline block truncate" x-text="getProductName(item.product_id)" :title="getProductName(item.product_id)"></a>
-                        <div class="text-sm text-gray-500" x-text="getStoreName(item.store_id)"></div>
-                    </div>
-                    <span x-show="item.is_active" class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 ml-2">
-                        Active
-                    </span>
-                    <span x-show="!item.is_active" class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600 ml-2">
-                        Inactive
-                    </span>
-                </div>
-                <div class="text-sm mb-3">
-                    <div class="text-gray-500 mb-1">Size: <span class="text-gray-900" x-text="item.quantity_size + ' ' + item.quantity_unit"></span></div>
-                    <a :href="item.url" target="_blank" class="text-blue-500 hover:underline text-xs truncate block" x-text="item.url" :title="item.url"></a>
-                </div>
-                <div class="flex gap-2">
-                    <button @click="openPriceHistory(item.id)"
-                            class="bg-gray-100 text-gray-700 px-3 py-2 rounded hover:bg-gray-200 min-h-[44px]"
-                            title="View price history">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+    <!-- Grouped View -->
+    <div class="space-y-6">
+        <template x-for="group in getGroupedItems()" :key="group.product_id">
+            <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                <!-- Group Header: Product Name -->
+                <div class="bg-gray-50 px-4 py-3 border-b border-gray-100 flex justify-between items-center">
+                    <div class="flex items-center gap-2">
+                        <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
                         </svg>
-                    </button>
-                    <button @click="editItem(item)"
-                            class="flex-1 bg-blue-100 text-blue-700 px-3 py-2 rounded hover:bg-blue-200 min-h-[44px]">
-                        Edit
-                    </button>
-                    <button @click="deleteItem(item.id)"
-                            class="flex-1 bg-red-100 text-red-700 px-3 py-2 rounded hover:bg-red-200 min-h-[44px]">
-                        Delete
-                    </button>
+                        <h3 class="font-bold text-gray-800" x-text="group.product_name"></h3>
+                    </div>
+                    <span class="text-xs font-medium text-gray-500 px-2 py-1 bg-gray-200 rounded-full" x-text="group.items.length + ' item(s)'"></span>
+                </div>
+                
+                <!-- Items in this group -->
+                <div class="divide-y divide-gray-50">
+                    <template x-for="item in group.items" :key="item.id">
+                        <div class="p-4 hover:bg-gray-50 transition-colors">
+                            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                                <div class="min-w-0 flex-1">
+                                    <div class="flex items-center gap-2 mb-1">
+                                        <span class="font-semibold text-blue-600" x-text="getStoreName(item.store_id)"></span>
+                                        <span x-show="item.latest_is_available === true" class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-green-100 text-green-700">IN STOCK</span>
+                                        <span x-show="item.latest_is_available === false" class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-red-100 text-red-700">OUT OF STOCK</span>
+                                    </div>
+                                    <div class="text-sm text-gray-600 truncate mb-1">
+                                        <span class="font-medium" x-text="item.quantity_size + ' ' + item.quantity_unit"></span>
+                                        <template x-if="item.item_name_on_site">
+                                            <span class="text-gray-400" x-text="' · ' + item.item_name_on_site"></span>
+                                        </template>
+                                    </div>
+                                    <a :href="item.url" target="_blank" class="text-xs text-blue-400 hover:underline truncate block max-w-sm" x-text="item.url"></a>
+                                    
+                                    <!-- Latest Notes -->
+                                    <template x-if="item.latest_notes">
+                                        <div class="mt-2 text-xs bg-blue-50 text-blue-700 p-2 rounded flex items-start gap-1.5 border border-blue-100">
+                                            <svg class="w-3.5 h-3.5 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                            </svg>
+                                            <span x-text="item.latest_notes"></span>
+                                        </div>
+                                    </template>
+                                </div>
+                                
+                                <div class="flex items-center gap-3">
+                                    <div class="flex flex-col items-end mr-2">
+                                        <span x-show="item.is_active" class="text-[10px] text-green-600 font-bold">ACTIVE</span>
+                                        <span x-show="!item.is_active" class="text-[10px] text-gray-400 font-bold">INACTIVE</span>
+                                    </div>
+                                    <div class="flex gap-2">
+                                        <button @click="openPriceHistory(item.id)"
+                                                class="p-2 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100 transition-colors"
+                                                title="Price History">
+                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                                            </svg>
+                                        </button>
+                                        <button @click="editItem(item)"
+                                                class="p-2 text-blue-400 hover:text-blue-600 rounded-full hover:bg-blue-50 transition-colors"
+                                                title="Edit">
+                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                                            </svg>
+                                        </button>
+                                        <button @click="deleteItem(item.id)"
+                                                class="p-2 text-red-400 hover:text-red-600 rounded-full hover:bg-red-50 transition-colors"
+                                                title="Delete">
+                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                                            </svg>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </template>
                 </div>
             </div>
         </template>
-        <div x-show="items.length === 0" class="bg-white rounded-lg shadow p-6 text-center text-gray-500">
-            No tracked items yet. Add one to start tracking prices.
-        </div>
-    </div>
-
-    <!-- Desktop Table View -->
-    <div class="hidden sm:block bg-white rounded-lg shadow overflow-hidden">
-        <div class="overflow-x-auto">
-            <table class="min-w-full divide-y divide-gray-200">
-                <thead class="bg-gray-50">
-                    <tr>
-                        <th class="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Product</th>
-                        <th class="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase hidden md:table-cell">Store</th>
-                        <th class="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase hidden lg:table-cell">URL</th>
-                        <th class="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Size</th>
-                        <th class="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Active</th>
-                        <th class="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
-                    </tr>
-                </thead>
-                <tbody class="bg-white divide-y divide-gray-200">
-                    <template x-for="item in items" :key="item.id">
-                        <tr class="hover:bg-gray-50">
-                            <td class="px-4 md:px-6 py-4 max-w-[150px]">
-                                <a :href="'/products'" class="text-blue-600 hover:underline block truncate font-medium" x-text="getProductName(item.product_id)" :title="getProductName(item.product_id)"></a>
-                                <div class="text-xs text-gray-500 truncate md:hidden" x-text="getStoreName(item.store_id)"></div>
-                            </td>
-                            <td class="px-4 md:px-6 py-4 max-w-[120px] hidden md:table-cell">
-                                <span class="block truncate" x-text="getStoreName(item.store_id)" :title="getStoreName(item.store_id)"></span>
-                            </td>
-                            <td class="px-4 md:px-6 py-4 max-w-[200px] hidden lg:table-cell">
-                                <a :href="item.url" target="_blank" class="text-blue-600 hover:underline truncate block text-sm" x-text="item.url" :title="item.url"></a>
-                            </td>
-                            <td class="px-4 md:px-6 py-4 whitespace-nowrap text-sm" x-text="item.quantity_size + ' ' + item.quantity_unit"></td>
-                            <td class="px-4 md:px-6 py-4 whitespace-nowrap">
-                                <span x-show="item.is_active" class="text-green-600 text-sm">Yes</span>
-                                <span x-show="!item.is_active" class="text-gray-400 text-sm">No</span>
-                            </td>
-                            <td class="px-4 md:px-6 py-4 whitespace-nowrap text-sm">
-                                <div class="flex gap-2 items-center">
-                                    <button @click="openPriceHistory(item.id)"
-                                            class="text-gray-500 hover:text-gray-700 p-1"
-                                            title="View price history">
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
-                                        </svg>
-                                    </button>
-                                    <button @click="editItem(item)" class="text-blue-600 hover:underline">Edit</button>
-                                    <button @click="deleteItem(item.id)" class="text-red-600 hover:underline">Delete</button>
-                                </div>
-                            </td>
-                        </tr>
-                    </template>
-                    <tr x-show="items.length === 0">
-                        <td colspan="6" class="px-6 py-4 text-center text-gray-500">No tracked items yet. Add one to start tracking prices.</td>
-                    </tr>
-                </tbody>
-            </table>
+        
+        <div x-show="items.length === 0" class="bg-white rounded-xl shadow-sm border border-dashed border-gray-300 p-12 text-center text-gray-500">
+            <svg class="w-12 h-12 mx-auto mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
+            </svg>
+            <p class="text-lg font-medium">No tracked items yet</p>
+            <p class="text-sm mt-1">Add items to start monitoring prices across different stores.</p>
         </div>
     </div>
 
@@ -252,6 +243,23 @@ function trackedItemsManager() {
         async loadStores() {
             const response = await fetch('/api/stores');
             this.stores = await response.json();
+        },
+
+        getGroupedItems() {
+            const groups = {};
+            this.items.forEach(item => {
+                const pid = item.product_id;
+                if (!groups[pid]) {
+                    groups[pid] = {
+                        product_id: pid,
+                        product_name: this.getProductName(pid),
+                        items: []
+                    };
+                }
+                groups[pid].items.push(item);
+            });
+            // Sort products by name
+            return Object.values(groups).sort((a, b) => a.product_name.localeCompare(b.product_name));
         },
 
         getProductName(id) {

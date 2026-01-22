@@ -78,6 +78,7 @@ class DashboardItem(BaseModel):
     unit_price: Optional[float] = None
     unit: Optional[str] = None
     is_available: Optional[bool] = None
+    notes: Optional[str] = None
     screenshot_path: Optional[str] = None
     last_checked: Optional[str] = None
 
@@ -154,6 +155,8 @@ class TrackedItemResponse(BaseModel):
     items_per_lot: int = 1
     is_active: bool = True
     alerts_enabled: bool = True
+    latest_is_available: Optional[bool] = None
+    latest_notes: Optional[str] = None
 
 
 class ExtractionLogResponse(BaseModel):
@@ -233,6 +236,8 @@ async def get_items():
                 price=latest_price.price if latest_price else None,
                 currency=latest_price.currency if latest_price else "EUR",
                 target_price=product.target_price if product else None,
+                is_available=latest_price.is_available if latest_price else None,
+                notes=latest_price.notes if latest_price else None,
                 screenshot_path=screenshot_path if has_screenshot else None,
                 last_checked=item.last_checked_at.isoformat() if item.last_checked_at else None,
             )
@@ -272,6 +277,8 @@ async def get_item(item_id: int):
             price=latest_price.price if latest_price else None,
             currency=latest_price.currency if latest_price else "EUR",
             target_price=product.target_price if product else None,
+            is_available=latest_price.is_available if latest_price else None,
+            notes=latest_price.notes if latest_price else None,
             screenshot_path=screenshot_path if has_screenshot else None,
             last_checked=item.last_checked_at.isoformat() if item.last_checked_at else None,
         )
@@ -464,9 +471,11 @@ async def run_extraction(item_id: int, db_path: str):
             product_name=result.product_name,
             price=result.price,
             currency=result.currency,
+            is_available=result.is_available,
             confidence=1.0,  # Structured output is trusted
             url=item.url,
             store_name=result.store_name,
+            notes=result.notes,
         )
         price_repo.insert(record)
 
@@ -563,9 +572,11 @@ async def trigger_extraction(item_id: int):
                 product_name=result.product_name,
                 price=result.price,
                 currency=result.currency,
+                is_available=result.is_available,
                 confidence=1.0,
                 url=item.url,
                 store_name=result.store_name,
+                notes=result.notes,
             )
             price_repo.insert(record)
 
@@ -671,6 +682,8 @@ async def dashboard(request: Request):
                 "unit_price": unit_price,
                 "unit": unit,
                 "is_deal": is_deal,
+                "is_available": latest_price.is_available if latest_price else None,
+                "notes": latest_price.notes if latest_price else None,
                 "screenshot_path": screenshot_path if has_screenshot else None,
             })
 
@@ -972,22 +985,28 @@ async def get_tracked_items():
     db = get_db()
     try:
         repo = TrackedItemRepository(db)
+        price_repo = PriceHistoryRepository(db)
         items = repo.get_active()
-        return [
-            TrackedItemResponse(
-                id=i.id,
-                product_id=i.product_id,
-                store_id=i.store_id,
-                url=i.url,
-                item_name_on_site=i.item_name_on_site,
-                quantity_size=i.quantity_size,
-                quantity_unit=i.quantity_unit,
-                items_per_lot=i.items_per_lot,
-                is_active=i.is_active,
-                alerts_enabled=i.alerts_enabled,
+        result = []
+        for i in items:
+            latest = price_repo.get_latest_by_url(i.url)
+            result.append(
+                TrackedItemResponse(
+                    id=i.id,
+                    product_id=i.product_id,
+                    store_id=i.store_id,
+                    url=i.url,
+                    item_name_on_site=i.item_name_on_site,
+                    quantity_size=i.quantity_size,
+                    quantity_unit=i.quantity_unit,
+                    items_per_lot=i.items_per_lot,
+                    is_active=i.is_active,
+                    alerts_enabled=i.alerts_enabled,
+                    latest_is_available=latest.is_available if latest else None,
+                    latest_notes=latest.notes if latest else None,
+                )
             )
-            for i in items
-        ]
+        return result
     finally:
         db.close()
 
@@ -1038,6 +1057,10 @@ async def get_tracked_item(item_id: int):
         item = repo.get_by_id(item_id)
         if not item:
             raise HTTPException(status_code=404, detail="Tracked item not found")
+        
+        price_repo = PriceHistoryRepository(db)
+        latest = price_repo.get_latest_by_url(item.url)
+        
         return TrackedItemResponse(
             id=item.id,
             product_id=item.product_id,
@@ -1049,6 +1072,8 @@ async def get_tracked_item(item_id: int):
             items_per_lot=item.items_per_lot,
             is_active=item.is_active,
             alerts_enabled=item.alerts_enabled,
+            latest_is_available=latest.is_available if latest else None,
+            latest_notes=latest.notes if latest else None,
         )
     finally:
         db.close()

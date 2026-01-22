@@ -79,10 +79,12 @@ async def cmd_extract(args) -> int:
             product_name=result.product_name,
             price=result.price,
             currency=result.currency,
+            is_available=result.is_available,
             confidence=1.0,  # Structured output assumes high confidence
             url=args.url,
             store_name=result.store_name,
             page_type="single_product",
+            notes=result.notes,
         )
         record_id = price_repo.insert(record)
         logger.info("Price saved to database", extra={"record_id": record_id})
@@ -93,6 +95,8 @@ async def cmd_extract(args) -> int:
         if result.store_name:
             print(f"Store: {result.store_name}")
         print(f"Stock: {'Available' if result.is_available else 'Out of stock'}")
+        if result.notes:
+            print(f"Notes: {result.notes}")
         print(f"Model used: {model_used}")
 
         # Show volume price if tracked

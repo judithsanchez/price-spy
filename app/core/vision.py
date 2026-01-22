@@ -21,7 +21,8 @@ EXTRACTION_SCHEMA = {
         "is_available": {"type": "boolean", "description": "Whether the product is in stock"},
         "product_name": {"type": "string", "description": "The name of the product"},
         "store_name": {"type": "string", "description": "The name of the store/retailer"},
-        "is_blocked": {"type": "boolean", "description": "Whether the page is blocked by a cookie consent modal or login wall"}
+        "is_blocked": {"type": "boolean", "description": "Whether the page is blocked by a cookie consent modal or login wall"},
+        "notes": {"type": "string", "description": "Additional notes about stock, variants (e.g. '240 caps out of stock'), or special offers."}
     },
     "required": ["price", "currency", "is_available", "product_name"]
 }
@@ -139,6 +140,7 @@ Analyze the image and extract:
 - The product name
 - The store/retailer name (if visible)
 - Whether the page is blocked by a cookie consent modal (is_blocked: boolean)
+- Additional notes (e.g., info about out-of-stock sizes/variants, upcoming restocks mentioned, or if only expensive options are left)
 
 Return the data as JSON. If is_blocked is true, provide the best guess for other fields.
 If fields are missing or unreadable, use 0.0 for price and "N/A" for currency.

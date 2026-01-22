@@ -124,6 +124,15 @@
             <div class="min-w-0 flex-1">
                 <div class="font-medium text-gray-900 truncate">{{ item.product_name }}</div>
                 <div class="text-sm text-gray-500">{{ item.store_name }}</div>
+                <div class="mt-1 flex flex-wrap gap-1">
+                    {% if item.is_available is not none %}
+                        {% if item.is_available %}
+                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">In Stock</span>
+                        {% else %}
+                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800">Out of Stock</span>
+                        {% endif %}
+                    {% endif %}
+                </div>
             </div>
             {% if item.target_price and item.price %}
                 {% if item.price <= item.target_price %}
@@ -133,6 +142,11 @@
                 {% endif %}
             {% endif %}
         </div>
+        {% if item.notes %}
+            <div class="mb-3 p-2 bg-blue-50 border border-blue-100 rounded text-xs text-blue-700">
+                <span class="font-semibold">AI Notes:</span> {{ item.notes }}
+            </div>
+        {% endif %}
         <div class="grid grid-cols-2 gap-2 text-sm mb-3">
             <div>
                 <span class="text-gray-500">Price:</span>
@@ -223,6 +237,11 @@
                     <td class="px-4 py-3 text-sm">
                         <div class="font-medium">{{ item.product_name }}</div>
                         <div class="text-gray-500 text-xs md:hidden">{{ item.store_name }}</div>
+                        {% if item.notes %}
+                            <div class="text-[10px] text-blue-600 mt-1 max-w-[200px] truncate" title="{{ item.notes }}">
+                                <span class="font-semibold italic">Note:</span> {{ item.notes }}
+                            </div>
+                        {% endif %}
                     </td>
                     <td class="px-4 py-3 text-sm text-gray-600 hidden md:table-cell">{{ item.store_name }}</td>
                     <td class="px-4 py-3 text-sm font-medium">
@@ -247,17 +266,27 @@
                         {% endif %}
                     </td>
                     <td class="px-4 py-3 text-sm">
-                        {% if item.target_price and item.price %}
-                            {% if item.price <= item.target_price %}
-                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-green-500 text-white animate-pulse">
-                                    DEAL
-                                </span>
+                        <div class="flex flex-col gap-1">
+                            {% if item.target_price and item.price %}
+                                {% if item.price <= item.target_price %}
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-green-500 text-white animate-pulse w-fit">
+                                        DEAL
+                                    </span>
+                                {% else %}
+                                    <span class="text-red-600 font-medium text-xs sm:text-sm">Above target</span>
+                                {% endif %}
                             {% else %}
-                                <span class="text-red-600 font-medium text-xs sm:text-sm">Above target</span>
+                                <span class="text-gray-400">-</span>
                             {% endif %}
-                        {% else %}
-                            <span class="text-gray-400">-</span>
-                        {% endif %}
+                            
+                            {% if item.is_available is not none %}
+                                {% if item.is_available %}
+                                    <span class="text-xs font-medium text-green-700">✓ In Stock</span>
+                                {% else %}
+                                    <span class="text-xs font-medium text-red-700">✗ Out of Stock</span>
+                                {% endif %}
+                            {% endif %}
+                        </div>
                     </td>
                     <td class="px-4 py-3 hidden md:table-cell">
                         {% if item.screenshot_path %}
