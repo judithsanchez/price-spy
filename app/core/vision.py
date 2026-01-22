@@ -46,6 +46,7 @@ Return ONLY a valid JSON object with these exact fields:
 
 Important:
 - If is_blocked is true, still try to extract what you can, but set is_blocked: true.
+- If you CANNOT find the price or currency, use 0.0 for price and "N/A" for currency.
 
 Important:
 - Return ONLY the JSON, no markdown, no explanation
@@ -140,6 +141,7 @@ Analyze the image and extract:
 - Whether the page is blocked by a cookie consent modal (is_blocked: boolean)
 
 Return the data as JSON. If is_blocked is true, provide the best guess for other fields.
+If fields are missing or unreadable, use 0.0 for price and "N/A" for currency.
 """
 
 
