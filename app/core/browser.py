@@ -29,6 +29,35 @@ STEALTH_SCRIPTS = """
     window.chrome = {
         runtime: {},
     };
+
+    // Aggressive Modal Bypass via MutationObserver
+    (function() {
+        const hideTags = ['#modalWindow', '.modal', '.cookie-modal', '[data-test="modal-window"]', 'wsp-modal-window', '.consent-modal', '#consent-layer', '[data-type="cookie-modal"]', '[data-type="country-language-modal"]'];
+        const hide = () => {
+            hideTags.forEach(tag => {
+                document.querySelectorAll(tag).forEach(el => {
+                    el.style.setProperty('display', 'none', 'important');
+                    el.style.setProperty('visibility', 'hidden', 'important');
+                    el.style.setProperty('opacity', '0', 'important');
+                    el.style.setProperty('pointer-events', 'none', 'important');
+                });
+            });
+            if (document.body) {
+                document.body.style.setProperty('overflow', 'auto', 'important');
+                document.body.style.setProperty('position', 'static', 'important');
+            }
+        };
+        
+        // Initial run
+        hide();
+        
+        // Continuous observer
+        const observer = new MutationObserver(hide);
+        observer.observe(document.documentElement, { childList: true, subtree: true });
+        
+        // Final fallback on load
+        window.addEventListener('load', hide);
+    })();
 """
 
 
@@ -90,13 +119,10 @@ async def capture_screenshot(url: str) -> bytes:
                 if not clicked_any:
                     break
             
-            # Additional surgical bypass: inject CSS to hide known modals and force scrolling
+            # Additional surgical bypass: inject CSS again just in case (as a fallback)
             await page.add_style_tag(content="""
                 #modalWindow, .modal, .cookie-modal, [data-test="modal-window"], wsp-modal-window {
                     display: none !important;
-                    visibility: hidden !important;
-                    opacity: 0 !important;
-                    pointer-events: none !important;
                 }
                 body, html {
                     overflow: auto !important;
