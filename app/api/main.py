@@ -7,7 +7,8 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.requests import Request
 from pathlib import Path
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
+from fastapi.responses import JSONResponse
 
 from app.storage.database import Database
 from app.storage.repositories import (
@@ -39,6 +40,18 @@ templates = Jinja2Templates(directory=str(templates_dir))
 screenshots_dir = Path("screenshots")
 if screenshots_dir.exists():
     app.mount("/screenshots", StaticFiles(directory="screenshots"), name="screenshots")
+
+
+@app.exception_handler(ValidationError)
+async def pydantic_validation_exception_handler(request: Request, exc: ValidationError):
+    """Handle Pydantic validation errors by returning a 422 JSON response."""
+    return JSONResponse(
+        status_code=422,
+        content={
+            "detail": exc.errors(),
+            "message": "Validation error"
+        }
+    )
 
 # Test database path override (used in tests)
 _test_db_path: Optional[str] = None

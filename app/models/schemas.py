@@ -13,7 +13,7 @@ class ProductInfo(BaseModel):
 
     product_name: str = Field(..., min_length=1, max_length=500)
     price: float = Field(..., ge=0, le=1_000_000)
-    currency: str = Field(default="EUR", pattern=r"^[A-Z]{3}|N/A$")
+    currency: str = Field(default="EUR", pattern=r"^([A-Z]{3}|N/A)$")
     store_name: Optional[str] = Field(default=None, max_length=100)
     page_type: Literal["single_product", "search_results"]
     confidence: float = Field(..., ge=0.0, le=1.0, alias="confidence_score")
@@ -79,7 +79,7 @@ class Store(BaseModel):
     id: Optional[int] = None
     name: str = Field(..., min_length=1, max_length=100)
     shipping_cost_standard: float = Field(default=0, ge=0)
-    free_shipping_threshold: Optional[float] = Field(default=None, gt=0)
+    free_shipping_threshold: Optional[float] = Field(default=None, ge=0)
     notes: Optional[str] = Field(default=None, max_length=500)
 
 
@@ -124,7 +124,7 @@ class ExtractionResult(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True)
 
     price: float = Field(..., ge=0, le=1_000_000, description="Numeric price value")
-    currency: str = Field(default="EUR", pattern=r"^[A-Z]{3}|N/A$")
+    currency: str = Field(default="EUR", pattern=r"^([A-Z]{3}|N/A)$")
     is_available: bool = Field(..., description="In stock status")
     product_name: str = Field(..., min_length=1, max_length=500)
     store_name: Optional[str] = Field(default=None, max_length=100)

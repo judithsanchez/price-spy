@@ -45,15 +45,15 @@ class TestProductInfo:
                 confidence_score=0.5
             )
 
-    def test_price_zero_invalid(self):
-        """Zero price should raise ValidationError."""
-        with pytest.raises(ValidationError):
-            ProductInfo(
-                product_name="Test",
-                price=0,
-                page_type="single_product",
-                confidence_score=0.5
-            )
+    def test_price_zero_allowed(self):
+        """Zero price should be allowed for resilient extraction."""
+        info = ProductInfo(
+            product_name="Test",
+            price=0.0,
+            page_type="single_product",
+            confidence_score=0.5
+        )
+        assert info.price == 0.0
 
     def test_confidence_must_be_0_to_1(self):
         """Confidence > 1.0 should raise ValidationError."""
@@ -75,8 +75,19 @@ class TestProductInfo:
                 confidence_score=-0.1
             )
 
-    def test_currency_must_be_3_letters(self):
-        """Currency must be exactly 3 uppercase letters."""
+    def test_currency_must_be_3_letters_or_na(self):
+        """Currency must be exactly 3 uppercase letters or 'N/A'."""
+        # Test 'N/A'
+        info = ProductInfo(
+            product_name="Test",
+            price=10.0,
+            currency="N/A",
+            page_type="single_product",
+            confidence_score=0.5
+        )
+        assert info.currency == "N/A"
+
+        # Test invalid
         with pytest.raises(ValidationError):
             ProductInfo(
                 product_name="Test",
@@ -227,6 +238,11 @@ class TestStore:
         """Shipping cost cannot be negative."""
         with pytest.raises(ValidationError):
             Store(name="Test", shipping_cost_standard=-1.0)
+
+    def test_store_free_shipping_threshold_zero_allowed(self):
+        """Zero threshold should be allowed (Always Free)."""
+        store = Store(name="Ikea", free_shipping_threshold=0.0)
+        assert store.free_shipping_threshold == 0.0
 
 
 class TestTrackedItem:
@@ -390,15 +406,16 @@ class TestExtractionResult:
                 product_name="Test"
             )
 
-    def test_extraction_result_price_zero_invalid(self):
-        """Zero price should raise ValidationError."""
-        with pytest.raises(ValidationError):
-            ExtractionResult(
-                price=0,
-                currency="EUR",
-                is_available=True,
-                product_name="Test"
-            )
+    def test_extraction_result_price_zero_allowed(self):
+        """Zero price should be allowed for resilient extraction."""
+        result = ExtractionResult(
+            price=0.0,
+            is_available=True,
+            product_name="Test",
+            currency="EUR",
+            is_blocked=False
+        )
+        assert result.price == 0.0
 
     def test_extraction_result_currency_pattern(self):
         """Currency must be 3 uppercase letters."""
