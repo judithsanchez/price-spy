@@ -5,6 +5,7 @@ import argparse
 import asyncio
 import os
 import sys
+import time
 import traceback
 from urllib.parse import urlparse
 
@@ -137,6 +138,58 @@ async def cmd_extract(args) -> int:
 
     finally:
         db.close()
+
+
+async def cmd_check(args) -> int:
+    """Check if a URL is accessible and visible to the AI."""
+    api_key = settings.GEMINI_API_KEY
+    if not api_key:
+        print("Error: GEMINI_API_KEY not set in environment", file=sys.stderr)
+        return 1
+
+    if not validate_url(args.url):
+        print(f"Error: Invalid URL '{args.url}'", file=sys.stderr)
+        return 1
+
+    try:
+        os.makedirs("diagnostics", exist_ok=True)
+        domain = urlparse(args.url).netloc.replace(".", "_")
+        timestamp = int(time.time())
+        output_path = f"diagnostics/check_{domain}_{timestamp}.png"
+
+        print(f"Checking URL: {args.url}")
+        print(f"Capturing screenshot...")
+        screenshot = await capture_screenshot(args.url)
+        
+        with open(output_path, "wb") as f:
+            f.write(screenshot)
+        print(f"Screenshot saved to: {output_path}")
+
+        print("Analyzing with AI...")
+        result, model_used = await extract_with_structured_output(screenshot, api_key)
+        
+        print("\n--- Diagnostic Results ---")
+        print(f"Detection Status: {'BLOCKED' if result.is_blocked else 'CLEAR'}")
+        if result.is_blocked:
+            print("Page appears to be blocked by a modal, captcha, or WAF.")
+        
+        print(f"Store Detected: {result.store_name if result.store_name else 'Unknown'}")
+        print(f"Product Detected: {result.product_name if result.product_name else 'Unknown'}")
+        print(f"Price Found: {result.currency} {result.price if result.price > 0 else 'N/A'}")
+        print(f"Model Used: {model_used}")
+        print("--------------------------")
+        
+        if not result.is_blocked and result.price > 0:
+            print("\nSuccess: This URL is likely compatible with Price Spy.")
+        elif result.is_blocked:
+            print("\nWarning: This site is detecting the bot or has persistent modals.")
+        else:
+            print("\nInconclusive: Screenshot captured, but AI couldn't find clear product data.")
+
+        return 0
+    except Exception as e:
+        print(f"Error during check: {e}", file=sys.stderr)
+        return 1
 
 
 def cmd_add_product(args) -> int:
@@ -348,6 +401,11 @@ def main():
         help="What to list (default: tracked)"
     )
 
+    # Check command
+    check_parser = subparsers.add_parser("check", help="Test a new URL for compatibility")
+    check_parser.add_argument("url", help="URL to test")
+
+
     args = parser.parse_args()
 
     # Handle legacy usage: spy.py <URL> (without subcommand)
@@ -371,6 +429,8 @@ def main():
         return cmd_track(args)
     elif args.command == "list":
         return cmd_list(args)
+    elif args.command == "check":
+        return asyncio.run(cmd_check(args))
     else:
         parser.print_help()
         return 1
