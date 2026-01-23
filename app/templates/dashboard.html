@@ -4,13 +4,7 @@
 
 {% block content %}
 <div x-data="{ ...priceHistoryMixin(), ...priceTrendChart() }">
-<div class="mb-6 flex justify-between items-end">
-    <div>
-        <h2 class="text-2xl font-black text-jolly-dark">📊 Dashboard</h2>
-        <p class="text-jolly-dark/60 text-sm font-medium">Real-time price monitoring and trends</p>
-    </div>
-    <div class="text-[10px] font-black text-jolly-dark uppercase tracking-widest bg-jolly-lime/40 px-3 py-1 rounded-full border border-jolly-dark/5">v{{ version if version else '0.3.5' }}</div>
-</div>
+    <div class="mb-6"></div>
 
 {% if has_any_items %}
 <!-- Dashboard Header: Quick Stats & Graph -->
@@ -147,8 +141,8 @@
             </div>
             {% set has_deal = product.tracked_items | selectattr('is_deal') | list | length > 0 %}
             {% if has_deal %}
-                <span class="flex-shrink-0 inline-flex items-center px-3 py-1 rounded-full text-xs font-black bg-jolly-vivid text-white shadow-sm animate-bounce border border-jolly-vivid/20">
-                    🔥 DEAL!
+                <span class="flex-shrink-0 inline-flex items-center px-3 py-1 rounded-full text-xs font-black bg-jolly-rose text-white shadow-sm animate-bounce border border-white/20">
+                    ✨ DEAL!
                 </span>
             {% elif product.target_price and product.tracked_items | selectattr('price') | list | length > 0 %}
                 {% set latest_price = (product.tracked_items | selectattr('price') | list | first).price %}
