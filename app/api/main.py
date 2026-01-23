@@ -1107,6 +1107,8 @@ async def create_product(product: ProductCreate):
         kwargs = {"name": product.name}
         if product.category is not None:
             kwargs["category"] = product.category
+        if product.labels is not None:
+            kwargs["labels"] = product.labels
         if product.purchase_type is not None:
             kwargs["purchase_type"] = product.purchase_type
         if product.target_price is not None:
@@ -1115,6 +1117,21 @@ async def create_product(product: ProductCreate):
             kwargs["preferred_unit_size"] = product.preferred_unit_size
         kwargs["current_stock"] = product.current_stock
 
+        # Auto-create category if it doesn't exist
+        if product.category:
+            cat_repo = CategoryRepository(db)
+            if not cat_repo.get_by_name(product.category):
+                from app.models.schemas import Category
+                cat_repo.insert(Category(name=product.category))
+        
+        # Auto-create labels if they don't exist
+        if product.labels:
+            label_repo = LabelRepository(db)
+            for label_name in [l.strip() for l in product.labels.split(",") if l.strip()]:
+                if not label_repo.get_by_name(label_name):
+                    from app.models.schemas import Label
+                    label_repo.insert(Label(name=label_name))
+
         new_product = Product(**kwargs)
         product_id = repo.insert(new_product)
         created = repo.get_by_id(product_id)
@@ -1122,6 +1139,7 @@ async def create_product(product: ProductCreate):
             id=created.id,
             name=created.name,
             category=created.category,
+            labels=created.labels,
             purchase_type=created.purchase_type,
             target_price=created.target_price,
             preferred_unit_size=created.preferred_unit_size,
@@ -1144,6 +1162,7 @@ async def get_product(product_id: int):
             id=product.id,
             name=product.name,
             category=product.category,
+            labels=product.labels,
             purchase_type=product.purchase_type,
             target_price=product.target_price,
             preferred_unit_size=product.preferred_unit_size,
@@ -1168,6 +1187,8 @@ async def update_product(product_id: int, product: ProductCreate):
         kwargs = {"name": product.name}
         if product.category is not None:
             kwargs["category"] = product.category
+        if product.labels is not None:
+            kwargs["labels"] = product.labels
         if product.purchase_type is not None:
             kwargs["purchase_type"] = product.purchase_type
         if product.target_price is not None:
@@ -1176,6 +1197,21 @@ async def update_product(product_id: int, product: ProductCreate):
             kwargs["preferred_unit_size"] = product.preferred_unit_size
         kwargs["current_stock"] = product.current_stock
 
+        # Auto-create category if it doesn't exist
+        if product.category:
+            cat_repo = CategoryRepository(db)
+            if not cat_repo.get_by_name(product.category):
+                from app.models.schemas import Category
+                cat_repo.insert(Category(name=product.category))
+        
+        # Auto-create labels if they don't exist
+        if product.labels:
+            label_repo = LabelRepository(db)
+            for label_name in [l.strip() for l in product.labels.split(",") if l.strip()]:
+                if not label_repo.get_by_name(label_name):
+                    from app.models.schemas import Label
+                    label_repo.insert(Label(name=label_name))
+
         updated_product = Product(**kwargs)
         repo.update(product_id, updated_product)
         result = repo.get_by_id(product_id)
@@ -1183,6 +1219,7 @@ async def update_product(product_id: int, product: ProductCreate):
             id=result.id,
             name=result.name,
             category=result.category,
+            labels=result.labels,
             purchase_type=result.purchase_type,
             target_price=result.target_price,
             preferred_unit_size=result.preferred_unit_size,
