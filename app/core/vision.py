@@ -22,7 +22,14 @@ EXTRACTION_SCHEMA = {
         "product_name": {"type": "string", "description": "The name of the product"},
         "store_name": {"type": "string", "description": "The name of the store/retailer"},
         "is_blocked": {"type": "boolean", "description": "Whether the page is blocked by a cookie consent modal or login wall"},
-        "notes": {"type": "string", "description": "Additional notes about stock, variants (e.g. '240 caps out of stock'), or special offers."}
+        "original_price": {"type": "number", "description": "The original price before any discount"},
+        "deal_type": {
+            "type": "string", 
+            "enum": ["bogo", "multibuy", "discount", "second_half_price", "none"],
+            "description": "The type of promotion detected"
+        },
+        "deal_description": {"type": "string", "description": "A brief explanation of the deal (e.g., '1+1 gratis', '2 for 5 EUR')"},
+        "notes": {"type": "string", "description": "Additional notes about stock, variants, or special offers."}
     },
     "required": ["price", "currency", "is_available", "product_name"]
 }
@@ -140,6 +147,9 @@ Analyze the image and extract:
 - The product name
 - The store/retailer name (if visible)
 - Whether the page is blocked by a cookie consent modal (is_blocked: boolean)
+- Original price before discount (original_price: number, if visible)
+- Type of deal: 'bogo', 'multibuy', 'discount', 'second_half_price', or 'none' (deal_type: enum string)
+- Brief description of the promotional offer (deal_description: string, e.g., '1+1 gratis', '2e halve prijs')
 - Additional notes (e.g., info about out-of-stock sizes/variants, upcoming restocks mentioned, or if only expensive options are left)
 
 Return the data as JSON. If is_blocked is true, provide the best guess for other fields.

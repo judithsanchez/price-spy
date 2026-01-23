@@ -63,29 +63,42 @@ def calculate_volume_price(
 
 def compare_prices(
     current: float,
-    previous: Optional[float]
+    previous: Optional[float],
+    original_price: Optional[float] = None,
+    deal_type: Optional[str] = None,
+    deal_description: Optional[str] = None
 ) -> PriceComparison:
     """
-    Compare current price with previous price.
+    Compare current price with previous price and evaluate deals.
 
     Args:
         current: Current price
         previous: Previous price (None if first check)
-
-    Returns:
-        PriceComparison with change details
+        original_price: Original price before any discount
+        deal_type: Type of promotion detected (e.g., '1+1 gratis')
+        deal_description: Explanation of the deal
     """
+    is_deal = False
+    if original_price and original_price > current:
+        is_deal = True
+    elif deal_type and deal_type.lower() != "none":
+        is_deal = True
+
     if previous is None:
         return PriceComparison(
             current_price=current,
             previous_price=None,
             price_change=None,
             price_change_percent=None,
-            is_price_drop=False
+            is_price_drop=False,
+            is_deal=is_deal,
+            original_price=original_price,
+            deal_type=deal_type,
+            deal_description=deal_description
         )
 
     price_change = round(current - previous, 2)
-    price_change_percent = round((price_change / previous) * 100, 2)
+    price_change_percent = round((price_change / previous) * 100, 2) if previous > 0 else 0
     is_price_drop = price_change < 0
 
     return PriceComparison(
@@ -93,5 +106,9 @@ def compare_prices(
         previous_price=previous,
         price_change=price_change,
         price_change_percent=price_change_percent,
-        is_price_drop=is_price_drop
+        is_price_drop=is_price_drop,
+        is_deal=is_deal or is_price_drop,
+        original_price=original_price,
+        deal_type=deal_type,
+        deal_description=deal_description
     )

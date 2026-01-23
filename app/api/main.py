@@ -87,6 +87,10 @@ class DashboardItem(BaseModel):
     notes: Optional[str] = None
     screenshot_path: Optional[str] = None
     last_checked: Optional[str] = None
+    original_price: Optional[float] = None
+    deal_type: Optional[str] = None
+    deal_description: Optional[str] = None
+    is_deal: bool = False
 
 
 class ExtractResponse(BaseModel):
@@ -169,8 +173,13 @@ class TrackedItemResponse(BaseModel):
     items_per_lot: int = 1
     is_active: bool = True
     alerts_enabled: bool = True
+    latest_price: Optional[float] = None
+    latest_currency: str = "EUR"
     latest_is_available: Optional[bool] = None
     latest_notes: Optional[str] = None
+    latest_original_price: Optional[float] = None
+    latest_deal_type: Optional[str] = None
+    latest_deal_description: Optional[str] = None
 
 
 class ExtractionLogResponse(BaseModel):
@@ -268,6 +277,10 @@ async def get_items():
                 notes=latest_price.notes if latest_price else None,
                 screenshot_path=screenshot_path if has_screenshot else None,
                 last_checked=item.last_checked_at.isoformat() if item.last_checked_at else None,
+                original_price=latest_price.original_price if latest_price else None,
+                deal_type=latest_price.deal_type if latest_price else None,
+                deal_description=latest_price.deal_description if latest_price else None,
+                is_deal=(latest_price.original_price is not None and latest_price.original_price > latest_price.price) or (latest_price.deal_type is not None and latest_price.deal_type.lower() != "none") if latest_price else False,
             )
             result.append(dashboard_item)
 
@@ -309,6 +322,10 @@ async def get_item(item_id: int):
             notes=latest_price.notes if latest_price else None,
             screenshot_path=screenshot_path if has_screenshot else None,
             last_checked=item.last_checked_at.isoformat() if item.last_checked_at else None,
+            original_price=latest_price.original_price if latest_price else None,
+            deal_type=latest_price.deal_type if latest_price else None,
+            deal_description=latest_price.deal_description if latest_price else None,
+            is_deal=(latest_price.original_price is not None and latest_price.original_price > latest_price.price) or (latest_price.deal_type is not None and latest_price.deal_type.lower() != "none") if latest_price else False,
         )
     finally:
         db.close()
@@ -962,7 +979,18 @@ async def dashboard(request: Request):
 
             # Determine if this is a deal
             price = latest_price_rec.price if latest_price_rec else None
-            is_deal = price is not None and product.target_price is not None and price <= product.target_price
+            original_price = latest_price_rec.original_price if latest_price_rec else None
+            deal_type = latest_price_rec.deal_type if latest_price_rec else None
+            deal_description = latest_price_rec.deal_description if latest_price_rec else None
+
+            is_deal = False
+            if price is not None:
+                if product.target_price is not None and price <= product.target_price:
+                    is_deal = True
+                elif original_price is not None and original_price > price:
+                    is_deal = True
+                elif deal_type and deal_type.lower() != "none":
+                    is_deal = True
 
             products_map[product.id]["tracked_items"].append({
                 "id": item.id,
@@ -977,6 +1005,9 @@ async def dashboard(request: Request):
                 "is_available": latest_price_rec.is_available if latest_price_rec else None,
                 "notes": latest_price_rec.notes if latest_price_rec else None,
                 "screenshot_path": screenshot_path if has_screenshot else None,
+                "original_price": original_price,
+                "deal_type": deal_type,
+                "deal_description": deal_description,
             })
             
             # Low stock detection
@@ -1395,8 +1426,13 @@ async def get_tracked_items():
                     items_per_lot=i.items_per_lot,
                     is_active=i.is_active,
                     alerts_enabled=i.alerts_enabled,
+                    latest_price=latest.price if latest else None,
+                    latest_currency=latest.currency if latest else "EUR",
                     latest_is_available=latest.is_available if latest else None,
                     latest_notes=latest.notes if latest else None,
+                    latest_original_price=latest.original_price if latest else None,
+                    latest_deal_type=latest.deal_type if latest else None,
+                    latest_deal_description=latest.deal_description if latest else None,
                 )
             )
         return result
@@ -1465,8 +1501,13 @@ async def get_tracked_item(item_id: int):
             items_per_lot=item.items_per_lot,
             is_active=item.is_active,
             alerts_enabled=item.alerts_enabled,
+            latest_price=latest.price if latest else None,
+            latest_currency=latest.currency if latest else "EUR",
             latest_is_available=latest.is_available if latest else None,
             latest_notes=latest.notes if latest else None,
+            latest_original_price=latest.original_price if latest else None,
+            latest_deal_type=latest.deal_type if latest else None,
+            latest_deal_description=latest.deal_description if latest else None,
         )
     finally:
         db.close()
@@ -1546,8 +1587,13 @@ async def patch_tracked_item(item_id: int, item_patch: TrackedItemPatch):
             items_per_lot=result.items_per_lot,
             is_active=result.is_active,
             alerts_enabled=result.alerts_enabled,
+            latest_price=latest.price if latest else None,
+            latest_currency=latest.currency if latest else "EUR",
             latest_is_available=latest.is_available if latest else None,
             latest_notes=latest.notes if latest else None,
+            latest_original_price=latest.original_price if latest else None,
+            latest_deal_type=latest.deal_type if latest else None,
+            latest_deal_description=latest.deal_description if latest else None,
         )
     finally:
         db.close()

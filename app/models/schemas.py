@@ -55,6 +55,9 @@ class PriceHistoryRecord(BaseModel):
     store_name: Optional[str] = None
     page_type: Optional[str] = None
     notes: Optional[str] = None
+    original_price: Optional[float] = None
+    deal_type: Optional[str] = None
+    deal_description: Optional[str] = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
@@ -96,8 +99,8 @@ class TrackedItem(BaseModel):
     store_id: int = Field(...)
     url: str = Field(..., min_length=1)
     item_name_on_site: Optional[str] = Field(default=None, max_length=300)
-    quantity_size: float = Field(..., gt=0)
-    quantity_unit: str = Field(..., min_length=1, max_length=20)
+    quantity_size: float = Field(default=1.0, gt=0)
+    quantity_unit: str = Field(default="st", min_length=1, max_length=20)
     items_per_lot: int = Field(default=1, ge=1)
     preferred_model: Optional[str] = Field(default=None, max_length=50)
     last_checked_at: Optional[datetime] = None
@@ -115,6 +118,10 @@ class PriceComparison(BaseModel):
     volume_price: Optional[float] = Field(default=None, gt=0)
     volume_unit: Optional[str] = Field(default=None, max_length=20)
     is_price_drop: bool = False
+    is_deal: bool = False
+    original_price: Optional[float] = None
+    deal_type: Optional[str] = None
+    deal_description: Optional[str] = None
 
 
 class ExtractionResult(BaseModel):
@@ -130,9 +137,12 @@ class ExtractionResult(BaseModel):
     currency: str = Field(default="EUR", pattern=r"^([A-Z]{3}|N/A)$")
     is_available: bool = Field(..., description="In stock status")
     product_name: str = Field(..., min_length=1, max_length=500)
-    store_name: Optional[str] = Field(default=None, max_length=100)
+    store_name: Optional[str] = Field(default=None, max_length=500)
     notes: Optional[str] = Field(default=None, max_length=1000, description="AI notes/observations")
     is_blocked: bool = Field(default=False, description="Whether the page is blocked by a modal")
+    original_price: Optional[float] = Field(default=None, ge=0, description="Original price before discount")
+    deal_type: Optional[str] = Field(default=None, max_length=50, description="Type of deal (e.g., 'Discount', 'BOGO')")
+    deal_description: Optional[str] = Field(default=None, max_length=200, description="Brief description of the deal")
     detected_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
     @field_validator("price")

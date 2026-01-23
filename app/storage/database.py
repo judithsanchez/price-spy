@@ -62,6 +62,9 @@ CREATE TABLE IF NOT EXISTS price_history (
     store_name TEXT,
     page_type TEXT,
     notes TEXT,
+    original_price REAL,
+    deal_type TEXT,
+    deal_description TEXT,
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     FOREIGN KEY (item_id) REFERENCES tracked_items (id) ON DELETE CASCADE
 );
@@ -190,6 +193,12 @@ class Database:
             cursor.execute("ALTER TABLE price_history ADD COLUMN notes TEXT")
         if "item_id" not in columns:
             cursor.execute("ALTER TABLE price_history ADD COLUMN item_id INTEGER")
+        if "original_price" not in columns:
+            cursor.execute("ALTER TABLE price_history ADD COLUMN original_price REAL")
+        if "deal_type" not in columns:
+            cursor.execute("ALTER TABLE price_history ADD COLUMN deal_type TEXT")
+        if "deal_description" not in columns:
+            cursor.execute("ALTER TABLE price_history ADD COLUMN deal_description TEXT")
             
         # Seed categories if table is empty
         cursor.execute("SELECT COUNT(*) FROM categories")

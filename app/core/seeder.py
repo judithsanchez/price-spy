@@ -41,6 +41,7 @@ def seed_test_data(db: Database) -> dict:
         Store(name="Test: Coolblue", shipping_cost_standard=0, notes="Free shipping always"),
         Store(name="Test: MediaMarkt", shipping_cost_standard=4.99, free_shipping_threshold=50.00),
         Store(name="Test: Kruidvat", shipping_cost_standard=2.99, free_shipping_threshold=20.00),
+        Store(name="Test: Etos", shipping_cost_standard=0, free_shipping_threshold=20.00, notes="Free shipping above 20 EUR"),
     ]
     store_ids = [store_repo.insert(s) for s in stores]
 
@@ -84,6 +85,10 @@ def seed_test_data(db: Database) -> dict:
         # Pet Supplies
         ("Test: Royal Canin Dog Food 12kg", "Pet", 55.00, "12kg", 0, "volatile", 64.99, 58.99),
         ("Test: Whiskas Cat Food 7kg", "Pet", 30.00, "7kg", 1, "dropping", 38.99, 28.99),
+
+        # Etos Specials (Store index 5)
+        ("Test: Andrélon Pink Droogshampoo", "Hair", 3.50, "250ml", 5, "stable", 6.99, 6.99),
+        ("Test: Etos Vitamin C 1000mg", "Health", 5.00, "60 tab", 5, "dip", 8.99, 5.99),
     ]
 
     now = datetime.now()
@@ -134,10 +139,22 @@ def seed_test_data(db: Database) -> dict:
         for price, days_ago in prices:
             db.execute(
                 """INSERT INTO price_history
-                   (item_id, product_name, price, currency, confidence, url, store_name, created_at)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
-                (tracked_id, name.replace("Test: ", ""), price, "EUR", 1.0,
-                 tracked.url, store_name, (now - timedelta(days=days_ago)).isoformat())
+                   (item_id, product_name, price, currency, confidence, url, store_name, created_at,
+                    original_price, deal_type, deal_description)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                (
+                    tracked_id, 
+                    name.replace("Test: ", ""), 
+                    price, 
+                    "EUR", 
+                    1.0,
+                    tracked.url, 
+                    store_name, 
+                    (now - timedelta(days=days_ago)).isoformat(),
+                    start_price if price < start_price else None,
+                    "bogo" if "Andrélon" in name and days_ago == 0 else ("discount" if price < start_price else "none"),
+                    "1+1 gratis" if "Andrélon" in name and days_ago == 0 else ("Special offer" if price < start_price else None)
+                )
             )
             price_count += 1
 

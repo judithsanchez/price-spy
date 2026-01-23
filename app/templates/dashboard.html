@@ -139,8 +139,18 @@
                     </span>
                 </div>
             </div>
-            {% set has_deal = product.tracked_items | selectattr('is_deal') | list | length > 0 %}
-            {% if has_deal %}
+            {% set bogo_deals = product.tracked_items | selectattr('deal_type', 'in', ['bogo', '1+1 gratis', 'second_half_price']) | list %}
+            {% set multi_deals = product.tracked_items | selectattr('deal_type', 'equalto', 'multibuy') | list %}
+            
+            {% if bogo_deals %}
+                <span class="flex-shrink-0 inline-flex items-center px-3 py-1 rounded-full text-xs font-black bg-emerald-500 text-white shadow-sm animate-bounce border border-white/20">
+                    ✨ BOGO!
+                </span>
+            {% elif multi_deals %}
+                <span class="flex-shrink-0 inline-flex items-center px-3 py-1 rounded-full text-xs font-black bg-amber-500 text-white shadow-sm animate-pulse border border-white/20">
+                    ✨ PROMO!
+                </span>
+            {% elif has_deal %}
                 <span class="flex-shrink-0 inline-flex items-center px-3 py-1 rounded-full text-xs font-black bg-jolly-rose text-white shadow-sm animate-bounce border border-white/20">
                     ✨ DEAL!
                 </span>
@@ -194,22 +204,46 @@
 
                     <div class="flex items-center justify-between sm:justify-end gap-6">
                         <div class="text-right">
-                            <div class="flex items-center justify-end gap-2">
-                                {% if item.trend == 'up' %}
-                                    <span class="text-jolly-vivid animate-pulse" title="Price Increased">📈</span>
-                                {% elif item.trend == 'down' %}
-                                    <span class="text-jolly animate-bounce" title="Price Decreased">📉</span>
+                            <div class="flex flex-col items-end">
+                                {% if item.original_price and item.original_price > item.price %}
+                                    <span class="text-[10px] text-jolly-rose line-through font-bold leading-none mb-1 opacity-60">{{ item.currency }} {{ "%.2f"|format(item.original_price) }}</span>
                                 {% endif %}
-                                <div class="text-xl font-black {{ 'text-jolly-vivid' if item.is_deal else 'text-jolly-dark' }}">
-                                    {% if item.price %}
-                                        {{ item.currency }} {{ "%.2f"|format(item.price) }}
-                                    {% else %}
-                                        <span class="text-jolly-dark/20 italic text-sm">Waiting...</span>
+                                <div class="flex items-center justify-end gap-2">
+                                    {% if item.trend == 'up' %}
+                                        <span class="text-jolly-vivid animate-pulse" title="Price Increased">📈</span>
+                                    {% elif item.trend == 'down' %}
+                                        <span class="text-jolly animate-bounce" title="Price Decreased">📉</span>
                                     {% endif %}
+                                    <div class="text-xl font-black {{ 'text-jolly-vivid' if item.is_deal else 'text-jolly-dark' }}">
+                                        {% if item.price %}
+                                            {{ item.currency }} {{ "%.2f"|format(item.price) }}
+                                        {% else %}
+                                            <span class="text-jolly-dark/20 italic text-sm">Waiting...</span>
+                                        {% endif %}
+                                    </div>
                                 </div>
                             </div>
+                            
+                            {% if item.is_deal or item.deal_type %}
+                                <div class="mt-1 flex flex-col items-end">
+                                    {% set badge_color = 'bg-jolly-vivid' %}
+                                    {% if item.deal_type in ['bogo', '1+1 gratis', 'second_half_price'] %}
+                                        {% set badge_color = 'bg-emerald-500' %}
+                                    {% elif item.deal_type == 'multibuy' %}
+                                        {% set badge_color = 'bg-amber-500' %}
+                                    {% endif %}
+                                    
+                                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-black {{ badge_color }} text-white uppercase tracking-tighter shadow-sm border border-white/10" title="{{ item.deal_description or '' }}">
+                                        ✨ {{ item.deal_type or 'Price Drop' }}
+                                    </span>
+                                    {% if item.deal_description %}
+                                        <span class="text-[8px] text-jolly-dark/60 font-bold italic mt-0.5 max-w-[120px] leading-tight text-right block" title="{{ item.deal_description }}">{{ item.deal_description }}</span>
+                                    {% endif %}
+                                </div>
+                            {% endif %}
+                            
                             {% if item.unit_price and item.unit %}
-                                <div class="text-[10px] text-jolly-dark/40 font-bold uppercase tracking-wider">
+                                <div class="text-[10px] text-jolly-dark/40 font-bold uppercase tracking-wider mt-1">
                                     {{ item.currency }} {{ "%.2f"|format(item.unit_price) }}/{{ item.unit }}
                                 </div>
                             {% endif %}
@@ -340,8 +374,8 @@ let _mainChart = null; // Truly private, outside Alpine's proxy reach
 
 function priceTrendChart() {
     return {
-        chartLabels: {{ graph_data.labels | tojson }},
-        chartDatasets: {{ graph_data.datasets | tojson }},
+        chartLabels: JSON.parse('{{ graph_data.labels | tojson | safe }}'),
+        chartDatasets: JSON.parse('{{ graph_data.datasets | tojson | safe }}'),
         datasetVisibility: [],
 
         init() {
