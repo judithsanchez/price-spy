@@ -635,6 +635,8 @@ async def trigger_extraction(item_id: int):
 async def dashboard(request: Request):
     """Render dashboard page."""
     from app.core.price_calculator import calculate_volume_price
+    from datetime import datetime, timedelta
+    cutoff = datetime.now() - timedelta(days=7)
 
     db = get_db()
     try:
@@ -675,8 +677,12 @@ async def dashboard(request: Request):
                 }
             
             store = store_repo.get_by_id(item.store_id)
-            history = price_repo.get_recent_history_by_url(item.url, limit=30)
-            latest_price_rec = history[0] if history else None
+            
+            # Get latest for card info
+            latest_price_rec = price_repo.get_latest_by_url(item.url)
+            
+            # Get 7-day history for graph and trend
+            history = price_repo.get_history_since(item.url, cutoff)
             
             # Trend calculation
             trend = "stable"
