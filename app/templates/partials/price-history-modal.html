@@ -95,12 +95,13 @@
 </div>
 
 <script>
+let _priceHistoryChart = null; // Private, non-reactive
+
 function priceHistoryMixin() {
     return {
         showPriceHistory: false,
         priceHistoryLoading: false,
         priceHistoryData: {},
-        priceHistoryChart: null,
 
         async openPriceHistory(itemId) {
             this.showPriceHistory = true;
@@ -124,21 +125,23 @@ function priceHistoryMixin() {
 
         closePriceHistory() {
             this.showPriceHistory = false;
-            if (this.priceHistoryChart) {
-                this.priceHistoryChart.destroy();
-                this.priceHistoryChart = null;
+            if (_priceHistoryChart) {
+                _priceHistoryChart.destroy();
+                _priceHistoryChart = null;
             }
         },
 
         renderPriceChart() {
             const canvas = document.getElementById('priceHistoryChart');
-            if (!canvas || !this.priceHistoryData.prices?.length) return;
+            if (!canvas || !this.priceHistoryData.prices?.length) {
+                return;
+            }
 
             const ctx = canvas.getContext('2d');
 
             // Destroy existing chart if any
-            if (this.priceHistoryChart) {
-                this.priceHistoryChart.destroy();
+            if (_priceHistoryChart) {
+                _priceHistoryChart.destroy();
             }
 
             const prices = this.priceHistoryData.prices;
@@ -167,7 +170,7 @@ function priceHistoryMixin() {
                 });
             }
 
-            this.priceHistoryChart = new Chart(ctx, {
+            _priceHistoryChart = new Chart(ctx, {
                 type: 'line',
                 data: { datasets },
                 options: {
