@@ -66,6 +66,7 @@ class Product(BaseModel):
     id: Optional[int] = None
     name: str = Field(..., min_length=1, max_length=200)
     category: Optional[str] = Field(default=None, max_length=100)
+    labels: Optional[str] = Field(default=None, max_length=500)
     purchase_type: Literal["recurring", "one_time"] = "recurring"
     target_price: Optional[float] = Field(default=None, gt=0)
     preferred_unit_size: Optional[str] = Field(default=None, max_length=50)
@@ -154,4 +155,24 @@ class ExtractionLog(BaseModel):
     currency: Optional[str] = Field(default=None, pattern=r"^[A-Z]{3}$")
     error_message: Optional[str] = Field(default=None, max_length=2000)
     duration_ms: Optional[int] = Field(default=None, ge=0)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class Category(BaseModel):
+    """Category definition for products."""
+
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    id: Optional[int] = None
+    name: str = Field(..., min_length=1, max_length=100)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class Label(BaseModel):
+    """Label definition for products."""
+
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    id: Optional[int] = None
+    name: str = Field(..., min_length=1, max_length=100)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))

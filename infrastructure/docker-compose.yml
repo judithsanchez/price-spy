@@ -9,6 +9,7 @@ services:
       - ../.env
     ports:
       - "8000:8000"
+    command: uvicorn app.api.main:app --host 0.0.0.0 --port 8000 --reload
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/api/scheduler/status"]
       interval: 30s
@@ -17,8 +18,8 @@ services:
     volumes:
       - ../app:/app/app
       - ../data:/app/data
+      - ../tests:/app/tests
       - ../spy.py:/app/spy.py
-      - ../scripts:/app/scripts
       - ../screenshots:/app/screenshots
     stdin_open: true
     tty: true

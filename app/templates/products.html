@@ -19,6 +19,13 @@
                     <div class="min-w-0 flex-1">
                         <div class="font-black text-jolly-dark truncate text-base" x-text="product.name" :title="product.name"></div>
                         <div class="text-[10px] font-black uppercase tracking-widest text-jolly-dark/30 mt-1" x-text="product.category || 'No category'"></div>
+                        <template x-if="product.labels">
+                            <div class="flex flex-wrap gap-1 mt-2">
+                                <template x-for="label in product.labels.split(',')" :key="label">
+                                    <span class="text-[8px] font-black uppercase px-2 py-0.5 bg-jolly/10 text-jolly-dark/50 rounded-full border border-jolly/5" x-text="label.trim()"></span>
+                                </template>
+                            </div>
+                        </template>
                     </div>
                 </div>
                 <div class="grid grid-cols-2 gap-4 text-xs mb-4">
@@ -33,12 +40,12 @@
                 </div>
                 <div class="flex gap-2">
                     <button @click="editProduct(product)"
-                            class="flex-1 bg-jolly-lime/20 text-jolly-dark/60 px-4 py-3 rounded-xl hover:bg-jolly-lime/40 transition-all font-black uppercase tracking-widest text-[9px] border border-jolly-dark/5">
-                        Edit
+                            class="flex-1 bg-jolly-lime/20 py-3 rounded-xl hover:bg-jolly-lime/40 transition-all border border-jolly-dark/5 text-lg">
+                        ✏️
                     </button>
                     <button @click="deleteProduct(product.id)"
-                            class="flex-1 bg-jolly-rose/10 text-jolly-rose px-4 py-3 rounded-xl hover:bg-jolly-rose/20 transition-all font-black uppercase tracking-widest text-[9px] border border-jolly-rose/20">
-                        Delete
+                            class="flex-1 bg-jolly-rose/10 py-3 rounded-xl hover:bg-jolly-rose/20 transition-all border border-jolly-rose/20 text-lg">
+                        🗑️
                     </button>
                 </div>
             </div>
@@ -66,7 +73,14 @@
                         <tr class="hover:bg-jolly/5 transition-colors group">
                             <td class="px-6 py-5 max-w-xs">
                                 <div class="truncate font-black text-jolly-dark" x-text="product.name" :title="product.name"></div>
-                                <div class="text-[9px] font-black uppercase text-jolly-dark/30 tracking-widest md:hidden" x-text="product.category || '-'"></div>
+                                <div class="flex flex-wrap gap-1 mt-1">
+                                    <div class="text-[9px] font-black uppercase text-jolly-dark/30 tracking-widest md:hidden" x-text="product.category || '-'"></div>
+                                    <template x-if="product.labels">
+                                        <template x-for="label in product.labels.split(',')" :key="label">
+                                            <span class="text-[8px] font-black uppercase px-1.5 py-0.5 bg-jolly/5 text-jolly-dark/40 rounded-full border border-jolly/5" x-text="label.trim()"></span>
+                                        </template>
+                                    </template>
+                                </div>
                             </td>
                             <td class="px-6 py-5 max-w-[120px] hidden md:table-cell">
                                 <span class="text-[10px] font-black uppercase text-jolly-dark/40 px-2.5 py-1 bg-gray-50 rounded-full border border-jolly-dark/5" x-text="product.category || '-'"></span>
@@ -74,9 +88,9 @@
                             <td class="px-6 py-5 whitespace-nowrap font-black text-jolly-dark" x-text="product.target_price ? '€' + product.target_price.toFixed(2) : '-'"></td>
                             <td class="px-6 py-5 whitespace-nowrap hidden lg:table-cell font-black text-jolly-dark" x-text="product.current_stock"></td>
                             <td class="px-6 py-5 whitespace-nowrap">
-                                <div class="flex gap-3">
-                                    <button @click="editProduct(product)" class="text-[10px] font-black uppercase tracking-widest text-jolly-sandy hover:text-jolly-sandy/80">Edit</button>
-                                    <button @click="deleteProduct(product.id)" class="text-[10px] font-black uppercase tracking-widest text-jolly-rose hover:text-jolly-vivid">Delete</button>
+                                <div class="flex gap-4">
+                                    <button @click="editProduct(product)" class="text-lg hover:scale-125 transition-transform" title="Edit">✏️</button>
+                                    <button @click="deleteProduct(product.id)" class="text-lg hover:scale-125 transition-transform" title="Delete">🗑️</button>
                                 </div>
                             </td>
                         </tr>
@@ -120,10 +134,93 @@
                         <input type="text" x-model="formData.name" required
                                class="w-full border border-jolly-dark/10 rounded-2xl px-4 py-3 sm:py-2.5 focus:outline-none focus:ring-4 focus:ring-jolly/20 text-base sm:text-sm bg-gray-50/50 font-medium text-jolly-dark">
                     </div>
-                    <div class="mb-5">
+                    <div class="mb-5" x-data="{ 
+                        open: false, 
+                        categories: [], 
+                        async fetchCategories() {
+                            const q = formData.category || '';
+                            const url = q === '' ? '/api/categories' : `/api/categories/search?q=${encodeURIComponent(q)}`;
+                            const resp = await fetch(url);
+                            this.categories = await resp.json();
+                        }
+                    }" @click.away="open = false">
                         <label class="block text-[11px] font-black text-jolly-dark/60 uppercase tracking-widest mb-1.5 ml-1">Category</label>
-                        <input type="text" x-model="formData.category"
-                               class="w-full border border-jolly-dark/10 rounded-2xl px-4 py-3 sm:py-2.5 focus:outline-none focus:ring-4 focus:ring-jolly/20 text-base sm:text-sm bg-gray-50/50 font-medium text-jolly-dark" placeholder="e.g. Body, Pets, Zigbee...">
+                        <div class="relative">
+                            <input type="text" x-model="formData.category" 
+                                   @input="open = true; fetchCategories()" 
+                                   @focus="open = true; fetchCategories()"
+                                   class="w-full border border-jolly-dark/10 rounded-2xl px-4 py-3 sm:py-2.5 focus:outline-none focus:ring-4 focus:ring-jolly/20 text-base sm:text-sm bg-gray-50/50 font-medium text-jolly-dark" 
+                                   placeholder="Search or add category...">
+                            <div x-show="open && (categories.length > 0 || (formData.category && formData.category.trim() !== ''))" 
+                                 x-cloak
+                                 class="absolute z-50 w-full mt-2 bg-white border border-jolly-dark/10 rounded-2xl shadow-xl max-h-60 overflow-y-auto p-2 border border-jolly-dark/5 shadow-jolly-dark/5">
+                                <template x-for="cat in categories" :key="cat.id">
+                                    <button type="button" @click="formData.category = cat.name; open = false" 
+                                            class="w-full text-left px-4 py-2.5 hover:bg-jolly/10 rounded-xl text-sm font-medium text-jolly-dark transition-colors">
+                                        <span x-text="cat.name"></span>
+                                    </button>
+                                </template>
+                                <div x-show="formData.category && !categories.some(c => c.name.toLowerCase() === formData.category.toLowerCase())"
+                                     class="p-1">
+                                    <button type="button" @click="open = false"
+                                            class="w-full text-left px-4 py-2.5 bg-jolly/5 hover:bg-jolly/10 rounded-xl text-xs font-black text-jolly-dark/50 uppercase tracking-wider transition-colors">
+                                        ✨ New: "<span x-text="formData.category"></span>"
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mb-5" x-data="{ 
+                        open: false, 
+                        allLabels: [], 
+                        async fetchLabels() {
+                            const resp = await fetch('/api/labels');
+                            this.allLabels = await resp.json();
+                        },
+                        get currentSearch() {
+                            return this.formData.labels.split(',').pop().trim().toLowerCase();
+                        },
+                        get filteredLabels() {
+                            const search = this.currentSearch;
+                            if (!search) return [];
+                            return this.allLabels.filter(l => l.name.toLowerCase().includes(search));
+                        },
+                        addLabel(name) {
+                            const current = this.formData.labels ? this.formData.labels.split(',').map(s => s.trim()) : [];
+                            current.pop(); // remove last typed part
+                            if (!current.includes(name)) {
+                                current.push(name);
+                            }
+                            this.formData.labels = current.join(', ') + ', ';
+                            this.open = false;
+                            this.$refs.labelInput.focus();
+                        }
+                    }" @click.away="open = false" x-init="fetchLabels()">
+                        <label class="block text-[11px] font-black text-jolly-dark/60 uppercase tracking-widest mb-1.5 ml-1">Labels (COMMA SEPARATED)</label>
+                        <div class="relative">
+                            <input type="text" x-model="formData.labels" x-ref="labelInput"
+                                   @input="open = true" 
+                                   @focus="open = true"
+                                   class="w-full border border-jolly-dark/10 rounded-2xl px-4 py-3 sm:py-2.5 focus:outline-none focus:ring-4 focus:ring-jolly/20 text-base sm:text-sm bg-gray-50/50 font-medium text-jolly-dark" 
+                                   placeholder="e.g. bio, sustainable...">
+                            <div x-show="open && (filteredLabels.length > 0 || (currentSearch !== ''))" 
+                                 x-cloak
+                                 class="absolute z-50 w-full mt-2 bg-white border border-jolly-dark/10 rounded-2xl shadow-xl max-h-60 overflow-y-auto p-2 border border-jolly-dark/5 shadow-jolly-dark/5">
+                                <template x-for="label in filteredLabels" :key="label.id">
+                                    <button type="button" @click="addLabel(label.name)" 
+                                            class="w-full text-left px-4 py-2.5 hover:bg-jolly/10 rounded-xl text-sm font-medium text-jolly-dark transition-colors">
+                                        <span x-text="label.name"></span>
+                                    </button>
+                                </template>
+                                <div x-show="currentSearch && !filteredLabels.some(l => l.name.toLowerCase() === currentSearch)"
+                                     class="p-1">
+                                    <button type="button" @click="addLabel(currentSearch)"
+                                            class="w-full text-left px-4 py-2.5 bg-jolly/5 hover:bg-jolly/10 rounded-xl text-xs font-black text-jolly-dark/50 uppercase tracking-wider transition-colors">
+                                        ✨ New: "<span x-text="currentSearch"></span>"
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                     <div class="grid grid-cols-2 gap-4 mb-8">
                         <div>
@@ -168,6 +265,7 @@ function productsManager() {
         formData: {
             name: '',
             category: '',
+            labels: '',
             target_price: '',
             current_stock: 0
         },
@@ -187,6 +285,7 @@ function productsManager() {
             this.formData = {
                 name: product.name,
                 category: product.category || '',
+                labels: product.labels || '',
                 target_price: product.target_price ?? '',
                 current_stock: product.current_stock ?? 0
             };
@@ -200,6 +299,7 @@ function productsManager() {
             const data = {
                 name: this.formData.name,
                 category: this.formData.category || null,
+                labels: this.formData.labels || null,
                 target_price: this.formData.target_price !== '' ? parseFloat(this.formData.target_price) : null,
                 current_stock: parseInt(this.formData.current_stock) || 0
             };

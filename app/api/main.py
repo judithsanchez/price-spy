@@ -16,6 +16,8 @@ from app.storage.repositories import (
     StoreRepository,
     TrackedItemRepository,
     PriceHistoryRepository,
+    CategoryRepository,
+    LabelRepository,
 )
 from app.core.scheduler import (
     get_scheduler_status,
@@ -60,8 +62,12 @@ _test_db_path: Optional[str] = None
 def get_db() -> Database:
     """Get database connection."""
     global _test_db_path
-    db_path = _test_db_path if _test_db_path else "data/pricespy.db"
-    db = Database(db_path)
+    if _test_db_path:
+        db = Database(_test_db_path)
+    else:
+        from app.core.config import settings
+        db = Database(settings.DATABASE_PATH)
+    
     db.initialize()
     return db
 
@@ -96,6 +102,7 @@ class ProductCreate(BaseModel):
     """Request model for creating a product."""
     name: str
     category: Optional[str] = None
+    labels: Optional[str] = None
     purchase_type: Optional[str] = None
     target_price: Optional[float] = None
     preferred_unit_size: Optional[str] = None
@@ -107,6 +114,7 @@ class ProductResponse(BaseModel):
     id: int
     name: str
     category: Optional[str] = None
+    labels: Optional[str] = None
     purchase_type: Optional[str] = None
     target_price: Optional[float] = None
     preferred_unit_size: Optional[str] = None
@@ -141,6 +149,12 @@ class TrackedItemCreate(BaseModel):
     items_per_lot: int = 1
     is_active: bool = True
     alerts_enabled: bool = True
+
+
+class TrackedItemPatch(BaseModel):
+    """Request model for partially updating a tracked item."""
+    is_active: Optional[bool] = None
+    alerts_enabled: Optional[bool] = None
 
 
 class TrackedItemResponse(BaseModel):
@@ -198,6 +212,20 @@ class ApiUsageResponse(BaseModel):
     limit: int
     remaining: int
     exhausted: bool
+
+
+class CategoryResponse(BaseModel):
+    """Response model for category."""
+    id: int
+    name: str
+    created_at: str
+
+
+class LabelResponse(BaseModel):
+    """Response model for label."""
+    id: int
+    name: str
+    created_at: str
 
 
 @app.get("/api/health")
@@ -418,6 +446,221 @@ async def get_all_price_history(days: int = 30):
         db.close()
 
 
+@app.get("/api/categories", response_model=List[CategoryResponse])
+async def get_categories():
+    """Get all categories."""
+    db = get_db()
+    try:
+        repo = CategoryRepository(db)
+        categories = repo.get_all()
+        return [
+            CategoryResponse(
+                id=c.id,
+                name=c.name,
+                created_at=c.created_at.isoformat()
+            )
+            for c in categories
+        ]
+    finally:
+        db.close()
+
+
+@app.get("/api/categories/search", response_model=List[CategoryResponse])
+async def search_categories(q: str):
+    """Search categories by name."""
+    db = get_db()
+    try:
+        repo = CategoryRepository(db)
+        categories = repo.search(q)
+        return [
+            CategoryResponse(
+                id=c.id,
+                name=c.name,
+                created_at=c.created_at.isoformat()
+            )
+            for c in categories
+        ]
+    finally:
+        db.close()
+
+
+@app.post("/api/categories", response_model=CategoryResponse)
+async def create_category(name: str):
+    """Create a new category."""
+    from app.models.schemas import Category as CategorySchema
+    db = get_db()
+    try:
+        repo = CategoryRepository(db)
+        # Check if already exists
+        existing = repo.get_by_name(name)
+        if existing:
+            return CategoryResponse(
+                id=existing.id,
+                name=existing.name,
+                created_at=existing.created_at.isoformat()
+            )
+            
+        category = CategorySchema(name=name)
+        category_id = repo.insert(category)
+        new_category = repo.get_by_name(name)
+        return CategoryResponse(
+            id=new_category.id,
+            name=new_category.name,
+            created_at=new_category.created_at.isoformat()
+        )
+    finally:
+        db.close()
+
+
+@app.put("/api/categories/{category_id}", response_model=CategoryResponse)
+async def update_category(category_id: int, name: str):
+    """Update a category name and all associated products."""
+    db = get_db()
+    try:
+        repo = CategoryRepository(db)
+        old_category = repo.get_by_id(category_id)
+        if not old_category:
+            raise HTTPException(status_code=404, detail="Category not found")
+        
+        # Update products first
+        db.execute(
+            "UPDATE products SET category = ? WHERE category = ?",
+            (name, old_category.name)
+        )
+        
+        # Update category
+        repo.update(category_id, name)
+        
+        category = repo.get_by_id(category_id)
+        return CategoryResponse(
+            id=category.id,
+            name=category.name,
+            created_at=category.created_at.isoformat()
+        )
+    finally:
+        db.close()
+
+
+@app.delete("/api/categories/{category_id}")
+async def delete_category(category_id: int):
+    """Delete a category and clear association from products."""
+    db = get_db()
+    try:
+        repo = CategoryRepository(db)
+        category = repo.get_by_id(category_id)
+        if not category:
+            raise HTTPException(status_code=404, detail="Category not found")
+            
+        # Clear category from products
+        db.execute(
+            "UPDATE products SET category = NULL WHERE category = ?",
+            (category.name,)
+        )
+        
+        repo.delete(category_id)
+        return {"status": "success", "message": "Category deleted"}
+    finally:
+        db.close()
+# --- Labels API ---
+
+@app.get("/api/labels", response_model=List[LabelResponse])
+async def get_labels():
+    """Get all labels."""
+    db = get_db()
+    try:
+        repo = LabelRepository(db)
+        labels = repo.get_all()
+        return [
+            LabelResponse(
+                id=l.id,
+                name=l.name,
+                created_at=l.created_at.isoformat()
+            )
+            for l in labels
+        ]
+    finally:
+        db.close()
+
+
+@app.get("/api/labels/search", response_model=List[LabelResponse])
+async def search_labels(q: str):
+    """Search labels by name."""
+    db = get_db()
+    try:
+        repo = LabelRepository(db)
+        labels = repo.search(q)
+        return [
+            LabelResponse(
+                id=l.id,
+                name=l.name,
+                created_at=l.created_at.isoformat()
+            )
+            for l in labels
+        ]
+    finally:
+        db.close()
+
+
+@app.post("/api/labels", response_model=LabelResponse)
+async def create_label(name: str):
+    """Create a new label."""
+    from app.models.schemas import Label as LabelSchema
+    db = get_db()
+    try:
+        repo = LabelRepository(db)
+        # Check if already exists
+        existing = repo.get_by_name(name)
+        if existing:
+            return LabelResponse(
+                id=existing.id,
+                name=existing.name,
+                created_at=existing.created_at.isoformat()
+            )
+            
+        label = LabelSchema(name=name)
+        label_id = repo.insert(label)
+        new_label = repo.get_by_id(label_id)
+        return LabelResponse(
+            id=new_label.id,
+            name=new_label.name,
+            created_at=new_label.created_at.isoformat()
+        )
+    finally:
+        db.close()
+
+
+@app.put("/api/labels/{label_id}", response_model=LabelResponse)
+async def update_label(label_id: int, name: str):
+    """Update a label name."""
+    db = get_db()
+    try:
+        repo = LabelRepository(db)
+        repo.update(label_id, name)
+        label = repo.get_by_id(label_id)
+        if not label:
+            raise HTTPException(status_code=404, detail="Label not found")
+        return LabelResponse(
+            id=label.id,
+            name=label.name,
+            created_at=label.created_at.isoformat()
+        )
+    finally:
+        db.close()
+
+
+@app.delete("/api/labels/{label_id}")
+async def delete_label(label_id: int):
+    """Delete a label."""
+    db = get_db()
+    try:
+        repo = LabelRepository(db)
+        repo.delete(label_id)
+        return {"status": "success", "message": "Label deleted"}
+    finally:
+        db.close()
+
+
+
 def _get_chart_color(index: int) -> str:
     """Get a color for chart lines based on index."""
     colors = [
@@ -635,6 +878,8 @@ async def trigger_extraction(item_id: int):
 async def dashboard(request: Request):
     """Render dashboard page."""
     from app.core.price_calculator import calculate_volume_price
+    from datetime import datetime, timedelta
+    cutoff = datetime.now() - timedelta(days=7)
 
     db = get_db()
     try:
@@ -675,8 +920,12 @@ async def dashboard(request: Request):
                 }
             
             store = store_repo.get_by_id(item.store_id)
-            history = price_repo.get_recent_history_by_url(item.url, limit=30)
-            latest_price_rec = history[0] if history else None
+            
+            # Get latest for card info
+            latest_price_rec = price_repo.get_latest_by_url(item.url)
+            
+            # Get 7-day history for graph and trend
+            history = price_repo.get_history_since(item.url, cutoff)
             
             # Trend calculation
             trend = "stable"
@@ -815,6 +1064,18 @@ async def logs_page(request: Request):
     return templates.TemplateResponse(request, "logs.html", {})
 
 
+@app.get("/categories")
+async def categories_page(request: Request):
+    """Render categories management page."""
+    return templates.TemplateResponse(request, "categories.html", {})
+
+
+@app.get("/labels")
+async def labels_page(request: Request):
+    """Render labels management page."""
+    return templates.TemplateResponse(request, "labels.html", {})
+
+
 # --- Products API ---
 
 @app.get("/api/products", response_model=List[ProductResponse])
@@ -852,6 +1113,8 @@ async def create_product(product: ProductCreate):
         kwargs = {"name": product.name}
         if product.category is not None:
             kwargs["category"] = product.category
+        if product.labels is not None:
+            kwargs["labels"] = product.labels
         if product.purchase_type is not None:
             kwargs["purchase_type"] = product.purchase_type
         if product.target_price is not None:
@@ -860,6 +1123,21 @@ async def create_product(product: ProductCreate):
             kwargs["preferred_unit_size"] = product.preferred_unit_size
         kwargs["current_stock"] = product.current_stock
 
+        # Auto-create category if it doesn't exist
+        if product.category:
+            cat_repo = CategoryRepository(db)
+            if not cat_repo.get_by_name(product.category):
+                from app.models.schemas import Category
+                cat_repo.insert(Category(name=product.category))
+        
+        # Auto-create labels if they don't exist
+        if product.labels:
+            label_repo = LabelRepository(db)
+            for label_name in [l.strip() for l in product.labels.split(",") if l.strip()]:
+                if not label_repo.get_by_name(label_name):
+                    from app.models.schemas import Label
+                    label_repo.insert(Label(name=label_name))
+
         new_product = Product(**kwargs)
         product_id = repo.insert(new_product)
         created = repo.get_by_id(product_id)
@@ -867,6 +1145,7 @@ async def create_product(product: ProductCreate):
             id=created.id,
             name=created.name,
             category=created.category,
+            labels=created.labels,
             purchase_type=created.purchase_type,
             target_price=created.target_price,
             preferred_unit_size=created.preferred_unit_size,
@@ -889,6 +1168,7 @@ async def get_product(product_id: int):
             id=product.id,
             name=product.name,
             category=product.category,
+            labels=product.labels,
             purchase_type=product.purchase_type,
             target_price=product.target_price,
             preferred_unit_size=product.preferred_unit_size,
@@ -913,6 +1193,8 @@ async def update_product(product_id: int, product: ProductCreate):
         kwargs = {"name": product.name}
         if product.category is not None:
             kwargs["category"] = product.category
+        if product.labels is not None:
+            kwargs["labels"] = product.labels
         if product.purchase_type is not None:
             kwargs["purchase_type"] = product.purchase_type
         if product.target_price is not None:
@@ -921,6 +1203,21 @@ async def update_product(product_id: int, product: ProductCreate):
             kwargs["preferred_unit_size"] = product.preferred_unit_size
         kwargs["current_stock"] = product.current_stock
 
+        # Auto-create category if it doesn't exist
+        if product.category:
+            cat_repo = CategoryRepository(db)
+            if not cat_repo.get_by_name(product.category):
+                from app.models.schemas import Category
+                cat_repo.insert(Category(name=product.category))
+        
+        # Auto-create labels if they don't exist
+        if product.labels:
+            label_repo = LabelRepository(db)
+            for label_name in [l.strip() for l in product.labels.split(",") if l.strip()]:
+                if not label_repo.get_by_name(label_name):
+                    from app.models.schemas import Label
+                    label_repo.insert(Label(name=label_name))
+
         updated_product = Product(**kwargs)
         repo.update(product_id, updated_product)
         result = repo.get_by_id(product_id)
@@ -928,6 +1225,7 @@ async def update_product(product_id: int, product: ProductCreate):
             id=result.id,
             name=result.name,
             category=result.category,
+            labels=result.labels,
             purchase_type=result.purchase_type,
             target_price=result.target_price,
             preferred_unit_size=result.preferred_unit_size,
@@ -1210,6 +1508,46 @@ async def update_tracked_item(item_id: int, item: TrackedItemCreate):
             items_per_lot=result.items_per_lot,
             is_active=result.is_active,
             alerts_enabled=result.alerts_enabled,
+        )
+    finally:
+        db.close()
+
+
+@app.patch("/api/tracked-items/{item_id}", response_model=TrackedItemResponse)
+async def patch_tracked_item(item_id: int, item_patch: TrackedItemPatch):
+    """Partially update a tracked item (e.g. toggle status)."""
+    db = get_db()
+    try:
+        repo = TrackedItemRepository(db)
+        existing = repo.get_by_id(item_id)
+        if not existing:
+            raise HTTPException(status_code=404, detail="Tracked item not found")
+
+        # Update only the fields provided
+        if item_patch.is_active is not None:
+            existing.is_active = item_patch.is_active
+        if item_patch.alerts_enabled is not None:
+            existing.alerts_enabled = item_patch.alerts_enabled
+
+        repo.update(item_id, existing)
+        result = repo.get_by_id(item_id)
+        
+        price_repo = PriceHistoryRepository(db)
+        latest = price_repo.get_latest_by_url(result.url)
+
+        return TrackedItemResponse(
+            id=result.id,
+            product_id=result.product_id,
+            store_id=result.store_id,
+            url=result.url,
+            item_name_on_site=result.item_name_on_site,
+            quantity_size=result.quantity_size,
+            quantity_unit=result.quantity_unit,
+            items_per_lot=result.items_per_lot,
+            is_active=result.is_active,
+            alerts_enabled=result.alerts_enabled,
+            latest_is_available=latest.is_available if latest else None,
+            latest_notes=latest.notes if latest else None,
         )
     finally:
         db.close()

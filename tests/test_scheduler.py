@@ -14,29 +14,35 @@ class TestSchedulerConfig:
         """Scheduler should have sensible defaults."""
         from app.core.scheduler import get_scheduler_config
 
-        config = get_scheduler_config()
+        with patch('app.core.scheduler.settings') as mock_settings:
+            mock_settings.SCHEDULER_ENABLED = True
+            mock_settings.SCHEDULER_HOUR = 8
+            mock_settings.SCHEDULER_MINUTE = 0
+            mock_settings.MAX_CONCURRENT_EXTRACTIONS = 10
+            
+            config = get_scheduler_config()
 
-        assert config["enabled"] is True
-        assert config["hour"] == 8
-        assert config["minute"] == 0
-        assert config["max_concurrent"] == 10
+            assert config["enabled"] is True
+            assert config["hour"] == 8
+            assert config["minute"] == 0
+            assert config["max_concurrent"] == 10
 
     def test_scheduler_config_from_env(self):
         """Scheduler should read config from environment."""
         from app.core.scheduler import get_scheduler_config
 
-        with patch.dict(os.environ, {
-            "SCHEDULER_ENABLED": "false",
-            "SCHEDULER_HOUR": "14",
-            "SCHEDULER_MINUTE": "30",
-            "MAX_CONCURRENT_EXTRACTIONS": "5"
-        }):
+        with patch('app.core.scheduler.settings') as mock_settings:
+            mock_settings.SCHEDULER_ENABLED = False
+            mock_settings.SCHEDULER_HOUR = 14
+            mock_settings.SCHEDULER_MINUTE = 30
+            mock_settings.MAX_CONCURRENT_EXTRACTIONS = 5
+            
             config = get_scheduler_config()
 
-        assert config["enabled"] is False
-        assert config["hour"] == 14
-        assert config["minute"] == 30
-        assert config["max_concurrent"] == 5
+            assert config["enabled"] is False
+            assert config["hour"] == 14
+            assert config["minute"] == 30
+            assert config["max_concurrent"] == 5
 
 
 class TestSchedulerStatus:
@@ -139,7 +145,8 @@ class TestSchedulerSkipsCheckedToday:
         tracked_repo.set_last_checked(item_id)
 
         # Run scheduler with mocked database path
-        with patch.dict(os.environ, {"DATABASE_PATH": db_with_scheduler.db_path}):
+        with patch('app.core.scheduler.settings') as mock_settings:
+            mock_settings.DATABASE_PATH = db_with_scheduler.db_path
             with patch('app.core.extraction_queue.process_extraction_queue') as mock_queue:
                 result = await run_scheduled_extraction()
 

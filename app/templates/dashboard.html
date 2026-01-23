@@ -4,13 +4,7 @@
 
 {% block content %}
 <div x-data="{ ...priceHistoryMixin(), ...priceTrendChart() }">
-<div class="mb-6 flex justify-between items-end">
-    <div>
-        <h2 class="text-2xl font-black text-jolly-dark">📊 Dashboard</h2>
-        <p class="text-jolly-dark/60 text-sm font-medium">Real-time price monitoring and trends</p>
-    </div>
-    <div class="text-[10px] font-black text-jolly-dark uppercase tracking-widest bg-jolly-lime/40 px-3 py-1 rounded-full border border-jolly-dark/5">v{{ version if version else '0.3.5' }}</div>
-</div>
+    <div class="mb-6"></div>
 
 {% if has_any_items %}
 <!-- Dashboard Header: Quick Stats & Graph -->
@@ -20,7 +14,7 @@
         <div class="flex items-center justify-between mb-6">
             <h3 class="text-lg font-black text-jolly-dark">📈 Price Trends</h3>
             <div class="flex gap-2 text-[10px] font-black text-jolly-dark/40 uppercase tracking-widest">
-                <span>Last 30 Days</span>
+                <span>Last 7 Days</span>
             </div>
         </div>
         <div class="h-64 sm:h-72">
@@ -147,9 +141,16 @@
             </div>
             {% set has_deal = product.tracked_items | selectattr('is_deal') | list | length > 0 %}
             {% if has_deal %}
-                <span class="flex-shrink-0 inline-flex items-center px-3 py-1 rounded-full text-xs font-black bg-jolly-vivid text-white shadow-sm animate-bounce border border-jolly-vivid/20">
-                    🔥 DEAL!
+                <span class="flex-shrink-0 inline-flex items-center px-3 py-1 rounded-full text-xs font-black bg-jolly-rose text-white shadow-sm animate-bounce border border-white/20">
+                    ✨ DEAL!
                 </span>
+            {% elif product.target_price and product.tracked_items | selectattr('price') | list | length > 0 %}
+                {% set latest_price = (product.tracked_items | selectattr('price') | list | first).price %}
+                {% if latest_price > product.target_price %}
+                    <span class="flex-shrink-0 inline-flex items-center px-3 py-1 rounded-full text-[10px] font-black bg-jolly-rose/20 text-jolly-rose border border-jolly-rose/30 uppercase tracking-tighter">
+                        Above target
+                    </span>
+                {% endif %}
             {% endif %}
         </div>
 
@@ -331,40 +332,76 @@
     </a>
 </div>
 {% endif %} <!-- End has_any_items -->
+    {% include "partials/price-history-modal.html" %}
 </div> <!-- End Dashboard Wrapper -->
 
 <script>
+let _mainChart = null; // Truly private, outside Alpine's proxy reach
+
 function priceTrendChart() {
     return {
-        chartInstance: null,
         chartLabels: {{ graph_data.labels | tojson }},
         chartDatasets: {{ graph_data.datasets | tojson }},
         datasetVisibility: [],
 
         init() {
-            this.datasetVisibility = this.chartDatasets.map(() => true);
-            this.$nextTick(() => this.renderChart());
+            // Initialize visibility from localStorage
+            const savedVisibility = JSON.parse(localStorage.getItem('pricespy_graph_visibility') || '{}');
+            
+            this.datasetVisibility = this.chartDatasets.map(ds => {
+                return savedVisibility[ds.label] !== false;
+            });
+
+            // Initial render
+            setTimeout(() => this.renderChart(), 50);
         },
 
         toggleDataset(index) {
             this.datasetVisibility[index] = !this.datasetVisibility[index];
+            
+            // Save to localStorage
+            const visibilityMap = {};
+            this.chartDatasets.forEach((ds, i) => {
+                visibilityMap[ds.label] = this.datasetVisibility[i];
+            });
+            localStorage.setItem('pricespy_graph_visibility', JSON.stringify(visibilityMap));
+            
             this.updateChart();
         },
 
         updateChart() {
+            if (!_mainChart) return;
+
             this.chartDatasets.forEach((ds, i) => {
-                this.chartInstance.getDatasetMeta(i).hidden = !this.datasetVisibility[i];
+                _mainChart.setDatasetVisibility(i, this.datasetVisibility[i]);
             });
-            this.chartInstance.update();
+            
+            _mainChart.update('none'); 
         },
 
         renderChart() {
-            const ctx = document.getElementById('mainTrendChart').getContext('2d');
-            this.chartInstance = new Chart(ctx, {
+            const canvas = document.getElementById('mainTrendChart');
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            
+            // Apply initial visibility to the data we pass to Chart.js
+            // We use Alpine.raw to make sure Chart.js doesn't get Proxy objects
+            const rawDatasets = Alpine.raw(this.chartDatasets).map((ds, i) => {
+                return {
+                    ...ds,
+                    hidden: !this.datasetVisibility[i]
+                };
+            });
+
+            if (_mainChart) {
+                _mainChart.destroy();
+            }
+
+            _mainChart = new Chart(ctx, {
                 type: 'line',
                 data: {
                     labels: this.chartLabels,
-                    datasets: this.chartDatasets
+                    datasets: rawDatasets
                 },
                 options: {
                     responsive: true,
@@ -372,19 +409,77 @@ function priceTrendChart() {
                     scales: {
                         x: {
                             type: 'time',
-                            time: { unit: 'day' },
-                            grid: { display: false }
+                            time: { 
+                                unit: 'day',
+                                displayFormats: {
+                                    day: 'MMM d'
+                                }
+                            },
+                            grid: { display: false },
+                            ticks: {
+                                font: {
+                                    size: 10,
+                                    weight: 'bold'
+                                },
+                                color: '#9ca3af'
+                            }
                         },
                         y: {
                             beginAtZero: false,
-                            grid: { color: '#f3f4f6' }
+                            grid: { 
+                                color: '#f3f4f6',
+                                drawBorder: false
+                            },
+                            ticks: {
+                                font: {
+                                    size: 10,
+                                    weight: 'bold'
+                                },
+                                color: '#9ca3af',
+                                callback: function(value) {
+                                    return '€' + value;
+                                }
+                            }
                         }
                     },
                     plugins: {
                         legend: { display: false },
                         tooltip: {
                             mode: 'index',
-                            intersect: false
+                            intersect: false,
+                            backgroundColor: 'white',
+                            titleColor: '#111827',
+                            titleFont: {
+                                size: 12,
+                                weight: 'black'
+                            },
+                            bodyColor: '#4b5563',
+                            bodyFont: {
+                                size: 11,
+                                weight: 'bold'
+                            },
+                            borderColor: '#f3f4f6',
+                            borderWidth: 1,
+                            padding: 12,
+                            cornerRadius: 12,
+                            displayColors: true,
+                            usePointStyle: true,
+                            boxPadding: 6,
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.dataset.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    if (context.parsed.y !== null) {
+                                        label += new Intl.NumberFormat('en-US', { 
+                                            style: 'currency', 
+                                            currency: 'EUR' 
+                                        }).format(context.parsed.y);
+                                    }
+                                    return label;
+                                }
+                            }
                         }
                     },
                     interaction: {
@@ -523,5 +618,4 @@ function schedulerPanel() {
 }
 </script>
 
-{% include "partials/price-history-modal.html" %}
 {% endblock %}

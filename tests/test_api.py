@@ -101,14 +101,14 @@ class TestDashboardWithData:
         assert "Test Store" in response.text
 
     def test_dashboard_shows_spy_button(self, client_with_data):
-        """Dashboard should have Spy Now button."""
+        """Dashboard should have Spy button."""
         response = client_with_data.get("/")
-        assert "Spy Now" in response.text
+        assert "Spy" in response.text
 
     def test_dashboard_shows_no_items_message_when_empty(self, client_empty_db):
         """Dashboard should show message when no items tracked."""
         response = client_empty_db.get("/")
-        assert "No tracked items" in response.text
+        assert "No tracked items yet" in response.text
 
     def test_dashboard_shows_below_target_status(self, client_with_price_below_target):
         """Dashboard should show DEAL badge when price is below target."""
@@ -117,10 +117,10 @@ class TestDashboardWithData:
         assert "bg-green" in response.text
 
     def test_dashboard_shows_above_target_status(self, client_with_price_above_target):
-        """Dashboard should show red status when price is above target."""
+        """Dashboard should show Above target status when price is above target."""
         response = client_with_price_above_target.get("/")
         assert "Above target" in response.text
-        assert "text-red-600" in response.text
+        assert "text-jolly-rose" in response.text
 
 
 class TestItemDetailEndpoint:

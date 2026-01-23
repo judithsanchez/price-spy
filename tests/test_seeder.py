@@ -41,7 +41,7 @@ class TestSeeder:
 
         repo = PriceHistoryRepository(seeded_db)
         # Check if there's price history for the seeded URLs
-        prices = repo.get_by_url("https://www.amazon.nl/dp/B015OAQEHI")
+        prices = repo.get_by_url("https://www.amazon.nl/p/eucerin-urea-lotion-250ml")
 
         assert len(prices) >= 1
 
@@ -99,7 +99,7 @@ class TestSeeder:
         products = repo.get_all()
 
         # Should still have same number of products (not doubled)
-        assert len(products) <= 6  # Max 3 products * 2 if not idempotent
+        assert len(products) <= 24  # Match new seeder count
 
 
 @pytest.fixture

@@ -46,12 +46,12 @@ class ModelConfig:
     priority: int = 0  # Lower = try first
 
 
-# Free tier rate limits (as of late 2025)
+# Paid Tier 1 rate limits
 # Source: https://ai.google.dev/gemini-api/docs/rate-limits
 RATE_LIMITS = {
     GeminiModel.PRO_2_5: RateLimits(rpm=5, tpm=250_000, rpd=100),
-    GeminiModel.FLASH_2_5: RateLimits(rpm=10, tpm=250_000, rpd=250),
-    GeminiModel.FLASH_2_5_LITE: RateLimits(rpm=15, tpm=250_000, rpd=1000),
+    GeminiModel.FLASH_2_5: RateLimits(rpm=1000, tpm=1_000_000, rpd=10000),
+    GeminiModel.FLASH_2_5_LITE: RateLimits(rpm=4000, tpm=4_000_000, rpd=1000000),
     GeminiModel.FLASH_2_0: RateLimits(rpm=10, tpm=250_000, rpd=500),
     GeminiModel.FLASH_1_5: RateLimits(rpm=15, tpm=1_000_000, rpd=1500),
 }
@@ -71,21 +71,21 @@ class GeminiModels:
     # Primary model for vision tasks (best quality)
     VISION_EXTRACTION = ModelConfig(
         model=GeminiModel.FLASH_2_5,
-        description="Screenshot price extraction (best quality)",
+        description="Screenshot price extraction (backup high-quality)",
         rate_limits=RATE_LIMITS[GeminiModel.FLASH_2_5],
         supports_vision=True,
         supports_structured_output=True,
-        priority=0,
+        priority=1,
     )
 
     # Fallback for vision tasks (4x more daily requests)
     VISION_FALLBACK = ModelConfig(
         model=GeminiModel.FLASH_2_5_LITE,
-        description="Screenshot extraction fallback (higher limits)",
+        description="Screenshot extraction (default - cheaper/faster)",
         rate_limits=RATE_LIMITS[GeminiModel.FLASH_2_5_LITE],
         supports_vision=True,
         supports_structured_output=True,
-        priority=1,
+        priority=0,
     )
 
     # For API testing (cheapest option)
