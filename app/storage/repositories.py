@@ -12,6 +12,7 @@ from app.models.schemas import (
     TrackedItem,
     ExtractionLog,
     Category,
+    Label,
 )
 
 
@@ -804,6 +805,78 @@ class CategoryRepository:
     def _row_to_record(self, row) -> Category:
         """Convert a database row to a Category."""
         return Category(
+            id=row["id"],
+            name=row["name"],
+            created_at=datetime.fromisoformat(row["created_at"]),
+        )
+
+
+class LabelRepository:
+    """Repository for label operations."""
+
+    def __init__(self, db: Database):
+        self.db = db
+
+    def insert(self, label: Label) -> int:
+        """Insert a label and return its ID."""
+        cursor = self.db.execute(
+            "INSERT INTO labels (name) VALUES (?)",
+            (label.name,)
+        )
+        self.db.commit()
+        return cursor.lastrowid
+
+    def get_all(self) -> List[Label]:
+        """Get all labels."""
+        cursor = self.db.execute("SELECT * FROM labels ORDER BY name")
+        return [self._row_to_record(row) for row in cursor.fetchall()]
+
+    def search(self, query: str) -> List[Label]:
+        """Search labels by name."""
+        cursor = self.db.execute(
+            "SELECT * FROM labels WHERE name LIKE ? ORDER BY name",
+            (f"%{query}%",)
+        )
+        return [self._row_to_record(row) for row in cursor.fetchall()]
+
+    def get_by_name(self, name: str) -> Optional[Label]:
+        """Get a label by name."""
+        cursor = self.db.execute(
+            "SELECT * FROM labels WHERE name = ?",
+            (name,)
+        )
+        row = cursor.fetchone()
+        if row is None:
+            return None
+        return self._row_to_record(row)
+
+    def get_by_id(self, label_id: int) -> Optional[Label]:
+        """Get a label by ID."""
+        cursor = self.db.execute(
+            "SELECT * FROM labels WHERE id = ?",
+            (label_id,)
+        )
+        row = cursor.fetchone()
+        if row is None:
+            return None
+        return self._row_to_record(row)
+
+    def update(self, label_id: int, name: str) -> None:
+        """Update a label name."""
+        self.db.execute(
+            "UPDATE labels SET name = ? WHERE id = ?",
+            (name, label_id)
+        )
+        self.db.commit()
+
+    def delete(self, label_id: int) -> None:
+        """Delete a label."""
+        self.db.execute("DELETE FROM labels WHERE id = ?", (label_id,))
+        self.db.commit()
+
+    def _row_to_record(self, row) -> Label:
+        """Convert a database row to a Label."""
+        return Label(
             id=row["id"],
             name=row["name"],
             created_at=datetime.fromisoformat(row["created_at"]),

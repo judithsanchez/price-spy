@@ -170,10 +170,48 @@
                             </div>
                         </div>
                     </div>
-                    <div class="mb-5">
+                    <div class="mb-5" x-data="{ 
+                        open: false, 
+                        allLabels: [], 
+                        async fetchLabels() {
+                            const q = ''; // Fetch all for now or search
+                            const resp = await fetch('/api/labels');
+                            this.allLabels = await resp.json();
+                        },
+                        get filteredLabels() {
+                            const search = this.$refs.labelInput.value.toLowerCase().split(',').pop().trim();
+                            if (!search) return [];
+                            return this.allLabels.filter(l => l.name.toLowerCase().includes(search));
+                        },
+                        addLabel(name) {
+                            const current = formData.labels ? formData.labels.split(',').map(s => s.trim()) : [];
+                            current.pop(); // remove last typed part
+                            if (!current.includes(name)) {
+                                current.push(name);
+                            }
+                            formData.labels = current.join(', ') + ', ';
+                            this.open = false;
+                            this.$refs.labelInput.focus();
+                        }
+                    }" @click.away="open = false" x-init="fetchLabels()">
                         <label class="block text-[11px] font-black text-jolly-dark/60 uppercase tracking-widest mb-1.5 ml-1">Labels (COMMA SEPARATED)</label>
-                        <input type="text" x-model="formData.labels"
-                               class="w-full border border-jolly-dark/10 rounded-2xl px-4 py-3 sm:py-2.5 focus:outline-none focus:ring-4 focus:ring-jolly/20 text-base sm:text-sm bg-gray-50/50 font-medium text-jolly-dark" placeholder="e.g. bio, bulk, plastic-free">
+                        <div class="relative">
+                            <input type="text" x-model="formData.labels" x-ref="labelInput"
+                                   @input="open = true" 
+                                   @focus="open = true"
+                                   class="w-full border border-jolly-dark/10 rounded-2xl px-4 py-3 sm:py-2.5 focus:outline-none focus:ring-4 focus:ring-jolly/20 text-base sm:text-sm bg-gray-50/50 font-medium text-jolly-dark" 
+                                   placeholder="e.g. bio, sustainable...">
+                            <div x-show="open && filteredLabels.length > 0" 
+                                 x-cloak
+                                 class="absolute z-50 w-full mt-2 bg-white border border-jolly-dark/10 rounded-2xl shadow-xl max-h-60 overflow-y-auto p-2 border border-jolly-dark/5 shadow-jolly-dark/5">
+                                <template x-for="label in filteredLabels" :key="label.id">
+                                    <button type="button" @click="addLabel(label.name)" 
+                                            class="w-full text-left px-4 py-2.5 hover:bg-jolly/10 rounded-xl text-sm font-medium text-jolly-dark transition-colors">
+                                        <span x-text="label.name"></span>
+                                    </button>
+                                </template>
+                            </div>
+                        </div>
                     </div>
                     <div class="grid grid-cols-2 gap-4 mb-8">
                         <div>

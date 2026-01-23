@@ -135,6 +135,15 @@ CREATE TABLE IF NOT EXISTS categories (
 );
 
 CREATE INDEX IF NOT EXISTS idx_categories_name ON categories(name);
+
+-- Labels Table
+CREATE TABLE IF NOT EXISTS labels (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL UNIQUE,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_labels_name ON labels(name);
 """
 
 
@@ -232,6 +241,49 @@ class Database:
                 "Aromatherapy & Essential Oils"
             ]
             conn.executemany("INSERT INTO categories (name) VALUES (?)", [(c,) for c in categories])
+
+        # Seed labels if table is empty
+        cursor.execute("SELECT COUNT(*) FROM labels")
+        if cursor.fetchone()[0] == 0:
+            labels = [
+                # Sustainability & Ethics (30)
+                "Eco-friendly", "Sustainable", "Recyclable", "Biodegradable", "Plastic-free",
+                "Compostable", "Zero-waste", "Carbon-neutral", "Ethically-sourced", "Fair-trade",
+                "Cruelty-free", "Vegan", "Plant-based", "Organic", "Non-GMO",
+                "Pesticide-free", "BPA-free", "Reusable", "Refillable", "Upcycled",
+                "Local", "Handmade", "Artisanal", "B-Corp", "Rainforest-Alliance",
+                "FSC-certified", "Animal-welfare", "Forest-friendly", "Oceans-safe", "Low-impact",
+                # Food & Diet (30)
+                "Gluten-free", "Dairy-free", "Nut-free", "Sugar-free", "Low-carb",
+                "Keto", "Paleo", "Kosher", "Halal", "High-protein",
+                "Low-sodium", "High-fiber", "No-additives", "No-preservatives", "Naturally-flavored",
+                "Raw", "Sprouted", "Whole-grain", "Ancient-grains", "Soy-free",
+                "Egg-free", "Shellfish-free", "Lactose-free", "Low-fat", "No-cholesterol",
+                "Cold-pressed", "Wild-caught", "Grass-fed", "Free-range", "Pasture-raised",
+                # Electronics & Tech (25)
+                "Energy-star", "Wifi-enabled", "Bluetooth", "Smart", "Rechargeable",
+                "Wireless", "Compact", "High-speed", "4K-Ready", "HDR",
+                "Waterproof", "Shockproof", "Dustproof", "Anti-glare", "Ergonomic",
+                "Quick-charge", "Noise-cancelling", "Studio-grade", "Heavy-duty", "USB-C",
+                "Thunderbolt", "OLED", "LED", "Long-battery-life", "Portable",
+                # Home & Living (25)
+                "Hypoallergenic", "Antibacterial", "Non-toxic", "Fragrance-free", "Odor-neutralizing",
+                "Machine-washable", "Stain-resistant", "Wrinkle-free", "Flame-retardant", "Hand-wash-only",
+                "Solid-wood", "Modular", "Space-saving", "Easy-assembly", "Child-safe",
+                "Pet-safe", "Indoor-only", "Outdoor-use", "Weather-resistant", "Lightweight",
+                "Premium", "Luxury", "Designer", "Limited-edition", "Bestseller",
+                # Health & Beauty (20)
+                "Dermatologist-tested", "Paraben-free", "Sulfate-free", "Alcohol-free", "PH-balanced",
+                "Anti-aging", "Moisturizing", "Sensitive-skin", "Natural-ingredients", "Essentials",
+                "Travel-size", "Value-pack", "Refill", "Sample", "New-formula",
+                "Fast-absorbing", "Long-lasting", "Water-resistant", "SPF-protection", "Professional-use",
+                # General/Marketing (20)
+                "Buy-1-Get-1", "Discounted", "On-sale", "New-arrival", "Trending",
+                "Gift-idea", "Must-have", "Highly-rated", "Verified", "Authentic",
+                "Exclusive", "Member-only", "Early-access", "Bulk-buy", "Stock-clearance",
+                "Back-in-stock", "Seasonal", "Holiday-special", "Limited-stock", "Fan-favorite"
+            ]
+            conn.executemany("INSERT INTO labels (name) VALUES (?)", [(l,) for l in labels])
 
         conn.commit()
 

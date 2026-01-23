@@ -17,6 +17,7 @@ from app.storage.repositories import (
     TrackedItemRepository,
     PriceHistoryRepository,
     CategoryRepository,
+    LabelRepository,
 )
 from app.core.scheduler import (
     get_scheduler_status,
@@ -209,6 +210,13 @@ class ApiUsageResponse(BaseModel):
 
 class CategoryResponse(BaseModel):
     """Response model for category."""
+    id: int
+    name: str
+    created_at: str
+
+
+class LabelResponse(BaseModel):
+    """Response model for label."""
     id: int
     name: str
     created_at: str
@@ -547,7 +555,103 @@ async def delete_category(category_id: int):
         return {"status": "success", "message": "Category deleted"}
     finally:
         db.close()
+# --- Labels API ---
 
+@app.get("/api/labels", response_model=List[LabelResponse])
+async def get_labels():
+    """Get all labels."""
+    db = get_db()
+    try:
+        repo = LabelRepository(db)
+        labels = repo.get_all()
+        return [
+            LabelResponse(
+                id=l.id,
+                name=l.name,
+                created_at=l.created_at.isoformat()
+            )
+            for l in labels
+        ]
+    finally:
+        db.close()
+
+
+@app.get("/api/labels/search", response_model=List[LabelResponse])
+async def search_labels(q: str):
+    """Search labels by name."""
+    db = get_db()
+    try:
+        repo = LabelRepository(db)
+        labels = repo.search(q)
+        return [
+            LabelResponse(
+                id=l.id,
+                name=l.name,
+                created_at=l.created_at.isoformat()
+            )
+            for l in labels
+        ]
+    finally:
+        db.close()
+
+
+@app.post("/api/labels", response_model=LabelResponse)
+async def create_label(name: str):
+    """Create a new label."""
+    from app.models.schemas import Label as LabelSchema
+    db = get_db()
+    try:
+        repo = LabelRepository(db)
+        # Check if already exists
+        existing = repo.get_by_name(name)
+        if existing:
+            return LabelResponse(
+                id=existing.id,
+                name=existing.name,
+                created_at=existing.created_at.isoformat()
+            )
+            
+        label = LabelSchema(name=name)
+        label_id = repo.insert(label)
+        new_label = repo.get_by_id(label_id)
+        return LabelResponse(
+            id=new_label.id,
+            name=new_label.name,
+            created_at=new_label.created_at.isoformat()
+        )
+    finally:
+        db.close()
+
+
+@app.put("/api/labels/{label_id}", response_model=LabelResponse)
+async def update_label(label_id: int, name: str):
+    """Update a label name."""
+    db = get_db()
+    try:
+        repo = LabelRepository(db)
+        repo.update(label_id, name)
+        label = repo.get_by_id(label_id)
+        if not label:
+            raise HTTPException(status_code=404, detail="Label not found")
+        return LabelResponse(
+            id=label.id,
+            name=label.name,
+            created_at=label.created_at.isoformat()
+        )
+    finally:
+        db.close()
+
+
+@app.delete("/api/labels/{label_id}")
+async def delete_label(label_id: int):
+    """Delete a label."""
+    db = get_db()
+    try:
+        repo = LabelRepository(db)
+        repo.delete(label_id)
+        return {"status": "success", "message": "Label deleted"}
+    finally:
+        db.close()
 
 
 
@@ -958,6 +1062,12 @@ async def logs_page(request: Request):
 async def categories_page(request: Request):
     """Render categories management page."""
     return templates.TemplateResponse(request, "categories.html", {})
+
+
+@app.get("/labels")
+async def labels_page(request: Request):
+    """Render labels management page."""
+    return templates.TemplateResponse(request, "labels.html", {})
 
 
 # --- Products API ---

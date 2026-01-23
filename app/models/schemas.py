@@ -166,3 +166,13 @@ class Category(BaseModel):
     id: Optional[int] = None
     name: str = Field(..., min_length=1, max_length=100)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class Label(BaseModel):
+    """Label definition for products."""
+
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    id: Optional[int] = None
+    name: str = Field(..., min_length=1, max_length=100)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
