@@ -151,6 +151,12 @@ class TrackedItemCreate(BaseModel):
     alerts_enabled: bool = True
 
 
+class TrackedItemPatch(BaseModel):
+    """Request model for partially updating a tracked item."""
+    is_active: Optional[bool] = None
+    alerts_enabled: Optional[bool] = None
+
+
 class TrackedItemResponse(BaseModel):
     """Response model for tracked item."""
     id: int
@@ -1502,6 +1508,46 @@ async def update_tracked_item(item_id: int, item: TrackedItemCreate):
             items_per_lot=result.items_per_lot,
             is_active=result.is_active,
             alerts_enabled=result.alerts_enabled,
+        )
+    finally:
+        db.close()
+
+
+@app.patch("/api/tracked-items/{item_id}", response_model=TrackedItemResponse)
+async def patch_tracked_item(item_id: int, item_patch: TrackedItemPatch):
+    """Partially update a tracked item (e.g. toggle status)."""
+    db = get_db()
+    try:
+        repo = TrackedItemRepository(db)
+        existing = repo.get_by_id(item_id)
+        if not existing:
+            raise HTTPException(status_code=404, detail="Tracked item not found")
+
+        # Update only the fields provided
+        if item_patch.is_active is not None:
+            existing.is_active = item_patch.is_active
+        if item_patch.alerts_enabled is not None:
+            existing.alerts_enabled = item_patch.alerts_enabled
+
+        repo.update(item_id, existing)
+        result = repo.get_by_id(item_id)
+        
+        price_repo = PriceHistoryRepository(db)
+        latest = price_repo.get_latest_by_url(result.url)
+
+        return TrackedItemResponse(
+            id=result.id,
+            product_id=result.product_id,
+            store_id=result.store_id,
+            url=result.url,
+            item_name_on_site=result.item_name_on_site,
+            quantity_size=result.quantity_size,
+            quantity_unit=result.quantity_unit,
+            items_per_lot=result.items_per_lot,
+            is_active=result.is_active,
+            alerts_enabled=result.alerts_enabled,
+            latest_is_available=latest.is_available if latest else None,
+            latest_notes=latest.notes if latest else None,
         )
     finally:
         db.close()
