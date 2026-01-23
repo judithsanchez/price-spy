@@ -16,6 +16,7 @@ from app.storage.repositories import (
     StoreRepository,
     TrackedItemRepository,
     PriceHistoryRepository,
+    CategoryRepository,
 )
 from app.core.scheduler import (
     get_scheduler_status,
@@ -60,8 +61,12 @@ _test_db_path: Optional[str] = None
 def get_db() -> Database:
     """Get database connection."""
     global _test_db_path
-    db_path = _test_db_path if _test_db_path else "data/pricespy.db"
-    db = Database(db_path)
+    if _test_db_path:
+        db = Database(_test_db_path)
+    else:
+        from app.core.config import settings
+        db = Database(settings.DATABASE_PATH)
+    
     db.initialize()
     return db
 
@@ -96,6 +101,7 @@ class ProductCreate(BaseModel):
     """Request model for creating a product."""
     name: str
     category: Optional[str] = None
+    labels: Optional[str] = None
     purchase_type: Optional[str] = None
     target_price: Optional[float] = None
     preferred_unit_size: Optional[str] = None
@@ -107,6 +113,7 @@ class ProductResponse(BaseModel):
     id: int
     name: str
     category: Optional[str] = None
+    labels: Optional[str] = None
     purchase_type: Optional[str] = None
     target_price: Optional[float] = None
     preferred_unit_size: Optional[str] = None
@@ -198,6 +205,13 @@ class ApiUsageResponse(BaseModel):
     limit: int
     remaining: int
     exhausted: bool
+
+
+class CategoryResponse(BaseModel):
+    """Response model for category."""
+    id: int
+    name: str
+    created_at: str
 
 
 @app.get("/api/health")
@@ -416,6 +430,125 @@ async def get_all_price_history(days: int = 30):
         }
     finally:
         db.close()
+
+
+@app.get("/api/categories", response_model=List[CategoryResponse])
+async def get_categories():
+    """Get all categories."""
+    db = get_db()
+    try:
+        repo = CategoryRepository(db)
+        categories = repo.get_all()
+        return [
+            CategoryResponse(
+                id=c.id,
+                name=c.name,
+                created_at=c.created_at.isoformat()
+            )
+            for c in categories
+        ]
+    finally:
+        db.close()
+
+
+@app.get("/api/categories/search", response_model=List[CategoryResponse])
+async def search_categories(q: str):
+    """Search categories by name."""
+    db = get_db()
+    try:
+        repo = CategoryRepository(db)
+        categories = repo.search(q)
+        return [
+            CategoryResponse(
+                id=c.id,
+                name=c.name,
+                created_at=c.created_at.isoformat()
+            )
+            for c in categories
+        ]
+    finally:
+        db.close()
+
+
+@app.post("/api/categories", response_model=CategoryResponse)
+async def create_category(name: str):
+    """Create a new category."""
+    from app.models.schemas import Category as CategorySchema
+    db = get_db()
+    try:
+        repo = CategoryRepository(db)
+        # Check if already exists
+        existing = repo.get_by_name(name)
+        if existing:
+            return CategoryResponse(
+                id=existing.id,
+                name=existing.name,
+                created_at=existing.created_at.isoformat()
+            )
+            
+        category = CategorySchema(name=name)
+        category_id = repo.insert(category)
+        new_category = repo.get_by_name(name)
+        return CategoryResponse(
+            id=new_category.id,
+            name=new_category.name,
+            created_at=new_category.created_at.isoformat()
+        )
+    finally:
+        db.close()
+
+
+@app.put("/api/categories/{category_id}", response_model=CategoryResponse)
+async def update_category(category_id: int, name: str):
+    """Update a category name and all associated products."""
+    db = get_db()
+    try:
+        repo = CategoryRepository(db)
+        old_category = repo.get_by_id(category_id)
+        if not old_category:
+            raise HTTPException(status_code=404, detail="Category not found")
+        
+        # Update products first
+        db.execute(
+            "UPDATE products SET category = ? WHERE category = ?",
+            (name, old_category.name)
+        )
+        
+        # Update category
+        repo.update(category_id, name)
+        
+        category = repo.get_by_id(category_id)
+        return CategoryResponse(
+            id=category.id,
+            name=category.name,
+            created_at=category.created_at.isoformat()
+        )
+    finally:
+        db.close()
+
+
+@app.delete("/api/categories/{category_id}")
+async def delete_category(category_id: int):
+    """Delete a category and clear association from products."""
+    db = get_db()
+    try:
+        repo = CategoryRepository(db)
+        category = repo.get_by_id(category_id)
+        if not category:
+            raise HTTPException(status_code=404, detail="Category not found")
+            
+        # Clear category from products
+        db.execute(
+            "UPDATE products SET category = NULL WHERE category = ?",
+            (category.name,)
+        )
+        
+        repo.delete(category_id)
+        return {"status": "success", "message": "Category deleted"}
+    finally:
+        db.close()
+
+
 
 
 def _get_chart_color(index: int) -> str:
@@ -819,6 +952,12 @@ async def tracked_items_page(request: Request):
 async def logs_page(request: Request):
     """Render logs page."""
     return templates.TemplateResponse(request, "logs.html", {})
+
+
+@app.get("/categories")
+async def categories_page(request: Request):
+    """Render categories management page."""
+    return templates.TemplateResponse(request, "categories.html", {})
 
 
 # --- Products API ---

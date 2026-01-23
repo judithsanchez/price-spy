@@ -110,17 +110,22 @@ def seed_test_data(db: Database) -> dict:
         # Parse quantity from size string (e.g., "250ml", "6x330ml", "1 unit", "2kg")
         qty_size, qty_unit = _parse_quantity(size)
 
+        # Prepare domain
+        domain = store_name.lower().replace(' ', '')
+        if not (domain.endswith('.nl') or domain.endswith('.com')):
+            domain += '.nl'
+            
         tracked = TrackedItem(
             product_id=product_id,
             store_id=store_ids[store_idx],
-            url=f"https://www.{store_name.lower().replace(' ', '')}.nl/p/{url_slug}",
+            url=f"https://www.{domain}/p/{url_slug}",
             item_name_on_site=name.replace("Test: ", ""),
             quantity_size=qty_size,
             quantity_unit=qty_unit,
             items_per_lot=1,
             is_active=True
         )
-        tracked_repo.insert(tracked)
+        tracked_id = tracked_repo.insert(tracked)
         tracked_created += 1
 
         # Generate price history based on pattern
@@ -129,9 +134,9 @@ def seed_test_data(db: Database) -> dict:
         for price, days_ago in prices:
             db.execute(
                 """INSERT INTO price_history
-                   (product_name, price, currency, confidence, url, store_name, created_at)
-                   VALUES (?, ?, ?, ?, ?, ?, ?)""",
-                (name.replace("Test: ", ""), price, "EUR", 1.0,
+                   (item_id, product_name, price, currency, confidence, url, store_name, created_at)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+                (tracked_id, name.replace("Test: ", ""), price, "EUR", 1.0,
                  tracked.url, store_name, (now - timedelta(days=days_ago)).isoformat())
             )
             price_count += 1

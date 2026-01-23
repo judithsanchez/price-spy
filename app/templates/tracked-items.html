@@ -16,13 +16,22 @@
     <div class="space-y-6">
         <template x-for="group in getGroupedItems()" :key="group.product_id">
             <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-                <!-- Group Header: Product Name -->
-                <div class="bg-gray-50/50 px-5 py-4 border-b border-jolly-dark/5 flex justify-between items-center">
-                    <div class="flex items-center gap-3">
-                        <span class="text-xl">📦</span>
-                        <h3 class="font-black text-jolly-dark tracking-tight" x-text="group.product_name"></h3>
+                <div class="bg-gray-50/50 px-5 py-4 border-b border-jolly-dark/5 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
+                    <div class="flex flex-col gap-1">
+                        <div class="flex items-center gap-3">
+                            <span class="text-xl">📦</span>
+                            <h3 class="font-black text-jolly-dark tracking-tight" x-text="group.product_name"></h3>
+                        </div>
+                        <div class="flex flex-wrap gap-2 ml-9">
+                            <span x-show="group.category" class="text-[9px] font-black uppercase text-jolly-dark/40 px-2 py-0.5 bg-gray-100 rounded-full border border-jolly-dark/5" x-text="group.category"></span>
+                            <template x-if="group.labels">
+                                <template x-for="label in group.labels.split(',')" :key="label">
+                                    <span class="text-[8px] font-black uppercase px-2 py-0.5 bg-jolly/10 text-jolly-dark/50 rounded-full border border-jolly/5" x-text="label.trim()"></span>
+                                </template>
+                            </template>
+                        </div>
                     </div>
-                    <span class="text-[10px] font-black text-jolly-dark/40 px-3 py-1 bg-jolly-lime/20 rounded-full border border-jolly-dark/5 uppercase tracking-wider" x-text="group.items.length + ' item(s)'"></span>
+                    <span class="text-[10px] font-black text-jolly-dark/40 px-3 py-1 bg-jolly-lime/20 rounded-full border border-jolly-dark/5 uppercase tracking-wider self-start sm:self-center" x-text="group.items.length + ' item(s)'"></span>
                 </div>
                 
                 <!-- Items in this group -->
@@ -127,7 +136,6 @@
                 <div x-show="error" class="mb-6 p-4 bg-jolly-rose/10 border border-jolly-rose/20 text-jolly-vivid rounded-2xl text-[11px] font-bold" x-text="error"></div>
                 <form @submit.prevent="saveItem()">
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
                         <div>
                             <label class="block text-[11px] font-black text-jolly-dark/60 uppercase tracking-widest mb-1.5 ml-1">Product *</label>
                             <select x-model="formData.product_id" required
@@ -149,7 +157,6 @@
                             </select>
                         </div>
                     </div>
-                    </div>
                     <div class="mb-4">
                         <label class="block text-[11px] font-black text-jolly-dark/60 uppercase tracking-widest mb-1.5 ml-1">URL *</label>
                         <input type="url" x-model="formData.url" required
@@ -160,7 +167,6 @@
                         <input type="text" x-model="formData.item_name_on_site"
                                class="w-full border border-jolly-dark/10 rounded-2xl px-4 py-3 sm:py-2.5 focus:outline-none focus:ring-4 focus:ring-jolly/20 text-base sm:text-sm bg-gray-50/50 font-medium text-jolly-dark">
                     </div>
-                    <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4 mb-4">
                     <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4 mb-6">
                         <div>
                             <label class="block text-[11px] font-black text-jolly-dark/60 uppercase tracking-widest mb-1.5 ml-1">Quantity *</label>
@@ -177,7 +183,6 @@
                             <input type="number" x-model="formData.items_per_lot" min="1"
                                    class="w-full border border-jolly-dark/10 rounded-2xl px-4 py-3 sm:py-2.5 focus:outline-none focus:ring-4 focus:ring-jolly/20 text-base sm:text-sm bg-gray-50/50 font-medium text-jolly-dark">
                         </div>
-                    </div>
                     </div>
                     <div class="flex flex-col sm:flex-row gap-6 mb-8 bg-gray-50/50 p-4 rounded-2xl border border-jolly-dark/5">
                         <label class="flex items-center cursor-pointer group">
@@ -263,9 +268,12 @@ function trackedItemsManager() {
             this.items.forEach(item => {
                 const pid = item.product_id;
                 if (!groups[pid]) {
+                    const product = this.products.find(p => p.id === pid);
                     groups[pid] = {
                         product_id: pid,
-                        product_name: this.getProductName(pid),
+                        product_name: product ? product.name : 'Unknown',
+                        category: product ? product.category : null,
+                        labels: product ? product.labels : null,
                         items: []
                     };
                 }

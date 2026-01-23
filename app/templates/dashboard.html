@@ -150,6 +150,13 @@
                 <span class="flex-shrink-0 inline-flex items-center px-3 py-1 rounded-full text-xs font-black bg-jolly-vivid text-white shadow-sm animate-bounce border border-jolly-vivid/20">
                     🔥 DEAL!
                 </span>
+            {% elif product.target_price and product.tracked_items | selectattr('price') | list | length > 0 %}
+                {% set latest_price = (product.tracked_items | selectattr('price') | list | first).price %}
+                {% if latest_price > product.target_price %}
+                    <span class="flex-shrink-0 inline-flex items-center px-3 py-1 rounded-full text-[10px] font-black bg-jolly-rose/20 text-jolly-rose border border-jolly-rose/30 uppercase tracking-tighter">
+                        Above target
+                    </span>
+                {% endif %}
             {% endif %}
         </div>
 

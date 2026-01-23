@@ -1,0 +1,206 @@
+{% extends "base.html" %}
+
+{% block title %}Categories - Price Spy{% endblock %}
+
+{% block content %}
+<div x-data="categoriesManager()" x-init="loadCategories()">
+    <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-8">
+        <h2 class="text-2xl font-black text-jolly-dark">🏷️ Categories</h2>
+        <button @click="showForm = true; editingCategory = null; formData = {name: ''}"
+                class="bg-jolly text-jolly-dark px-6 py-3 sm:py-2 rounded-2xl hover:bg-jolly-lime transition-all font-black uppercase tracking-widest text-[10px] shadow-sm border border-jolly-dark/5">
+            Add New Category
+        </button>
+    </div>
+
+    <!-- Mobile Card View -->
+    <div class="sm:hidden space-y-4">
+        <template x-for="category in categories" :key="category.id">
+            <div class="bg-white rounded-2xl shadow-sm p-5 border border-jolly-dark/5">
+                <div class="flex justify-between items-start mb-3">
+                    <div class="min-w-0 flex-1">
+                        <div class="font-black text-jolly-dark truncate text-base" x-text="category.name" :title="category.name"></div>
+                        <div class="text-[10px] font-black uppercase tracking-widest text-jolly-dark/30 mt-1" x-text="'Created: ' + formatDate(category.created_at)"></div>
+                    </div>
+                </div>
+                <div class="flex gap-2">
+                    <button @click="editCategory(category)"
+                            class="flex-1 bg-jolly-lime/20 text-jolly-dark/60 px-4 py-3 rounded-xl hover:bg-jolly-lime/40 transition-all font-black uppercase tracking-widest text-[9px] border border-jolly-dark/5">
+                        Edit
+                    </button>
+                    <button @click="deleteCategory(category.id)"
+                            class="flex-1 bg-jolly-rose/10 text-jolly-rose px-4 py-3 rounded-xl hover:bg-jolly-rose/20 transition-all font-black uppercase tracking-widest text-[9px] border border-jolly-rose/20">
+                        Delete
+                    </button>
+                </div>
+            </div>
+        </template>
+        <div x-show="categories.length === 0" class="bg-white rounded-lg shadow p-6 text-center text-gray-500">
+            No categories yet. Add one to get started.
+        </div>
+    </div>
+
+    <!-- Desktop Table View -->
+    <div class="hidden sm:block bg-white rounded-2xl shadow-sm overflow-hidden border border-jolly-dark/5">
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-jolly-dark/5">
+                <thead class="bg-gray-50/50">
+                    <tr>
+                        <th class="px-6 py-4 text-left text-[10px] font-black text-jolly-dark/40 uppercase tracking-widest">Name</th>
+                        <th class="px-6 py-4 text-left text-[10px] font-black text-jolly-dark/40 uppercase tracking-widest">Created At</th>
+                        <th class="px-6 py-4 text-left text-[10px] font-black text-jolly-dark/40 uppercase tracking-widest">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-jolly-dark/5">
+                    <template x-for="category in categories" :key="category.id">
+                        <tr class="hover:bg-jolly/5 transition-colors group">
+                            <td class="px-6 py-5">
+                                <span class="font-black text-jolly-dark" x-text="category.name"></span>
+                            </td>
+                            <td class="px-6 py-5 whitespace-nowrap text-jolly-dark/40 text-xs font-bold" x-text="formatDate(category.created_at)"></td>
+                            <td class="px-6 py-5 whitespace-nowrap">
+                                <div class="flex gap-3">
+                                    <button @click="editCategory(category)" class="text-[10px] font-black uppercase tracking-widest text-jolly-sandy hover:text-jolly-sandy/80">Edit</button>
+                                    <button @click="deleteCategory(category.id)" class="text-[10px] font-black uppercase tracking-widest text-jolly-rose hover:text-jolly-vivid">Delete</button>
+                                </div>
+                            </td>
+                        </tr>
+                    </template>
+                    <tr x-show="categories.length === 0">
+                        <td colspan="3" class="px-6 py-4 text-center text-gray-500">No categories yet. Add one to get started.</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Modal Form -->
+    <div x-show="showForm" x-cloak style="display: none;" class="fixed inset-0 bg-jolly-dark/40 backdrop-blur-sm flex items-end sm:items-center justify-center z-50">
+        <div class="bg-white w-full sm:rounded-3xl shadow-2xl sm:w-full sm:max-w-md max-h-[90vh] overflow-y-auto rounded-t-3xl border border-jolly-dark/5"
+             @click.away="showForm = false"
+             x-transition:enter="transition ease-out duration-300"
+             x-transition:enter-start="opacity-0 translate-y-full sm:translate-y-0 sm:scale-95"
+             x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100"
+             x-transition:leave="transition ease-in duration-200"
+             x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100"
+             x-transition:leave-end="opacity-0 translate-y-full sm:translate-y-0 sm:scale-95">
+            <div class="sm:hidden flex justify-center py-3">
+                <div class="w-12 h-1.5 bg-jolly-lime/30 rounded-full"></div>
+            </div>
+            <div class="p-6 sm:p-8">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="text-xl font-black text-jolly-dark flex items-center gap-2">
+                        <span x-text="editingCategory ? '✏️' : '✨'"></span>
+                        <span x-text="editingCategory ? 'Edit Category' : 'Add Category'"></span>
+                    </h3>
+                    <button @click="showForm = false" class="text-jolly-dark/20 hover:text-jolly-rose transition-colors">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                    </button>
+                </div>
+                <div x-show="error" class="mb-6 p-4 bg-jolly-rose/10 border border-jolly-rose/20 text-jolly-vivid rounded-2xl text-[11px] font-bold" x-text="error"></div>
+                <form @submit.prevent="saveCategory()">
+                    <div class="mb-8">
+                        <label class="block text-[11px] font-black text-jolly-dark/60 uppercase tracking-widest mb-1.5 ml-1">Category Name *</label>
+                        <input type="text" x-model="formData.name" required
+                               class="w-full border border-jolly-dark/10 rounded-2xl px-4 py-3 sm:py-2.5 focus:outline-none focus:ring-4 focus:ring-jolly/20 text-base sm:text-sm bg-gray-50/50 font-medium text-jolly-dark">
+                    </div>
+                    <div class="flex flex-col-reverse sm:flex-row justify-end gap-3 px-6 py-5 bg-gray-50/30 border-t border-jolly-dark/5 rounded-b-3xl mt-4 -mx-6 -mb-6 sm:-mx-8 sm:-mb-8">
+                        <button type="button" @click="showForm = false" :disabled="saving"
+                                class="px-6 py-3 bg-white text-jolly-dark/60 font-black rounded-2xl hover:bg-gray-100 transition-all uppercase tracking-widest text-[10px] border border-jolly-dark/5 shadow-sm disabled:opacity-50">
+                            Cancel
+                        </button>
+                        <button type="submit" :disabled="saving"
+                                class="px-8 py-3 bg-jolly text-jolly-dark font-black rounded-2xl hover:bg-jolly-lime hover:shadow-lg hover:shadow-jolly/20 transition-all uppercase tracking-widest text-[10px] border border-jolly-dark/5 shadow-sm disabled:opacity-50">
+                            <span x-show="!saving" x-text="editingCategory ? 'Save Changes' : 'Add Category'"></span>
+                            <span x-show="saving" class="flex items-center gap-2">
+                                <svg class="animate-spin h-3 w-3 text-jolly-dark" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                Saving...
+                            </span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function categoriesManager() {
+    return {
+        categories: [],
+        showForm: false,
+        editingCategory: null,
+        saving: false,
+        error: null,
+        formData: {
+            name: ''
+        },
+
+        async loadCategories() {
+            try {
+                const response = await fetch('/api/categories');
+                this.categories = await response.json();
+            } catch (e) {
+                console.error('Failed to load categories:', e);
+            }
+        },
+
+        editCategory(category) {
+            this.editingCategory = category;
+            this.error = null;
+            this.formData = {
+                name: category.name
+            };
+            this.showForm = true;
+        },
+
+        async saveCategory() {
+            this.saving = true;
+            this.error = null;
+
+            try {
+                const url = this.editingCategory ? `/api/categories/${this.editingCategory.id}?name=${encodeURIComponent(this.formData.name)}` : `/api/categories?name=${encodeURIComponent(this.formData.name)}`;
+                const method = this.editingCategory ? 'PUT' : 'POST';
+
+                const response = await fetch(url, {
+                    method: method
+                });
+
+                if (!response.ok) {
+                    const err = await response.json();
+                    throw new Error(err.detail || 'Failed to save category');
+                }
+
+                this.showForm = false;
+                await this.loadCategories();
+            } catch (e) {
+                this.error = e.message;
+                console.error('Save error:', e);
+            } finally {
+                this.saving = false;
+            }
+        },
+
+        async deleteCategory(id) {
+            if (confirm('Delete this category? This will not delete products, but they will lose their category association.')) {
+                try {
+                    await fetch(`/api/categories/${id}`, {method: 'DELETE'});
+                    await this.loadCategories();
+                } catch (e) {
+                    console.error('Delete error:', e);
+                }
+            }
+        },
+
+        formatDate(isoString) {
+            const date = new Date(isoString);
+            return date.toLocaleDateString('en-US', { 
+                year: 'numeric', 
+                month: 'short', 
+                day: 'numeric' 
+            });
+        }
+    };
+}
+</script>
+
+{% endblock %}

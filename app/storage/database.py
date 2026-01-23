@@ -10,6 +10,7 @@ CREATE TABLE IF NOT EXISTS products (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
     category TEXT,
+    labels TEXT,
     purchase_type TEXT CHECK(purchase_type IN ('recurring', 'one_time')) DEFAULT 'recurring',
     target_price REAL,
     preferred_unit_size TEXT,
@@ -51,6 +52,7 @@ CREATE INDEX IF NOT EXISTS idx_tracked_items_active ON tracked_items(is_active);
 -- Price History Table
 CREATE TABLE IF NOT EXISTS price_history (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
+    item_id INTEGER,
     product_name TEXT NOT NULL,
     price REAL NOT NULL,
     currency TEXT NOT NULL DEFAULT 'EUR',
@@ -60,7 +62,8 @@ CREATE TABLE IF NOT EXISTS price_history (
     store_name TEXT,
     page_type TEXT,
     notes TEXT,
-    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (item_id) REFERENCES tracked_items (id) ON DELETE CASCADE
 );
 
 CREATE INDEX IF NOT EXISTS idx_price_history_url ON price_history(url);
@@ -123,6 +126,15 @@ CREATE TABLE IF NOT EXISTS scheduler_runs (
 );
 
 CREATE INDEX IF NOT EXISTS idx_scheduler_runs_started_at ON scheduler_runs(started_at);
+
+-- Categories Table
+CREATE TABLE IF NOT EXISTS categories (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL UNIQUE,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_categories_name ON categories(name);
 """
 
 
@@ -148,6 +160,12 @@ class Database:
         # Schema evolution: add columns that might be missing from older versions
         cursor = conn.cursor()
         
+        # Check products for labels
+        cursor.execute("PRAGMA table_info(products)")
+        columns = [row["name"] for row in cursor.fetchall()]
+        if "labels" not in columns:
+            cursor.execute("ALTER TABLE products ADD COLUMN labels TEXT")
+
         # Check tracked_items for preferred_model
         cursor.execute("PRAGMA table_info(tracked_items)")
         columns = [row["name"] for row in cursor.fetchall()]
@@ -161,7 +179,60 @@ class Database:
             cursor.execute("ALTER TABLE price_history ADD COLUMN is_available INTEGER DEFAULT 1")
         if "notes" not in columns:
             cursor.execute("ALTER TABLE price_history ADD COLUMN notes TEXT")
+        if "item_id" not in columns:
+            cursor.execute("ALTER TABLE price_history ADD COLUMN item_id INTEGER")
             
+        # Seed categories if table is empty
+        cursor.execute("SELECT COUNT(*) FROM categories")
+        if cursor.fetchone()[0] == 0:
+            categories = [
+                "Dairy", "Bakery", "Beverages", "Snacks", "Frozen Foods", "Canned Goods",
+                "Pasta & Grains", "Meat & Poultry", "Seafood", "Fruits", "Vegetables",
+                "Condiments & Sauces", "Spices & Seasonings", "Baking Supplies",
+                "Breakfast Foods", "Coffee & Tea", "Delicatessen", "Health Foods",
+                "Baby Food", "Pet Food", "Cleaning Supplies", "Paper Products",
+                "Laundry Care", "Dishwashing", "Personal Care", "Hair Care",
+                "Skincare", "Oral Care", "Shaving & Grooming", "Cosmetics",
+                "Feminine Care", "First Aid", "Over-the-Counter Medicine",
+                "Vitamins & Minerals", "Baby Care", "School Supplies",
+                "Office Supplies", "Electronics", "Computer Accessories",
+                "Mobile Accessories", "Audio", "Photography", "Gaming",
+                "Kitchen Appliances", "Small Home Appliances", "Tools & Hardware",
+                "Painting & Decorating", "Electrical", "Plumbing", "Gardening",
+                "Outdoor Tools", "Home Security", "Automotive", "Sports Equipment",
+                "Fitness", "Camping & Outdoors", "Toys", "Board Games",
+                "Crafts & Hobbies", "Party Supplies", "Gift Wrapping", "Clothing",
+                "Underwear & Sleepwear", "Footwear", "Accessories", "Jewelry",
+                "Luggage & Bags", "Bedding", "Bath Linens", "Kitchen Linens",
+                "Curtains & Blinds", "Lighting", "Home Decor", "Storage & Organization",
+                "Furniture", "Cookware", "Dinnerware", "Flatware", "Kitchen Utensils",
+                "Glassware", "Barware", "Books - Fiction", "Books - Non-Fiction",
+                "Books - Educational", "Books - Children", "Magazines & Newspapers",
+                "Stationery", "Musical Instruments", "Professional Equipment",
+                "Safety Equipment", "Travel Accessories", "Seasonal Decor",
+                "Religious & Spiritual Items", "Wine", "Beer", "Spirits",
+                "Alcohol-Free Alternatives", "Organic Foods", "Gluten-Free Products",
+                "Vegan & Plant-Based", "International Foods - Asian",
+                "International Foods - Mexican", "International Foods - Mediterranean",
+                "Fresh Herbs", "Cooking Oils", "Vinegar", "Honey & Syrups",
+                "Spreads", "Prepared Meals", "Deli Meats", "Artisanal Cheeses",
+                "Smoked Fish", "Tofu & Meat Substitutes", "Special Diets",
+                "Nuts & Dried Fruits", "Seeds", "Sweets & Confectionery",
+                "Gum & Mints", "Dessert Toppings", "Water Softening Salts",
+                "Pest Control", "Pool Maintenance", "Bicycle Accessories",
+                "Pet Accessories", "Fish Tank Supplies", "Small Animal Supplies",
+                "Terrarium Supplies", "Collectibles", "Antiques", "Fine Art",
+                "Photography Equipment", "Video Projectors & Screens",
+                "Smart Home Devices", "Wearable Tech", "Drones & RC Vehicles",
+                "Home Office Furniture", "Space Heaters & Fans",
+                "Air Purifiers & Humidifiers", "Water Filtration",
+                "Fitness Large Equipment", "Yoga & Pilates", "Swimming Gear",
+                "Team Sports", "Exercise Monitors", "Protective Gear", "Foot Care",
+                "Eye Care", "Hearing Care", "Massage & Relaxation",
+                "Aromatherapy & Essential Oils"
+            ]
+            conn.executemany("INSERT INTO categories (name) VALUES (?)", [(c,) for c in categories])
+
         conn.commit()
 
     def execute(self, query: str, params: tuple = ()) -> sqlite3.Cursor:

@@ -12,26 +12,26 @@ class TestEmailConfig:
         """Email should be disabled when not configured."""
         from app.core.email_report import get_email_config
 
-        with patch.dict(os.environ, {}, clear=True):
+        with patch('app.core.email_report.settings') as mock_settings:
+            mock_settings.EMAIL_ENABLED = False
             config = get_email_config()
-
-        assert config["enabled"] is False
+            assert config["enabled"] is False
 
     def test_email_config_from_env(self):
         """Should read config from environment variables."""
         from app.core.email_report import get_email_config
 
-        with patch.dict(os.environ, {
-            "EMAIL_ENABLED": "true",
-            "EMAIL_RECIPIENT": "test@example.com",
-            "EMAIL_SENDER": "sender@example.com",
-            "SMTP_HOST": "smtp.example.com",
-            "SMTP_PORT": "465",
-            "SMTP_USER": "user@example.com",
-            "SMTP_PASSWORD": "secret123",
-            "SMTP_USE_TLS": "false",
-            "EMAIL_DASHBOARD_URL": "http://mypi:8000",
-        }):
+        with patch('app.core.email_report.settings') as mock_settings:
+            mock_settings.EMAIL_ENABLED = True
+            mock_settings.EMAIL_RECIPIENT = "test@example.com"
+            mock_settings.EMAIL_SENDER = "sender@example.com"
+            mock_settings.SMTP_HOST = "smtp.example.com"
+            mock_settings.SMTP_PORT = 465
+            mock_settings.SMTP_USER = "user@example.com"
+            mock_settings.SMTP_PASSWORD = "secret123"
+            mock_settings.SMTP_USE_TLS = False
+            mock_settings.EMAIL_DASHBOARD_URL = "http://mypi:8000"
+            
             config = get_email_config()
 
         assert config["enabled"] is True
@@ -49,28 +49,28 @@ class TestEmailConfig:
         from app.core.email_report import is_email_configured
 
         # Missing password
-        with patch.dict(os.environ, {
-            "EMAIL_ENABLED": "true",
-            "EMAIL_RECIPIENT": "test@example.com",
-            "EMAIL_SENDER": "sender@example.com",
-            "SMTP_HOST": "smtp.example.com",
-            "SMTP_USER": "user@example.com",
-            # No SMTP_PASSWORD
-        }, clear=True):
+        with patch('app.core.email_report.settings') as mock_settings:
+            mock_settings.EMAIL_ENABLED = True
+            mock_settings.EMAIL_RECIPIENT = "test@example.com"
+            mock_settings.EMAIL_SENDER = "sender@example.com"
+            mock_settings.SMTP_HOST = "smtp.example.com"
+            mock_settings.SMTP_USER = "user@example.com"
+            mock_settings.SMTP_PASSWORD = None
+            
             assert is_email_configured() is False
 
     def test_is_configured_returns_true_when_complete(self):
         """Should return True when all required fields present."""
         from app.core.email_report import is_email_configured
 
-        with patch.dict(os.environ, {
-            "EMAIL_ENABLED": "true",
-            "EMAIL_RECIPIENT": "test@example.com",
-            "EMAIL_SENDER": "sender@example.com",
-            "SMTP_HOST": "smtp.example.com",
-            "SMTP_USER": "user@example.com",
-            "SMTP_PASSWORD": "secret123",
-        }, clear=True):
+        with patch('app.core.email_report.settings') as mock_settings:
+            mock_settings.EMAIL_ENABLED = True
+            mock_settings.EMAIL_RECIPIENT = "test@example.com"
+            mock_settings.EMAIL_SENDER = "sender@example.com"
+            mock_settings.SMTP_HOST = "smtp.example.com"
+            mock_settings.SMTP_USER = "user@example.com"
+            mock_settings.SMTP_PASSWORD = "secret123"
+            
             assert is_email_configured() is True
 
 
@@ -255,7 +255,8 @@ class TestEmailSending:
         """Should not send when EMAIL_ENABLED=false."""
         from app.core.email_report import send_daily_report
 
-        with patch.dict(os.environ, {"EMAIL_ENABLED": "false"}, clear=True):
+        with patch('app.core.email_report.settings') as mock_settings:
+            mock_settings.EMAIL_ENABLED = False
             with patch('app.core.email_report.send_email') as mock_send:
                 result = send_daily_report([], MagicMock())
 
@@ -266,14 +267,14 @@ class TestEmailSending:
         """Should not send when no items were checked."""
         from app.core.email_report import send_daily_report
 
-        with patch.dict(os.environ, {
-            "EMAIL_ENABLED": "true",
-            "EMAIL_RECIPIENT": "test@example.com",
-            "EMAIL_SENDER": "sender@example.com",
-            "SMTP_HOST": "smtp.example.com",
-            "SMTP_USER": "user@example.com",
-            "SMTP_PASSWORD": "secret",
-        }, clear=True):
+        with patch('app.core.email_report.settings') as mock_settings:
+            mock_settings.EMAIL_ENABLED = True
+            mock_settings.EMAIL_RECIPIENT = "test@example.com"
+            mock_settings.EMAIL_SENDER = "sender@example.com"
+            mock_settings.SMTP_HOST = "smtp.example.com"
+            mock_settings.SMTP_USER = "user@example.com"
+            mock_settings.SMTP_PASSWORD = "secret"
+            
             with patch('app.core.email_report.send_email') as mock_send:
                 result = send_daily_report([], MagicMock())
 
@@ -302,9 +303,13 @@ class TestEmailTemplates:
                 "target_price": 15.00,
                 "url": "http://example.com",
             }],
-            "items": [
-                {"product_name": "Test Product", "store_name": "Amazon", "price": 14.99, "currency": "EUR", "status": "success", "is_deal": True, "target_price": 15.00},
-                {"product_name": "Other Product", "store_name": "Bol", "price": 29.99, "currency": "EUR", "status": "success", "is_deal": False, "target_price": 25.00},
+            "price_drops": [
+                {"product_name": "Test Product", "store_name": "Amazon", "price": 14.99, "currency": "EUR", "status": "success", "is_deal": True, "target_price": 15.00, "price_change_pct": -0.1, "prev_price": 16.65, "url": "http://example.com"},
+            ],
+            "price_increases": [],
+            "all_items": [
+                {"product_name": "Test Product", "store_name": "Amazon", "price": 14.99, "currency": "EUR", "status": "success", "is_deal": True, "target_price": 15.00, "price_change_pct": -0.1, "prev_price": 16.65, "url": "http://example.com"},
+                {"product_name": "Other Product", "store_name": "Bol", "price": 29.99, "currency": "EUR", "status": "success", "is_deal": False, "target_price": 25.00, "price_change_pct": 0, "prev_price": 29.99, "url": "http://example.com"},
             ],
             "errors": [
                 {"product_name": "Failed Product", "store_name": "Amazon", "error": "Timeout"},
@@ -337,8 +342,10 @@ class TestEmailTemplates:
                 "currency": "EUR",
                 "target_price": 15.00,
             }],
-            "items": [
-                {"product_name": "Test Product", "store_name": "Amazon", "price": 14.99, "currency": "EUR", "status": "success", "is_deal": True},
+            "price_drops": [],
+            "price_increases": [],
+            "all_items": [
+                {"product_name": "Test Product", "store_name": "Amazon", "price": 14.99, "currency": "EUR", "status": "success", "is_deal": True, "prev_price": 14.99, "price_change_pct": 0, "target_price": 15.00, "url": "http://example.com"},
             ],
             "errors": [],
             "next_run": "Tomorrow 08:00",

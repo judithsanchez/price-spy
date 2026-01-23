@@ -18,6 +18,7 @@ services:
     volumes:
       - ../app:/app/app
       - ../data:/app/data
+      - ../tests:/app/tests
       - ../spy.py:/app/spy.py
       - ../screenshots:/app/screenshots
     stdin_open: true

@@ -11,6 +11,7 @@ from app.models.schemas import (
     Store,
     TrackedItem,
     ExtractionLog,
+    Category,
 )
 
 
@@ -93,6 +94,7 @@ class PriceHistoryRepository:
         """Convert a database row to a PriceHistoryRecord."""
         return PriceHistoryRecord(
             id=row["id"],
+            item_id=row["item_id"],
             product_name=row["product_name"],
             price=row["price"],
             currency=row["currency"],
@@ -195,12 +197,13 @@ class ProductRepository:
         cursor = self.db.execute(
             """
             INSERT INTO products
-            (name, category, purchase_type, target_price, preferred_unit_size, current_stock)
-            VALUES (?, ?, ?, ?, ?, ?)
+            (name, category, labels, purchase_type, target_price, preferred_unit_size, current_stock)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 product.name,
                 product.category,
+                product.labels,
                 product.purchase_type,
                 product.target_price,
                 product.preferred_unit_size,
@@ -241,6 +244,7 @@ class ProductRepository:
             UPDATE products SET
                 name = ?,
                 category = ?,
+                labels = ?,
                 purchase_type = ?,
                 target_price = ?,
                 preferred_unit_size = ?,
@@ -250,6 +254,7 @@ class ProductRepository:
             (
                 product.name,
                 product.category,
+                product.labels,
                 product.purchase_type,
                 product.target_price,
                 product.preferred_unit_size,
@@ -270,6 +275,7 @@ class ProductRepository:
             id=row["id"],
             name=row["name"],
             category=row["category"],
+            labels=row["labels"],
             purchase_type=row["purchase_type"],
             target_price=row["target_price"],
             preferred_unit_size=row["preferred_unit_size"],
@@ -730,3 +736,75 @@ class SchedulerRunRepository:
             (limit,)
         )
         return [dict(row) for row in cursor.fetchall()]
+
+
+class CategoryRepository:
+    """Repository for category operations."""
+
+    def __init__(self, db: Database):
+        self.db = db
+
+    def insert(self, category: Category) -> int:
+        """Insert a category and return its ID."""
+        cursor = self.db.execute(
+            "INSERT INTO categories (name) VALUES (?)",
+            (category.name,)
+        )
+        self.db.commit()
+        return cursor.lastrowid
+
+    def get_all(self) -> List[Category]:
+        """Get all categories."""
+        cursor = self.db.execute("SELECT * FROM categories ORDER BY name")
+        return [self._row_to_record(row) for row in cursor.fetchall()]
+
+    def search(self, query: str) -> List[Category]:
+        """Search categories by name."""
+        cursor = self.db.execute(
+            "SELECT * FROM categories WHERE name LIKE ? ORDER BY name",
+            (f"%{query}%",)
+        )
+        return [self._row_to_record(row) for row in cursor.fetchall()]
+
+    def get_by_name(self, name: str) -> Optional[Category]:
+        """Get a category by name."""
+        cursor = self.db.execute(
+            "SELECT * FROM categories WHERE name = ?",
+            (name,)
+        )
+        row = cursor.fetchone()
+        if row is None:
+            return None
+        return self._row_to_record(row)
+
+    def get_by_id(self, category_id: int) -> Optional[Category]:
+        """Get a category by ID."""
+        cursor = self.db.execute(
+            "SELECT * FROM categories WHERE id = ?",
+            (category_id,)
+        )
+        row = cursor.fetchone()
+        if row is None:
+            return None
+        return self._row_to_record(row)
+
+    def update(self, category_id: int, name: str) -> None:
+        """Update a category name."""
+        self.db.execute(
+            "UPDATE categories SET name = ? WHERE id = ?",
+            (name, category_id)
+        )
+        self.db.commit()
+
+    def delete(self, category_id: int) -> None:
+        """Delete a category."""
+        self.db.execute("DELETE FROM categories WHERE id = ?", (category_id,))
+        self.db.commit()
+
+    def _row_to_record(self, row) -> Category:
+        """Convert a database row to a Category."""
+        return Category(
+            id=row["id"],
+            name=row["name"],
+            created_at=datetime.fromisoformat(row["created_at"]),
+        )
