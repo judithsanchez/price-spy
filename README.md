@@ -55,19 +55,25 @@ docker compose -f infrastructure/docker-compose.yml up -d
 open http://localhost:8000
 ```
 
-### 4. See It In Action (Optional)
+ Refresh the dashboard - you'll see sample products with prices, including a DEAL alert.
 
-Load sample data to see how the UI looks with products and deals:
+### 5. Database Safety
 
+Price Spy has a built-in **Safety Guard** in the `Database` class. It specifically identifies if you are running in a test environment and explicitly blocks any connection to `data/pricespy.db`. This prevents accidental modification of your production data during automated tests.
+
+To manage your production data state, use the SQL dump utility:
 ```bash
-docker compose -f infrastructure/docker-compose.yml run --rm price-spy python -m app.cli seed-test-data
+# Save current state to Git-friendly text file
+python3 scripts/db_manager.py dump
+
+# Restore database from the SQL dump
+python3 scripts/db_manager.py restore
 ```
 
-Refresh the dashboard - you'll see sample products with prices, including a DEAL alert.
-
-### 5. Run Tests
+### 6. Run Tests
 
 ```bash
+# Tests automatically use a disposable temporary database for isolation
 docker compose -f infrastructure/docker-compose.yml run --rm price-spy pytest tests/ -v
 ```
 
@@ -147,28 +153,16 @@ Access the dashboard at `http://localhost:8000`:
 | GET | `/api/email/status` | Email configuration status |
 | POST | `/api/email/test` | Send test email to verify config |
 
-## Seed Data (Demo Mode)
+The seed data logic is primarily for initial testing. For production state management, use the **SQL Dump** feature described below.
 
-To see how Price Spy looks with data, load sample products:
-
-```bash
-docker compose -f infrastructure/docker-compose.yml run --rm price-spy python -m app.cli seed-test-data
-```
-
-This creates:
-- **3 sample products** (Eucerin lotion, Coca-Cola, Kitchen gadget)
-- **2 sample stores** (Amazon.nl, Bol.com)
-- **3 tracked items** linking products to stores
-- **Price history** with one item showing as a DEAL
-
-The seed data is idempotent - running it multiple times won't create duplicates.
+### Resetting Data
 
 To start fresh:
 ```bash
-# Remove the database
+# Remove the database (back it up first if needed!)
 rm data/pricespy.db
 
-# Restart the service (recreates empty database)
+# Restart the service (recreates empty database with core categories/labels)
 docker compose -f infrastructure/docker-compose.yml restart
 ```
 
@@ -180,12 +174,29 @@ docker compose -f infrastructure/docker-compose.yml restart
 # Seed test data for UI testing
 docker compose -f infrastructure/docker-compose.yml run --rm price-spy python -m app.cli seed-test-data
 
+```bash
 # Extract prices for all active tracked items
 docker compose -f infrastructure/docker-compose.yml run --rm price-spy python -m app.cli extract-all
 
 # Extract with custom delay between items
 docker compose -f infrastructure/docker-compose.yml run --rm price-spy python -m app.cli extract-all --delay 10
 ```
+
+### Database Management (Production)
+
+Manage your production data using SQL dumps. These are text-based, allowing you to see diffs in Git and avoid binary repository bloat.
+
+```bash
+# Create a SQL dump of your current database
+python3 scripts/db_manager.py dump
+
+# Restore Price Spy from a SQL dump (automatically creates a backup of current DB)
+python3 scripts/db_manager.py restore
+```
+
+**Files:**
+- `data/pricespy.db`: Your binary production database (ignored by Git)
+- `data/pricespy_dump.sql`: Your version-controlled data state (tracked by Git)
 
 ### Legacy CLI (spy.py)
 

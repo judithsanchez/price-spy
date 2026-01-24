@@ -44,7 +44,7 @@
     - Keep only the latest N screenshots per item OR screenshots from the last M days.
 - [ ] Integrate cleanup into the daily scheduler run.
 
-## 5. Production Data Management
+## 5. Production Data Management [DONE]
 **Problem:** Committing binary `.db` files is bad practice; seed scripts are not suitable for production state management.
 **Solution:** Implement SQL dumps for Git-friendly state versioning and remove seeder logic.
 
@@ -52,7 +52,8 @@
 - [x] Update `.gitignore` to exclude binary Databases and backups.
 - [x] Remove `app/core/seeder.py` and seed scripts.
 - [x] Implement `scripts/db_manager.py` for SQL dump/restore.
-- [ ] Document production backup procedures.
+- [x] Document production backup procedures in README.md.
+- [x] Implement database safety guard for tests.
 
 ---
 
