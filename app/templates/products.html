@@ -85,7 +85,10 @@
                             <td class="px-6 py-5 max-w-[120px] hidden md:table-cell">
                                 <span class="text-[10px] font-black uppercase text-jolly-dark/40 px-2.5 py-1 bg-gray-50 rounded-full border border-jolly-dark/5" x-text="product.category || '-'"></span>
                             </td>
-                            <td class="px-6 py-5 whitespace-nowrap font-black text-jolly-dark" x-text="product.target_price ? '€' + product.target_price.toFixed(2) : '-'"></td>
+                            <td class="px-6 py-5 whitespace-nowrap font-black text-jolly-dark">
+                                <span x-text="product.target_price ? '€' + product.target_price.toFixed(2) : '-'"></span>
+                                <span x-show="product.target_unit" class="text-[9px] text-jolly-dark/40 uppercase tracking-tighter ml-1">/ <span x-text="product.target_unit"></span></span>
+                            </td>
                             <td class="px-6 py-5 whitespace-nowrap hidden lg:table-cell font-black text-jolly-dark" x-text="product.current_stock"></td>
                             <td class="px-6 py-5 whitespace-nowrap">
                                 <div class="flex gap-4">
@@ -222,10 +225,15 @@
                             </div>
                         </div>
                     </div>
-                    <div class="grid grid-cols-2 gap-4 mb-8">
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
                         <div>
                             <label class="block text-[11px] font-black text-jolly-dark/60 uppercase tracking-widest mb-1.5 ml-1">Target Price (EUR)</label>
                             <input type="number" step="0.01" x-model="formData.target_price"
+                                   class="w-full border border-jolly-dark/10 rounded-2xl px-4 py-3 sm:py-2.5 focus:outline-none focus:ring-4 focus:ring-jolly/20 text-base sm:text-sm bg-gray-50/50 font-medium text-jolly-dark">
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-black text-jolly-dark/60 uppercase tracking-widest mb-1.5 ml-1">Target Unit</label>
+                            <input type="text" x-model="formData.target_unit" placeholder="e.g. kg, L, st"
                                    class="w-full border border-jolly-dark/10 rounded-2xl px-4 py-3 sm:py-2.5 focus:outline-none focus:ring-4 focus:ring-jolly/20 text-base sm:text-sm bg-gray-50/50 font-medium text-jolly-dark">
                         </div>
                         <div>
@@ -267,6 +275,7 @@ function productsManager() {
             category: '',
             labels: '',
             target_price: '',
+            target_unit: '',
             current_stock: 0
         },
 
@@ -287,6 +296,7 @@ function productsManager() {
                 category: product.category || '',
                 labels: product.labels || '',
                 target_price: product.target_price ?? '',
+                target_unit: product.target_unit || '',
                 current_stock: product.current_stock ?? 0
             };
             this.showForm = true;
@@ -301,6 +311,7 @@ function productsManager() {
                 category: this.formData.category || null,
                 labels: this.formData.labels || null,
                 target_price: this.formData.target_price !== '' ? parseFloat(this.formData.target_price) : null,
+                target_unit: this.formData.target_unit || null,
                 current_stock: parseInt(this.formData.current_stock) || 0
             };
 

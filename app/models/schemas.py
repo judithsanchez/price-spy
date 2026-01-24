@@ -75,6 +75,7 @@ class Product(BaseModel):
     labels: Optional[str] = Field(default=None, max_length=500)
     purchase_type: Literal["recurring", "one_time"] = "recurring"
     target_price: Optional[float] = Field(default=None, gt=0)
+    target_unit: Optional[str] = Field(default=None, max_length=20)
     preferred_unit_size: Optional[str] = Field(default=None, max_length=50)
     current_stock: int = Field(default=0, ge=0)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))

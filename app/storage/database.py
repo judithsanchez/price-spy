@@ -13,6 +13,7 @@ CREATE TABLE IF NOT EXISTS products (
     labels TEXT,
     purchase_type TEXT CHECK(purchase_type IN ('recurring', 'one_time')) DEFAULT 'recurring',
     target_price REAL,
+    target_unit TEXT,
     preferred_unit_size TEXT,
     current_stock INTEGER DEFAULT 0,
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
@@ -177,6 +178,8 @@ class Database:
         columns = [row["name"] for row in cursor.fetchall()]
         if "labels" not in columns:
             cursor.execute("ALTER TABLE products ADD COLUMN labels TEXT")
+        if "target_unit" not in columns:
+            cursor.execute("ALTER TABLE products ADD COLUMN target_unit TEXT")
 
         # Check tracked_items for preferred_model
         cursor.execute("PRAGMA table_info(tracked_items)")

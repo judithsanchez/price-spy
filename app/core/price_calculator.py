@@ -15,6 +15,16 @@ UNIT_CONVERSIONS = {
 }
 
 
+def normalize_unit(unit: str) -> str:
+    """Normalize unit string to match standard units (e.g., 'KG' -> 'kg')."""
+    if not unit:
+        return ""
+    unit = unit.lower().strip()
+    if unit in UNIT_CONVERSIONS:
+        return UNIT_CONVERSIONS[unit][0]
+    return unit
+
+
 def calculate_volume_price(
     page_price: float,
     items_per_lot: int,

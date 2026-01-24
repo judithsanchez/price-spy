@@ -81,6 +81,7 @@ class DashboardItem(BaseModel):
     price: Optional[float] = None
     currency: str = "EUR"
     target_price: Optional[float] = None
+    target_unit: Optional[str] = None
     unit_price: Optional[float] = None
     unit: Optional[str] = None
     is_available: Optional[bool] = None
@@ -95,6 +96,7 @@ class DashboardItem(BaseModel):
     is_deal: bool = False
     is_price_drop: bool = False
     is_target_hit: bool = False
+    is_best_deal: bool = False
 
 
 class ExtractResponse(BaseModel):
@@ -113,6 +115,7 @@ class ProductCreate(BaseModel):
     labels: Optional[str] = None
     purchase_type: Optional[str] = None
     target_price: Optional[float] = None
+    target_unit: Optional[str] = None
     preferred_unit_size: Optional[str] = None
     current_stock: int = 0
 
@@ -125,6 +128,7 @@ class ProductResponse(BaseModel):
     labels: Optional[str] = None
     purchase_type: Optional[str] = None
     target_price: Optional[float] = None
+    target_unit: Optional[str] = None
     preferred_unit_size: Optional[str] = None
     current_stock: int = 0
 
@@ -272,7 +276,32 @@ async def get_items():
             latest_val = latest_price.price if latest_price else None
             target_val = product.target_price if product else None
             
-            is_target_hit = latest_val is not None and target_val is not None and latest_val <= target_val
+            # Calculate unit price
+            from app.core.price_calculator import calculate_volume_price, normalize_unit
+            unit_price = None
+            unit = None
+            if latest_val:
+                unit_price, unit = calculate_volume_price(
+                    latest_val,
+                    item.items_per_lot,
+                    item.quantity_size,
+                    item.quantity_unit
+                )
+                unit_price = round(unit_price, 2)
+
+            # Target hit logic
+            is_target_hit = False
+            if latest_val is not None and target_val is not None:
+                if product.target_unit:
+                    norm_target_unit = normalize_unit(product.target_unit)
+                    norm_current_unit = normalize_unit(unit) if unit else None
+                    if unit_price is not None and norm_target_unit == norm_current_unit:
+                        is_target_hit = unit_price <= target_val
+                    else:
+                        is_target_hit = latest_val <= target_val
+                else:
+                    is_target_hit = latest_val <= target_val
+
             is_price_drop = latest_val is not None and prev_price is not None and latest_val < prev_price
             is_deal = False
             if latest_price:
@@ -288,9 +317,11 @@ async def get_items():
                 price=latest_val,
                 currency=latest_price.currency if latest_price else "EUR",
                 target_price=target_val,
+                target_unit=product.target_unit if product else None,
+                unit_price=unit_price,
+                unit=unit,
                 is_available=latest_price.is_available if latest_price else None,
                 notes=latest_price.notes if latest_price else None,
-                screenshot_path=screenshot_path if has_screenshot else None,
                 last_checked=item.last_checked_at.isoformat() if item.last_checked_at else None,
                 original_price=latest_price.original_price if latest_price else None,
                 deal_type=latest_price.deal_type if latest_price else None,
@@ -298,6 +329,7 @@ async def get_items():
                 is_deal=is_deal,
                 is_price_drop=is_price_drop,
                 is_target_hit=is_target_hit,
+                is_best_deal=False # Calculation would require grouping here, skipping for now as dashboard() is main
             )
             result.append(dashboard_item)
 
@@ -1022,7 +1054,24 @@ async def dashboard(request: Request):
             deal_type = latest_price_rec.deal_type if latest_price_rec else None
             deal_description = latest_price_rec.deal_description if latest_price_rec else None
 
-            is_target_hit = price is not None and product.target_price is not None and price <= product.target_price
+            # Target hit logic: Use unit price if target unit matches, otherwise use total price
+            is_target_hit = False
+            if price is not None and product.target_price is not None:
+                if product.target_unit:
+                    from app.core.price_calculator import normalize_unit
+                    normalized_target_unit = normalize_unit(product.target_unit)
+                    # Normalize our unit just in case
+                    normalized_current_unit = normalize_unit(unit) if unit else None
+                    
+                    if unit_price is not None and normalized_target_unit == normalized_current_unit:
+                        is_target_hit = unit_price <= product.target_price
+                    else:
+                        # Unit mismatch or missing unit_price, fallback to total price comparison
+                        is_target_hit = price <= product.target_price
+                else:
+                    # No target unit set, use total price
+                    is_target_hit = price <= product.target_price
+
             is_price_drop = trend == "down"
             is_deal = False
             if price is not None:
@@ -1038,10 +1087,12 @@ async def dashboard(request: Request):
                 "currency": latest_price_rec.currency if latest_price_rec else "EUR",
                 "unit_price": unit_price,
                 "unit": unit,
+                "target_unit": product.target_unit,
                 "trend": trend,
                 "is_deal": is_deal,
                 "is_price_drop": is_price_drop,
                 "is_target_hit": is_target_hit,
+                "is_best_deal": False, # Will be calculated after collecting all sources
                 "is_available": latest_price_rec.is_available if latest_price_rec else None,
                 "notes": latest_price_rec.notes if latest_price_rec else None,
                 "screenshot_path": screenshot_path if has_screenshot else None,
@@ -1082,6 +1133,17 @@ async def dashboard(request: Request):
         graph_data["labels"] = sorted_labels
         # Sort products by name
         sorted_products = sorted(products_map.values(), key=lambda p: p["name"])
+        
+        # Identify Best Deal per product (lowest available unit price)
+        for p in sorted_products:
+            # Only consider items with unit prices and that are available (or availability unknown)
+            valid_items = [it for it in p["tracked_items"] if it["unit_price"] is not None and it["is_available"] is not False]
+            if len(valid_items) > 1:
+                # Find the one with the minimum unit price
+                best_item = min(valid_items, key=lambda x: x["unit_price"])
+                for it in p["tracked_items"]:
+                    if it["id"] == best_item["id"]:
+                        it["is_best_deal"] = True
         
         # Calculate global deals for the banner
         all_deals = []
@@ -1164,6 +1226,7 @@ async def get_products():
                 category=p.category,
                 purchase_type=p.purchase_type,
                 target_price=p.target_price,
+                target_unit=p.target_unit,
                 preferred_unit_size=p.preferred_unit_size,
                 current_stock=p.current_stock,
             )
@@ -1220,6 +1283,7 @@ async def create_product(product: ProductCreate):
             labels=created.labels,
             purchase_type=created.purchase_type,
             target_price=created.target_price,
+            target_unit=created.target_unit,
             preferred_unit_size=created.preferred_unit_size,
             current_stock=created.current_stock,
         )
@@ -1243,6 +1307,7 @@ async def get_product(product_id: int):
             labels=product.labels,
             purchase_type=product.purchase_type,
             target_price=product.target_price,
+            target_unit=product.target_unit,
             preferred_unit_size=product.preferred_unit_size,
             current_stock=product.current_stock,
         )
@@ -1300,6 +1365,7 @@ async def update_product(product_id: int, product: ProductCreate):
             labels=result.labels,
             purchase_type=result.purchase_type,
             target_price=result.target_price,
+            target_unit=result.target_unit,
             preferred_unit_size=result.preferred_unit_size,
             current_stock=result.current_stock,
         )
