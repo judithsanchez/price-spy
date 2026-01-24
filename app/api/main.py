@@ -1135,7 +1135,12 @@ async def dashboard(request: Request):
         sorted_products = sorted(products_map.values(), key=lambda p: p["name"])
         
         # Identify Best Deal per product (lowest available unit price)
+        # And set summary flags for sorting
         for p in sorted_products:
+            p["has_best_deal"] = False
+            p["has_target_hit"] = any(it["is_target_hit"] for it in p["tracked_items"])
+            p["has_deal"] = any(it["is_deal"] or it["is_price_drop"] for it in p["tracked_items"])
+            
             # Only consider items with unit prices and that are available (or availability unknown)
             valid_items = [it for it in p["tracked_items"] if it["unit_price"] is not None and it["is_available"] is not False]
             if len(valid_items) > 1:
@@ -1144,6 +1149,10 @@ async def dashboard(request: Request):
                 for it in p["tracked_items"]:
                     if it["id"] == best_item["id"]:
                         it["is_best_deal"] = True
+                        p["has_best_deal"] = True
+        
+        # Advanced sorting: Target Hits > Deals > Name
+        sorted_products.sort(key=lambda p: (not p["has_target_hit"], not p["has_deal"], p["name"]))
         
         # Calculate global deals for the banner
         all_deals = []

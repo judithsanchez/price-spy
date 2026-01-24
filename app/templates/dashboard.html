@@ -129,6 +129,11 @@
             <div class="min-w-0 flex-1">
                 <h3 class="text-lg font-black text-jolly-dark truncate mb-1" title="{{ product.name }}">📦 {{ product.name }}</h3>
                 <div class="flex items-center gap-2 flex-wrap">
+                    {% if product.has_best_deal %}
+                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-100 text-amber-600 text-[9px] font-black border border-amber-200 shadow-sm animate-pulse" title="This product has a source with the best unit price!">
+                            <span>⭐</span> BEST VALUE
+                        </span>
+                    {% endif %}
                     {% if product.target_price %}
                         <span class="text-[10px] font-bold text-jolly-dark/40 uppercase tracking-tighter">🎯 Target:</span>
                         <span class="text-sm font-black text-jolly-dark">
@@ -188,11 +193,6 @@
                             <div class="flex items-center gap-2 mb-0.5">
                                 <span class="font-black text-jolly-dark uppercase tracking-tight text-[11px] flex items-center gap-1.5">
                                     {{ item.store_name }}
-                                    {% if item.is_best_deal %}
-                                        <span class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-amber-100 text-amber-600 text-[8px] font-black border border-amber-200 shadow-sm animate-pulse" title="Best Unit Price!">
-                                            <span>⭐</span> BEST VALUE
-                                        </span>
-                                    {% endif %}
                                 </span>
                                 {% if item.is_available is not none %}
                                     <span class="px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-tighter {{ 'bg-jolly/20 text-jolly-dark border border-jolly/30' if item.is_available else 'bg-jolly-rose/20 text-jolly-rose border border-jolly-rose/30' }}">
