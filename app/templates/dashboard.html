@@ -129,11 +129,6 @@
             <div class="min-w-0 flex-1">
                 <h3 class="text-lg font-black text-jolly-dark truncate mb-1" title="{{ product.name }}">📦 {{ product.name }}</h3>
                 <div class="flex items-center gap-2 flex-wrap">
-                    {% if product.has_best_deal %}
-                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-100 text-amber-600 text-[9px] font-black border border-amber-200 shadow-sm animate-pulse" title="This product has a source with the best unit price!">
-                            <span>⭐</span> BEST VALUE
-                        </span>
-                    {% endif %}
                     {% if product.target_price %}
                         <span class="text-[10px] font-bold text-jolly-dark/40 uppercase tracking-tighter">🎯 Target:</span>
                         <span class="text-sm font-black text-jolly-dark">
@@ -151,6 +146,11 @@
             {% set has_price_drop = product.tracked_items | selectattr('is_price_drop') | list | length > 0 %}
 
             <div class="flex gap-2">
+                {% if product.has_best_deal %}
+                    <span class="flex-shrink-0 inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-black bg-amber-400 text-amber-900 shadow-sm animate-bounce border border-white" title="This product has a source with the best unit price!">
+                        ⭐ BEST VALUE
+                    </span>
+                {% endif %}
                 {% if has_target_hit %}
                     <span class="flex-shrink-0 inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-black bg-jolly-lime text-jolly-dark shadow-sm animate-bounce border border-white">
                         🎯 TARGET HIT!
