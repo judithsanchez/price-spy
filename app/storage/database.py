@@ -159,7 +159,19 @@ class Database:
         self._conn: Optional[sqlite3.Connection] = None
 
     def _connect(self) -> sqlite3.Connection:
-        """Create database connection."""
+        """Create database connection with safety check."""
+        import os
+        
+        # SAFETY GUARD: Prevent accidental production database modification during tests
+        is_test = os.environ.get("PYTEST_CURRENT_TEST") or os.environ.get("PRICESPY_ENV") == "test"
+        is_prod_path = self.db_path == "data/pricespy.db" or os.path.abspath(self.db_path) == os.path.abspath("data/pricespy.db")
+        
+        if is_test and is_prod_path:
+            raise RuntimeError(
+                f"SAFETY BLOCK: Attempted to connect to production database '{self.db_path}' "
+                "while running tests. Please ensure DATABASE_PATH is correctly overridden in your test environment."
+            )
+
         if self._conn is None:
             self._conn = sqlite3.connect(self.db_path)
             self._conn.row_factory = sqlite3.Row

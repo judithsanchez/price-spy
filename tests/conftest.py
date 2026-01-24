@@ -6,6 +6,9 @@ from pathlib import Path
 from app.core import config
 from app.storage.database import Database
 
+# Set environment variable globally for the test session
+os.environ["PRICESPY_ENV"] = "test"
+
 @pytest.fixture(scope="function", autouse=True)
 def isolate_database(monkeypatch):
     """
