@@ -89,6 +89,8 @@ class DashboardItem(BaseModel):
     last_checked: Optional[str] = None
     original_price: Optional[float] = None
     deal_type: Optional[str] = None
+    discount_percentage: Optional[float] = None
+    discount_fixed_amount: Optional[float] = None
     deal_description: Optional[str] = None
     is_deal: bool = False
     is_price_drop: bool = False
@@ -870,6 +872,8 @@ async def trigger_extraction(item_id: int):
                 store_name=result.store_name,
                 original_price=result.original_price,
                 deal_type=result.deal_type,
+                discount_percentage=result.discount_percentage,
+                discount_fixed_amount=result.discount_fixed_amount,
                 deal_description=result.deal_description,
                 notes=result.notes,
             )

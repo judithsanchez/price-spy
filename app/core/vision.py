@@ -24,19 +24,19 @@ EXTRACTION_SCHEMA = {
         "is_blocked": {"type": "boolean", "description": "Whether the page is blocked by a modal"},
         "original_price": {"type": "number", "description": "The original price before any discount"},
         "deal_type": {
-            "type": ["string", "null"], 
-            "enum": ["bogo", "multibuy", "percentage_off", "fixed_amount_off", "second_unit_discount", "value_pack", "member_only", "clearance", "none", null]
+            "type": "string",
+            "enum": ["bogo", "multibuy", "percentage_off", "fixed_amount_off", "second_unit_discount", "value_pack", "member_only", "clearance", "none"]
         },
         "discount_percentage": {
-            "type": ["number", "null"],
+            "type": "number",
             "description": "The percentage value of the discount (e.g., 20 for 20% off). Only fill if deal_type is percentage_off."
         },
         "discount_fixed_amount": {
-            "type": ["number", "null"],
+            "type": "number",
             "description": "The absolute currency value off (e.g., 5 for €5 off). Only fill if deal_type is fixed_amount_off."
         },
-        "deal_description": {"type": ["string", "null"]},
-        "notes": {"type": ["string", "null"]}
+        "deal_description": {"type": "string"},
+        "notes": {"type": "string"}
     },
     "required": ["price", "currency", "is_available", "product_name"]
 }
@@ -167,6 +167,16 @@ If fields are missing or unreadable, use 0.0 for price and "N/A" for currency.
 
 
 from app.core.gemini import ModelConfig, is_rate_limit_error
+import re
+
+
+def _extract_json(text: str) -> str:
+    """Extract the first valid JSON block from text."""
+    # Find anything between first { and last }
+    match = re.search(r'(\{.*\})', text, re.DOTALL)
+    if match:
+        return match.group(1)
+    return text
 
 
 async def _call_gemini_api(
@@ -216,7 +226,8 @@ async def _call_gemini_api(
             data = await response.json()
 
     text = data["candidates"][0]["content"]["parts"][0]["text"].strip()
-    result = ExtractionResult.model_validate_json(text)
+    json_text = _extract_json(text)
+    result = ExtractionResult.model_validate_json(json_text)
 
     logger.info(
         "Extraction successful",
