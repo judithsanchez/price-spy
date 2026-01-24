@@ -11,10 +11,10 @@ class ProductInfo(BaseModel):
 
     model_config = ConfigDict(str_strip_whitespace=True)
 
-    product_name: str = Field(..., min_length=1, max_length=500)
+    product_name: str = Field(..., min_length=1)
     price: float = Field(..., ge=0, le=1_000_000)
     currency: str = Field(default="EUR", pattern=r"^([A-Z]{3}|N/A)$")
-    store_name: Optional[str] = Field(default=None, max_length=100)
+    store_name: Optional[str] = Field(default=None)
     page_type: Literal["single_product", "search_results"]
     confidence: float = Field(..., ge=0.0, le=1.0, alias="confidence_score")
     is_blocked: bool = Field(default=False, description="Whether the page is blocked by a modal")
@@ -46,6 +46,7 @@ class PriceHistoryRecord(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: Optional[int] = None
+    item_id: Optional[int] = None
     product_name: str
     price: float
     currency: str = "EUR"
@@ -55,6 +56,11 @@ class PriceHistoryRecord(BaseModel):
     store_name: Optional[str] = None
     page_type: Optional[str] = None
     notes: Optional[str] = None
+    original_price: Optional[float] = None
+    deal_type: Optional[str] = None
+    discount_percentage: Optional[float] = None
+    discount_fixed_amount: Optional[float] = None
+    deal_description: Optional[str] = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
@@ -69,6 +75,7 @@ class Product(BaseModel):
     labels: Optional[str] = Field(default=None, max_length=500)
     purchase_type: Literal["recurring", "one_time"] = "recurring"
     target_price: Optional[float] = Field(default=None, gt=0)
+    target_unit: Optional[str] = Field(default=None, max_length=20)
     preferred_unit_size: Optional[str] = Field(default=None, max_length=50)
     current_stock: int = Field(default=0, ge=0)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
@@ -96,8 +103,8 @@ class TrackedItem(BaseModel):
     store_id: int = Field(...)
     url: str = Field(..., min_length=1)
     item_name_on_site: Optional[str] = Field(default=None, max_length=300)
-    quantity_size: float = Field(..., gt=0)
-    quantity_unit: str = Field(..., min_length=1, max_length=20)
+    quantity_size: float = Field(default=1.0, gt=0)
+    quantity_unit: str = Field(default="st", min_length=1, max_length=20)
     items_per_lot: int = Field(default=1, ge=1)
     preferred_model: Optional[str] = Field(default=None, max_length=50)
     last_checked_at: Optional[datetime] = None
@@ -115,6 +122,12 @@ class PriceComparison(BaseModel):
     volume_price: Optional[float] = Field(default=None, gt=0)
     volume_unit: Optional[str] = Field(default=None, max_length=20)
     is_price_drop: bool = False
+    is_deal: bool = False
+    original_price: Optional[float] = None
+    deal_type: Optional[str] = None
+    discount_percentage: Optional[float] = None
+    discount_fixed_amount: Optional[float] = None
+    deal_description: Optional[str] = None
 
 
 class ExtractionResult(BaseModel):
@@ -129,10 +142,15 @@ class ExtractionResult(BaseModel):
     price: float = Field(..., ge=0, le=1_000_000, description="Numeric price value")
     currency: str = Field(default="EUR", pattern=r"^([A-Z]{3}|N/A)$")
     is_available: bool = Field(..., description="In stock status")
-    product_name: str = Field(..., min_length=1, max_length=500)
-    store_name: Optional[str] = Field(default=None, max_length=100)
-    notes: Optional[str] = Field(default=None, max_length=1000, description="AI notes/observations")
+    product_name: str = Field(..., min_length=1)
+    store_name: Optional[str] = Field(default=None)
+    notes: Optional[str] = Field(default=None, description="AI notes/observations")
     is_blocked: bool = Field(default=False, description="Whether the page is blocked by a modal")
+    original_price: Optional[float] = Field(default=None, ge=0, description="Original price before discount")
+    deal_type: Optional[str] = Field(default=None, max_length=50, description="The type of promotion detected")
+    discount_percentage: Optional[float] = Field(default=None, description="The percentage value of the discount")
+    discount_fixed_amount: Optional[float] = Field(default=None, description="The absolute currency value off")
+    deal_description: Optional[str] = Field(default=None, description="Brief description of the deal")
     detected_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
     @field_validator("price")
@@ -151,8 +169,8 @@ class ExtractionLog(BaseModel):
     tracked_item_id: int
     status: Literal["success", "error"] = "success"
     model_used: Optional[str] = None
-    price: Optional[float] = Field(default=None, gt=0)
-    currency: Optional[str] = Field(default=None, pattern=r"^[A-Z]{3}$")
+    price: Optional[float] = Field(default=None, ge=0)
+    currency: Optional[str] = Field(default=None, pattern=r"^([A-Z]{3}|N/A)$")
     error_message: Optional[str] = Field(default=None, max_length=2000)
     duration_ms: Optional[int] = Field(default=None, ge=0)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))

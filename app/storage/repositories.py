@@ -27,8 +27,9 @@ class PriceHistoryRepository:
         cursor = self.db.execute(
             """
             INSERT INTO price_history
-            (product_name, price, currency, is_available, confidence, url, store_name, page_type, notes)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            (product_name, price, currency, is_available, confidence, url, store_name, page_type, notes,
+             original_price, deal_type, discount_percentage, discount_fixed_amount, deal_description)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 record.product_name,
@@ -40,6 +41,11 @@ class PriceHistoryRepository:
                 record.store_name,
                 record.page_type,
                 record.notes,
+                record.original_price,
+                record.deal_type,
+                record.discount_percentage,
+                record.discount_fixed_amount,
+                record.deal_description,
             )
         )
         self.db.commit()
@@ -105,6 +111,11 @@ class PriceHistoryRepository:
             store_name=row["store_name"],
             page_type=row["page_type"],
             notes=row["notes"],
+            original_price=row["original_price"],
+            deal_type=row["deal_type"],
+            discount_percentage=row["discount_percentage"],
+            discount_fixed_amount=row["discount_fixed_amount"],
+            deal_description=row["deal_description"],
             created_at=datetime.fromisoformat(row["created_at"]),
         )
 
@@ -198,8 +209,8 @@ class ProductRepository:
         cursor = self.db.execute(
             """
             INSERT INTO products
-            (name, category, labels, purchase_type, target_price, preferred_unit_size, current_stock)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            (name, category, labels, purchase_type, target_price, target_unit, preferred_unit_size, current_stock)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 product.name,
@@ -207,6 +218,7 @@ class ProductRepository:
                 product.labels,
                 product.purchase_type,
                 product.target_price,
+                product.target_unit,
                 product.preferred_unit_size,
                 product.current_stock,
             )
@@ -248,6 +260,7 @@ class ProductRepository:
                 labels = ?,
                 purchase_type = ?,
                 target_price = ?,
+                target_unit = ?,
                 preferred_unit_size = ?,
                 current_stock = ?
             WHERE id = ?
@@ -258,6 +271,7 @@ class ProductRepository:
                 product.labels,
                 product.purchase_type,
                 product.target_price,
+                product.target_unit,
                 product.preferred_unit_size,
                 product.current_stock,
                 product_id,
@@ -279,6 +293,7 @@ class ProductRepository:
             labels=row["labels"],
             purchase_type=row["purchase_type"],
             target_price=row["target_price"],
+            target_unit=row["target_unit"],
             preferred_unit_size=row["preferred_unit_size"],
             current_stock=row["current_stock"],
             created_at=datetime.fromisoformat(row["created_at"]),

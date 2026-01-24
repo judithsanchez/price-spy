@@ -83,6 +83,12 @@ async def extract_single_item(
             confidence=1.0,
             url=url,
             store_name=result.store_name,
+            original_price=result.original_price,
+            deal_type=result.deal_type,
+            discount_percentage=result.discount_percentage,
+            discount_fixed_amount=result.discount_fixed_amount,
+            deal_description=result.deal_description,
+            notes=result.notes
         )
         price_repo.insert(record)
 

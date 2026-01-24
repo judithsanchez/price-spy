@@ -21,8 +21,22 @@ EXTRACTION_SCHEMA = {
         "is_available": {"type": "boolean", "description": "Whether the product is in stock"},
         "product_name": {"type": "string", "description": "The name of the product"},
         "store_name": {"type": "string", "description": "The name of the store/retailer"},
-        "is_blocked": {"type": "boolean", "description": "Whether the page is blocked by a cookie consent modal or login wall"},
-        "notes": {"type": "string", "description": "Additional notes about stock, variants (e.g. '240 caps out of stock'), or special offers."}
+        "is_blocked": {"type": "boolean", "description": "Whether the page is blocked by a modal"},
+        "original_price": {"type": "number", "description": "The original price before any discount"},
+        "deal_type": {
+            "type": "string",
+            "enum": ["bogo", "multibuy", "percentage_off", "fixed_amount_off", "second_unit_discount", "value_pack", "member_only", "clearance", "none"]
+        },
+        "discount_percentage": {
+            "type": "number",
+            "description": "The percentage value of the discount (e.g., 20 for 20% off). Only fill if deal_type is percentage_off."
+        },
+        "discount_fixed_amount": {
+            "type": "number",
+            "description": "The absolute currency value off (e.g., 5 for €5 off). Only fill if deal_type is fixed_amount_off."
+        },
+        "deal_description": {"type": "string"},
+        "notes": {"type": "string"}
     },
     "required": ["price", "currency", "is_available", "product_name"]
 }
@@ -131,16 +145,21 @@ async def extract_product_info(image_bytes: bytes, api_key: str) -> Union[Produc
         return text
 
 
-STRUCTURED_OUTPUT_PROMPT = """Extract price information from this product page screenshot.
+STRUCTURED_OUTPUT_PROMPT = """Extract product and price information from this webpage screenshot as a price extraction expert.
 
 Analyze the image and extract:
-- The current price (numeric value only)
+- THE CURRENT PRICE (numeric value only)
 - Currency code (EUR, USD, GBP, etc.)
 - Whether the product is in stock (available to buy)
 - The product name
 - The store/retailer name (if visible)
 - Whether the page is blocked by a cookie consent modal (is_blocked: boolean)
-- Additional notes (e.g., info about out-of-stock sizes/variants, upcoming restocks mentioned, or if only expensive options are left)
+- Original price (ONLY if there is a CLEAR previous price with a strikethrough or 'Van' label, otherwise leave null)
+- Deal type: Choose from 'bogo', 'multibuy', 'percentage_off', 'fixed_amount_off', 'second_unit_discount', 'value_pack', 'member_only', 'clearance', or 'none'. Note: 'Value Pack' or 'Voordeelpak' often indicates a 'value_pack' deal type if accompanied by a lower unit price or discount.
+- Discount percentage: Extract if deal_type is 'percentage_off' (e.g., 20).
+- Discount fixed amount: Extract if deal_type is 'fixed_amount_off' (e.g., 5.00).
+- Brief description of any promotional offer (deal_description: string, e.g., '1+1 gratis')
+- Additional notes (e.g., info about out-of-stock sizes or specific terms)
 
 Return the data as JSON. If is_blocked is true, provide the best guess for other fields.
 If fields are missing or unreadable, use 0.0 for price and "N/A" for currency.
@@ -148,6 +167,16 @@ If fields are missing or unreadable, use 0.0 for price and "N/A" for currency.
 
 
 from app.core.gemini import ModelConfig, is_rate_limit_error
+import re
+
+
+def _extract_json(text: str) -> str:
+    """Extract the first valid JSON block from text."""
+    # Find anything between first { and last }
+    match = re.search(r'(\{.*\})', text, re.DOTALL)
+    if match:
+        return match.group(1)
+    return text
 
 
 async def _call_gemini_api(
@@ -197,7 +226,8 @@ async def _call_gemini_api(
             data = await response.json()
 
     text = data["candidates"][0]["content"]["parts"][0]["text"].strip()
-    result = ExtractionResult.model_validate_json(text)
+    json_text = _extract_json(text)
+    result = ExtractionResult.model_validate_json(json_text)
 
     logger.info(
         "Extraction successful",

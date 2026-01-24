@@ -128,13 +128,25 @@ def generate_report_data(
                 if prev_price > 0:
                     price_change_pct = (price_change / prev_price) * 100
 
-        # Check if it's a deal
-        is_deal = (
+        # Check if it's a target hit vs a promo deal
+        original_price = result.get("original_price")
+        deal_type = result.get("deal_type")
+        deal_description = result.get("deal_description")
+
+        is_target_hit = (
             status == "success"
             and price is not None
             and target_price is not None
             and price <= target_price
         )
+
+        is_promo_deal = False
+        if status == "success" and price is not None:
+            has_original_higher = original_price is not None and original_price > price
+            has_deal_type = deal_type is not None and deal_type.lower() != "none"
+            is_promo_deal = has_original_higher or has_deal_type
+        
+        is_price_drop = status == "success" and price_change < -0.01
 
         item_data = {
             "item_id": item_id,
@@ -148,17 +160,22 @@ def generate_report_data(
             "target_price": target_price,
             "url": url,
             "status": status,
-            "is_deal": is_deal,
+            "is_deal": is_promo_deal,
+            "is_target_hit": is_target_hit,
+            "is_price_drop": is_price_drop,
+            "deal_type": deal_type,
+            "deal_description": deal_description,
+            "original_price": original_price,
             "error": error_msg,
         }
 
         if status == "success":
             items.append(item_data)
-            if is_deal:
+            if is_target_hit or is_promo_deal:
                 deals.append(item_data)
             
             # Categorize changes
-            if price_change < -0.01:
+            if is_price_drop:
                 price_drops.append(item_data)
             elif price_change > 0.01:
                 price_increases.append(item_data)

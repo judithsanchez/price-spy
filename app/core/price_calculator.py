@@ -15,6 +15,16 @@ UNIT_CONVERSIONS = {
 }
 
 
+def normalize_unit(unit: str) -> str:
+    """Normalize unit string to match standard units (e.g., 'KG' -> 'kg')."""
+    if not unit:
+        return ""
+    unit = unit.lower().strip()
+    if unit in UNIT_CONVERSIONS:
+        return UNIT_CONVERSIONS[unit][0]
+    return unit
+
+
 def calculate_volume_price(
     page_price: float,
     items_per_lot: int,
@@ -63,29 +73,48 @@ def calculate_volume_price(
 
 def compare_prices(
     current: float,
-    previous: Optional[float]
+    previous: Optional[float],
+    original_price: Optional[float] = None,
+    deal_type: Optional[str] = None,
+    discount_percentage: Optional[float] = None,
+    discount_fixed_amount: Optional[float] = None,
+    deal_description: Optional[str] = None
 ) -> PriceComparison:
     """
-    Compare current price with previous price.
+    Compare current price with previous price and evaluate deals.
 
     Args:
         current: Current price
         previous: Previous price (None if first check)
-
-    Returns:
-        PriceComparison with change details
+        original_price: Original price before any discount
+        deal_type: Type of promotion detected (e.g., '1+1 gratis')
+        discount_percentage: Percentage off
+        discount_fixed_amount: Fixed amount off
+        deal_description: Explanation of the deal
     """
+    is_deal = False
+    if original_price and original_price > current:
+        is_deal = True
+    elif deal_type and deal_type.lower() != "none":
+        is_deal = True
+
     if previous is None:
         return PriceComparison(
             current_price=current,
             previous_price=None,
             price_change=None,
             price_change_percent=None,
-            is_price_drop=False
+            is_price_drop=False,
+            is_deal=is_deal,
+            original_price=original_price,
+            deal_type=deal_type,
+            discount_percentage=discount_percentage,
+            discount_fixed_amount=discount_fixed_amount,
+            deal_description=deal_description
         )
 
     price_change = round(current - previous, 2)
-    price_change_percent = round((price_change / previous) * 100, 2)
+    price_change_percent = round((price_change / previous) * 100, 2) if previous > 0 else 0
     is_price_drop = price_change < 0
 
     return PriceComparison(
@@ -93,5 +122,11 @@ def compare_prices(
         previous_price=previous,
         price_change=price_change,
         price_change_percent=price_change_percent,
-        is_price_drop=is_price_drop
+        is_price_drop=is_price_drop,
+        is_deal=is_deal or is_price_drop,
+        original_price=original_price,
+        deal_type=deal_type,
+        discount_percentage=discount_percentage,
+        discount_fixed_amount=discount_fixed_amount,
+        deal_description=deal_description
     )

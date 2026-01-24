@@ -80,11 +80,16 @@ async def cmd_extract(args) -> int:
             price=result.price,
             currency=result.currency,
             is_available=result.is_available,
-            confidence=1.0,  # Structured output assumes high confidence
+            confidence=1.0,
             url=args.url,
             store_name=result.store_name,
             page_type="single_product",
             notes=result.notes,
+            original_price=result.original_price,
+            deal_type=result.deal_type,
+            discount_percentage=result.discount_percentage,
+            discount_fixed_amount=result.discount_fixed_amount,
+            deal_description=result.deal_description,
         )
         record_id = price_repo.insert(record)
         logger.info("Price saved to database", extra={"record_id": record_id})
@@ -92,6 +97,18 @@ async def cmd_extract(args) -> int:
         # Output structured result
         print(f"\nProduct: {result.product_name}")
         print(f"Price: {result.currency} {result.price}")
+        if result.original_price and result.original_price > result.price:
+            print(f"Original Price: {result.currency} {result.original_price} (Save {((result.original_price-result.price)/result.original_price)*100:.0f}%)")
+        
+        if result.deal_type and result.deal_type != 'none':
+            print(f"PROMO: {result.deal_type}")
+            if result.discount_percentage:
+                print(f"  Discount: {result.discount_percentage}% off")
+            if result.discount_fixed_amount:
+                print(f"  Discount: {result.currency} {result.discount_fixed_amount} off")
+            if result.deal_description:
+                print(f"  Details: {result.deal_description}")
+
         if result.store_name:
             print(f"Store: {result.store_name}")
         print(f"Stock: {'Available' if result.is_available else 'Out of stock'}")
@@ -110,18 +127,34 @@ async def cmd_extract(args) -> int:
             print(f"Unit price: {result.currency} {vol_price:.2f}/{vol_unit}")
 
         # Show price comparison
+        comparison = compare_prices(
+            result.price, 
+            previous.price if previous else None,
+            original_price=result.original_price,
+            deal_type=result.deal_type,
+            discount_percentage=result.discount_percentage,
+            discount_fixed_amount=result.discount_fixed_amount,
+            deal_description=result.deal_description
+        )
+        
         if previous:
-            comparison = compare_prices(result.price, previous.price)
             if comparison.price_change != 0:
                 direction = "↓" if comparison.is_price_drop else "↑"
                 print(
                     f"Price change: {direction} {abs(comparison.price_change):.2f} "
                     f"({comparison.price_change_percent:+.1f}%)"
                 )
-                if comparison.is_price_drop:
-                    print("*** PRICE DROP DETECTED ***")
             else:
-                print("Price unchanged")
+                print("Price unchanged since last check")
+
+        if comparison.is_deal:
+            print("\n*** DEAL DETECTED ***")
+            if comparison.is_price_drop:
+                print(f"-> Price dropped by {abs(comparison.price_change):.2f} {result.currency}")
+            if comparison.original_price and comparison.original_price > result.price:
+                print(f"-> Promotion: {comparison.currency} {result.price} (was {comparison.original_price})")
+            if comparison.deal_type:
+                print(f"-> Offer: {comparison.deal_type}")
 
         return 0
 
@@ -180,6 +213,16 @@ async def cmd_check(args) -> int:
         print(f"Store Detected: {result.store_name if result.store_name else 'Unknown'}")
         print(f"Product Detected: {result.product_name if result.product_name else 'Unknown'}")
         print(f"Price Found: {result.currency} {result.price if result.price > 0 else 'N/A'}")
+        if result.original_price:
+            print(f"Original Price: {result.currency} {result.original_price}")
+        if result.deal_type and result.deal_type != 'none':
+            print(f"Deal Type: {result.deal_type}")
+            if result.discount_percentage:
+                print(f"Discount Percentage: {result.discount_percentage}%")
+            if result.discount_fixed_amount:
+                print(f"Discount Fixed Amount: {result.currency} {result.discount_fixed_amount}")
+        if result.deal_description:
+            print(f"Deal Description: {result.deal_description}")
         print(f"Model Used: {model_used}")
         print("--------------------------")
         

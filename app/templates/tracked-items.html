@@ -45,11 +45,30 @@
                                         <span x-show="item.latest_is_available === true" class="px-1.5 py-0.5 rounded text-[9px] font-black border border-jolly/30 bg-jolly/10 text-jolly-dark uppercase tracking-tighter">✅ IN STOCK</span>
                                         <span x-show="item.latest_is_available === false" class="px-1.5 py-0.5 rounded text-[9px] font-black border border-jolly-rose/30 bg-jolly-rose/10 text-jolly-rose uppercase tracking-tighter">❌ OUT OF STOCK</span>
                                     </div>
-                                    <div class="text-[11px] text-jolly-dark/60 font-medium mb-1">
+                                    <div class="text-[11px] text-jolly-dark/60 font-medium mb-1 flex items-center gap-3">
                                         <span class="font-black text-jolly-dark" x-text="item.quantity_size + ' ' + item.quantity_unit"></span>
                                         <template x-if="item.item_name_on_site">
                                             <span class="text-jolly-dark/30" x-text="' · ' + item.item_name_on_site"></span>
                                         </template>
+                                        
+                                        <!-- Price info -->
+                                        <div class="flex items-center gap-2 ml-auto" x-show="item.latest_price">
+                                            <template x-if="item.latest_original_price && item.latest_original_price > item.latest_price">
+                                                <span class="text-[9px] text-jolly-rose line-through font-bold opacity-60" x-text="item.latest_currency + ' ' + item.latest_original_price.toFixed(2)"></span>
+                                            </template>
+                                            <span class="font-black text-jolly-dark bg-white border border-jolly-dark/5 px-2 py-0.5 rounded shadow-sm" x-text="item.latest_currency + ' ' + item.latest_price.toFixed(2)"></span>
+                                            
+                                            <template x-if="item.latest_deal_type || item.is_deal">
+                                                <span class="px-1.5 py-0.5 rounded text-white text-[9px] font-black uppercase tracking-tighter" 
+                                                      :class="{
+                                                          'bg-emerald-500': ['bogo', '1+1 gratis', 'second_half_price'].includes(item.latest_deal_type),
+                                                          'bg-amber-500': item.latest_deal_type === 'multibuy',
+                                                          'bg-jolly-vivid': !['bogo', '1+1 gratis', 'second_half_price', 'multibuy'].includes(item.latest_deal_type)
+                                                      }"
+                                                      :title="item.latest_deal_description" 
+                                                      x-text="'✨ ' + (item.latest_deal_type || 'Price Drop')"></span>
+                                            </template>
+                                        </div>
                                     </div>
                                     <a :href="item.url" target="_blank" class="text-[10px] text-jolly-dark/40 hover:text-jolly transition-colors truncate block max-w-sm underline decoration-jolly/30 hover:decoration-jolly" x-text="item.url"></a>
                                     
