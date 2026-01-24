@@ -72,7 +72,6 @@ async def extract_single_item(
 
         duration_ms = int((time.time() - start_time) * 1000)
 
-        # Save to price history
         record = PriceHistoryRecord(
             product_name=result.product_name,
             price=result.price,
@@ -82,6 +81,8 @@ async def extract_single_item(
             store_name=result.store_name,
             original_price=result.original_price,
             deal_type=result.deal_type,
+            discount_percentage=result.discount_percentage,
+            discount_fixed_amount=result.discount_fixed_amount,
             deal_description=result.deal_description,
             notes=result.notes
         )
@@ -107,6 +108,8 @@ async def extract_single_item(
             "currency": result.currency,
             "original_price": result.original_price,
             "deal_type": result.deal_type,
+            "discount_percentage": result.discount_percentage,
+            "discount_fixed_amount": result.discount_fixed_amount,
             "deal_description": result.deal_description,
             "model_used": model_used,
             "duration_ms": duration_ms

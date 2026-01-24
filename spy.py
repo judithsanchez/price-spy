@@ -87,6 +87,8 @@ async def cmd_extract(args) -> int:
             notes=result.notes,
             original_price=result.original_price,
             deal_type=result.deal_type,
+            discount_percentage=result.discount_percentage,
+            discount_fixed_amount=result.discount_fixed_amount,
             deal_description=result.deal_description,
         )
         record_id = price_repo.insert(record)
@@ -98,10 +100,14 @@ async def cmd_extract(args) -> int:
         if result.original_price and result.original_price > result.price:
             print(f"Original Price: {result.currency} {result.original_price} (Save {((result.original_price-result.price)/result.original_price)*100:.0f}%)")
         
-        if result.deal_type:
+        if result.deal_type and result.deal_type != 'none':
             print(f"PROMO: {result.deal_type}")
+            if result.discount_percentage:
+                print(f"  Discount: {result.discount_percentage}% off")
+            if result.discount_fixed_amount:
+                print(f"  Discount: {result.currency} {result.discount_fixed_amount} off")
             if result.deal_description:
-                print(f"Details: {result.deal_description}")
+                print(f"  Details: {result.deal_description}")
 
         if result.store_name:
             print(f"Store: {result.store_name}")
@@ -126,6 +132,8 @@ async def cmd_extract(args) -> int:
             previous.price if previous else None,
             original_price=result.original_price,
             deal_type=result.deal_type,
+            discount_percentage=result.discount_percentage,
+            discount_fixed_amount=result.discount_fixed_amount,
             deal_description=result.deal_description
         )
         
@@ -209,6 +217,10 @@ async def cmd_check(args) -> int:
             print(f"Original Price: {result.currency} {result.original_price}")
         if result.deal_type and result.deal_type != 'none':
             print(f"Deal Type: {result.deal_type}")
+            if result.discount_percentage:
+                print(f"Discount Percentage: {result.discount_percentage}%")
+            if result.discount_fixed_amount:
+                print(f"Discount Fixed Amount: {result.currency} {result.discount_fixed_amount}")
         if result.deal_description:
             print(f"Deal Description: {result.deal_description}")
         print(f"Model Used: {model_used}")

@@ -58,6 +58,8 @@ class PriceHistoryRecord(BaseModel):
     notes: Optional[str] = None
     original_price: Optional[float] = None
     deal_type: Optional[str] = None
+    discount_percentage: Optional[float] = None
+    discount_fixed_amount: Optional[float] = None
     deal_description: Optional[str] = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
@@ -122,6 +124,8 @@ class PriceComparison(BaseModel):
     is_deal: bool = False
     original_price: Optional[float] = None
     deal_type: Optional[str] = None
+    discount_percentage: Optional[float] = None
+    discount_fixed_amount: Optional[float] = None
     deal_description: Optional[str] = None
 
 
@@ -142,7 +146,9 @@ class ExtractionResult(BaseModel):
     notes: Optional[str] = Field(default=None, max_length=1000, description="AI notes/observations")
     is_blocked: bool = Field(default=False, description="Whether the page is blocked by a modal")
     original_price: Optional[float] = Field(default=None, ge=0, description="Original price before discount")
-    deal_type: Optional[str] = Field(default=None, max_length=50, description="Type of deal (e.g., 'Discount', 'BOGO')")
+    deal_type: Optional[str] = Field(default=None, max_length=50, description="The type of promotion detected")
+    discount_percentage: Optional[float] = Field(default=None, description="The percentage value of the discount")
+    discount_fixed_amount: Optional[float] = Field(default=None, description="The absolute currency value off")
     deal_description: Optional[str] = Field(default=None, max_length=200, description="Brief description of the deal")
     detected_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 

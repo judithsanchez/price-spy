@@ -21,15 +21,22 @@ EXTRACTION_SCHEMA = {
         "is_available": {"type": "boolean", "description": "Whether the product is in stock"},
         "product_name": {"type": "string", "description": "The name of the product"},
         "store_name": {"type": "string", "description": "The name of the store/retailer"},
-        "is_blocked": {"type": "boolean", "description": "Whether the page is blocked by a cookie consent modal or login wall"},
+        "is_blocked": {"type": "boolean", "description": "Whether the page is blocked by a modal"},
         "original_price": {"type": "number", "description": "The original price before any discount"},
         "deal_type": {
-            "type": "string", 
-            "enum": ["bogo", "multibuy", "discount", "second_half_price", "value_pack", "none"],
-            "description": "The type of promotion detected"
+            "type": ["string", "null"], 
+            "enum": ["bogo", "multibuy", "percentage_off", "fixed_amount_off", "second_unit_discount", "value_pack", "member_only", "clearance", "none", null]
         },
-        "deal_description": {"type": "string", "description": "A brief explanation of the deal (e.g., '1+1 gratis', '2 for 5 EUR')"},
-        "notes": {"type": "string", "description": "Additional notes about stock, variants, or special offers."}
+        "discount_percentage": {
+            "type": ["number", "null"],
+            "description": "The percentage value of the discount (e.g., 20 for 20% off). Only fill if deal_type is percentage_off."
+        },
+        "discount_fixed_amount": {
+            "type": ["number", "null"],
+            "description": "The absolute currency value off (e.g., 5 for €5 off). Only fill if deal_type is fixed_amount_off."
+        },
+        "deal_description": {"type": ["string", "null"]},
+        "notes": {"type": ["string", "null"]}
     },
     "required": ["price", "currency", "is_available", "product_name"]
 }
@@ -147,6 +154,10 @@ Analyze the image and extract:
 - The product name
 - The store/retailer name (if visible)
 - Whether the page is blocked by a cookie consent modal (is_blocked: boolean)
+- Original price (ONLY if there is a CLEAR previous price with a strikethrough or 'Van' label, otherwise leave null)
+- Deal type: Choose from 'bogo', 'multibuy', 'percentage_off', 'fixed_amount_off', 'second_unit_discount', 'value_pack', 'member_only', 'clearance', or 'none'.
+- Discount percentage: Extract if deal_type is 'percentage_off' (e.g., 20).
+- Discount fixed amount: Extract if deal_type is 'fixed_amount_off' (e.g., 5.00).
 - Brief description of any promotional offer (deal_description: string, e.g., '1+1 gratis')
 - Additional notes (e.g., info about out-of-stock sizes or specific terms)
 

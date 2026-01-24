@@ -197,6 +197,10 @@ class Database:
             cursor.execute("ALTER TABLE price_history ADD COLUMN original_price REAL")
         if "deal_type" not in columns:
             cursor.execute("ALTER TABLE price_history ADD COLUMN deal_type TEXT")
+        if "discount_percentage" not in columns:
+            cursor.execute("ALTER TABLE price_history ADD COLUMN discount_percentage REAL")
+        if "discount_fixed_amount" not in columns:
+            cursor.execute("ALTER TABLE price_history ADD COLUMN discount_fixed_amount REAL")
         if "deal_description" not in columns:
             cursor.execute("ALTER TABLE price_history ADD COLUMN deal_description TEXT")
             

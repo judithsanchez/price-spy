@@ -28,8 +28,8 @@ class PriceHistoryRepository:
             """
             INSERT INTO price_history
             (product_name, price, currency, is_available, confidence, url, store_name, page_type, notes,
-             original_price, deal_type, deal_description)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+             original_price, deal_type, discount_percentage, discount_fixed_amount, deal_description)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 record.product_name,
@@ -43,6 +43,8 @@ class PriceHistoryRepository:
                 record.notes,
                 record.original_price,
                 record.deal_type,
+                record.discount_percentage,
+                record.discount_fixed_amount,
                 record.deal_description,
             )
         )
@@ -111,6 +113,8 @@ class PriceHistoryRepository:
             notes=row["notes"],
             original_price=row["original_price"],
             deal_type=row["deal_type"],
+            discount_percentage=row["discount_percentage"],
+            discount_fixed_amount=row["discount_fixed_amount"],
             deal_description=row["deal_description"],
             created_at=datetime.fromisoformat(row["created_at"]),
         )

@@ -66,6 +66,8 @@ def compare_prices(
     previous: Optional[float],
     original_price: Optional[float] = None,
     deal_type: Optional[str] = None,
+    discount_percentage: Optional[float] = None,
+    discount_fixed_amount: Optional[float] = None,
     deal_description: Optional[str] = None
 ) -> PriceComparison:
     """
@@ -76,6 +78,8 @@ def compare_prices(
         previous: Previous price (None if first check)
         original_price: Original price before any discount
         deal_type: Type of promotion detected (e.g., '1+1 gratis')
+        discount_percentage: Percentage off
+        discount_fixed_amount: Fixed amount off
         deal_description: Explanation of the deal
     """
     is_deal = False
@@ -94,6 +98,8 @@ def compare_prices(
             is_deal=is_deal,
             original_price=original_price,
             deal_type=deal_type,
+            discount_percentage=discount_percentage,
+            discount_fixed_amount=discount_fixed_amount,
             deal_description=deal_description
         )
 
@@ -110,5 +116,7 @@ def compare_prices(
         is_deal=is_deal or is_price_drop,
         original_price=original_price,
         deal_type=deal_type,
+        discount_percentage=discount_percentage,
+        discount_fixed_amount=discount_fixed_amount,
         deal_description=deal_description
     )
