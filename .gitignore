@@ -58,7 +58,13 @@ tests/screenshots/*.png
 !tests/screenshots/.gitkeep
 
 # Database
+*.db
+*.db-journal
+*.db-wal
 data/*.db
+data/*.bak
+data/*.backup_*
+data/*.test_residue
 !data/.gitkeep
 
 # OS
