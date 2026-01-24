@@ -66,12 +66,17 @@
         {% if deals %}
         <div class="bg-gradient-to-br from-jolly/10 to-jolly-lime/10 rounded-2xl border border-jolly/20 p-5 shadow-sm">
             <h3 class="text-sm font-black text-jolly-dark uppercase tracking-wider mb-3 flex items-center gap-2">
-                <span class="text-lg">🎯</span> Target Hits
+                <span class="text-lg">🔥</span> Hot Deals
             </h3>
             <div class="space-y-2">
                 {% for deal in deals %}
                 <div class="px-3 py-2 bg-white/40 border border-jolly/20 rounded-lg text-xs flex justify-between items-center group cursor-default">
-                    <span class="font-bold text-jolly-dark/80 truncate mr-2">{{ deal.product_name }}</span>
+                    <div class="flex flex-col min-w-0">
+                        <span class="font-bold text-jolly-dark/80 truncate mr-2">{{ deal.product_name }}</span>
+                        <span class="text-[9px] font-black uppercase {{ 'text-jolly-lime' if deal.is_target_hit else 'text-emerald-600' }}">
+                            {{ '🎯 Target Hit' if deal.is_target_hit else '✨ Promo' }}
+                        </span>
+                    </div>
                     <span class="font-black text-jolly-dark whitespace-nowrap">{{ deal.currency }} {{ "%.2f"|format(deal.price) }}</span>
                 </div>
                 {% endfor %}
@@ -118,50 +123,45 @@
 {% if products %}
 <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
     {% for product in products %}
-    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden flex flex-col transition-all hover:shadow-md">
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden flex flex-col transition-all hover:shadow-md h-full">
         <!-- Card Header -->
-        <div class="px-6 py-5 bg-gradient-to-r from-gray-50/50 to-white border-b border-jolly-dark/5 flex justify-between items-start gap-4">
-            <div class="min-w-0">
-                <div class="flex items-center gap-2 mb-1">
-                    <h3 class="text-xl font-black text-jolly-dark truncate">📦 {{ product.name }}</h3>
+        <div class="px-6 py-4 bg-gradient-to-r from-gray-50/50 to-white border-b border-jolly-dark/5 flex flex-col sm:flex-row justify-between items-start gap-4">
+            <div class="min-w-0 flex-1">
+                <h3 class="text-lg font-black text-jolly-dark truncate mb-1" title="{{ product.name }}">📦 {{ product.name }}</h3>
+                <div class="flex items-center gap-2 flex-wrap">
+                    {% if product.target_price %}
+                        <span class="text-[10px] font-bold text-jolly-dark/40 uppercase tracking-tighter">🎯 Target:</span>
+                        <span class="text-sm font-black text-jolly-dark">
+                            EUR {{ "%.2f"|format(product.target_price) }}
+                        </span>
+                    {% endif %}
                     {% if product.category %}
-                        <span class="px-2 py-0.5 rounded-full text-[10px] font-black bg-jolly-lime/30 text-jolly-dark/60 uppercase tracking-widest border border-jolly-dark/5">{{ product.category }}</span>
+                        <span class="px-2 py-0.5 rounded-full text-[8px] font-black bg-jolly-lime/30 text-jolly-dark/60 uppercase tracking-widest border border-jolly-dark/5 whitespace-nowrap {{ 'ml-2' if product.target_price else '' }}">{{ product.category }}</span>
                     {% endif %}
                 </div>
-                <div class="flex items-center gap-3">
-                    <span class="text-xs font-bold text-jolly-dark/40 uppercase tracking-tighter">🎯 Target Price:</span>
-                    <span class="text-lg font-black text-jolly-dark">
-                        {% if product.target_price %}
-                            EUR {{ "%.2f"|format(product.target_price) }}
-                        {% else %}
-                            <span class="text-jolly-dark/20">No target</span>
-                        {% endif %}
-                    </span>
-                </div>
             </div>
-            {% set bogo_deals = product.tracked_items | selectattr('deal_type', 'in', ['bogo', '1+1 gratis', 'second_half_price']) | list %}
-            {% set multi_deals = product.tracked_items | selectattr('deal_type', 'equalto', 'multibuy') | list %}
             
-            {% if bogo_deals %}
-                <span class="flex-shrink-0 inline-flex items-center px-3 py-1 rounded-full text-xs font-black bg-emerald-500 text-white shadow-sm animate-bounce border border-white/20">
-                    ✨ BOGO!
-                </span>
-            {% elif multi_deals %}
-                <span class="flex-shrink-0 inline-flex items-center px-3 py-1 rounded-full text-xs font-black bg-amber-500 text-white shadow-sm animate-pulse border border-white/20">
-                    ✨ PROMO!
-                </span>
-            {% elif has_deal %}
-                <span class="flex-shrink-0 inline-flex items-center px-3 py-1 rounded-full text-xs font-black bg-jolly-rose text-white shadow-sm animate-bounce border border-white/20">
-                    ✨ DEAL!
-                </span>
-            {% elif product.target_price and product.tracked_items | selectattr('price') | list | length > 0 %}
-                {% set latest_price = (product.tracked_items | selectattr('price') | list | first).price %}
-                {% if latest_price > product.target_price %}
-                    <span class="flex-shrink-0 inline-flex items-center px-3 py-1 rounded-full text-[10px] font-black bg-jolly-rose/20 text-jolly-rose border border-jolly-rose/30 uppercase tracking-tighter">
-                        Above target
+            {% set has_target_hit = product.tracked_items | selectattr('is_target_hit') | list | length > 0 %}
+            {% set has_promo_deal = product.tracked_items | selectattr('is_deal') | list | length > 0 %}
+            {% set has_price_drop = product.tracked_items | selectattr('is_price_drop') | list | length > 0 %}
+
+            <div class="flex gap-2">
+                {% if has_target_hit %}
+                    <span class="flex-shrink-0 inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-black bg-jolly-lime text-jolly-dark shadow-sm animate-bounce border border-white">
+                        🎯 TARGET HIT!
                     </span>
                 {% endif %}
-            {% endif %}
+
+                {% if has_promo_deal %}
+                    <span class="flex-shrink-0 inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-black bg-emerald-500 text-white shadow-sm animate-bounce border border-white/20">
+                         ✨ PROMO!
+                    </span>
+                {% elif has_price_drop and not has_target_hit %}
+                    <span class="flex-shrink-0 inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-black bg-blue-500 text-white shadow-sm border border-white/20">
+                        📉 DROP
+                    </span>
+                {% endif %}
+            </div>
         </div>
 
         <!-- Card Content: Items List -->
@@ -179,21 +179,21 @@
                                      @click="window.open('/screenshots/{{ item.id }}.png', '_blank')">
                             </div>
                         {% else %}
-                            <div class="w-14 h-12 flex-shrink-0 bg-gray-50 rounded-lg flex items-center justify-center text-gray-300 border border-dashed border-gray-200">
+                            <div class="w-14 h-12 flex-shrink-0 bg-gray-50 rounded-lg flex items-center justify-center text-gray-300 border border-dashed border-gray-100">
                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
                             </div>
                         {% endif %}
                         
-                        <div class="min-w-0">
-                            <div class="flex items-center gap-2">
-                                <span class="font-black text-jolly-dark uppercase tracking-tight text-xs">{{ item.store_name }}</span>
+                        <div class="min-w-0 flex-1">
+                            <div class="flex items-center gap-2 mb-0.5">
+                                <span class="font-black text-jolly-dark uppercase tracking-tight text-[11px]">{{ item.store_name }}</span>
                                 {% if item.is_available is not none %}
-                                    <span class="px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-tighter {{ 'bg-jolly/20 text-jolly-dark border border-jolly/30' if item.is_available else 'bg-jolly-rose/20 text-jolly-rose border border-jolly-rose/30' }}">
-                                        {{ '✅ In Stock' if item.is_available else '❌ Out of Stock' }}
+                                    <span class="px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-tighter {{ 'bg-jolly/20 text-jolly-dark border border-jolly/30' if item.is_available else 'bg-jolly-rose/20 text-jolly-rose border border-jolly-rose/30' }}">
+                                        {{ 'In Stock' if item.is_available else 'Out of Stock' }}
                                     </span>
                                 {% endif %}
                             </div>
-                            <a href="{{ item.url }}" target="_blank" class="text-[10px] text-jolly-dark/40 hover:text-jolly transition-colors truncate block mt-0.5 underline decoration-jolly/30 hover:decoration-jolly" title="{{ item.url }}">{{ item.url }}</a>
+                            <a href="{{ item.url }}" target="_blank" class="text-[10px] text-jolly-dark/40 hover:text-jolly transition-colors truncate block underline decoration-jolly/20 hover:decoration-jolly" title="{{ item.url }}">{{ item.url }}</a>
                             {% if item.notes %}
                                 <p class="text-[10px] text-jolly-dark/60 mt-1 italic font-medium line-clamp-1 flex items-center gap-1" title="{{ item.notes }}">
                                     <span>📝</span> "{{ item.notes }}"
@@ -202,51 +202,43 @@
                         </div>
                     </div>
 
+                    <!-- Price & Actions -->
                     <div class="flex items-center justify-between sm:justify-end gap-6">
                         <div class="text-right">
                             <div class="flex flex-col items-end">
                                 {% if item.original_price and item.original_price > item.price %}
                                     <span class="text-[10px] text-jolly-rose line-through font-bold leading-none mb-1 opacity-60">{{ item.currency }} {{ "%.2f"|format(item.original_price) }}</span>
                                 {% endif %}
-                                <div class="flex items-center justify-end gap-2">
-                                    {% if item.trend == 'up' %}
-                                        <span class="text-jolly-vivid animate-pulse" title="Price Increased">📈</span>
-                                    {% elif item.trend == 'down' %}
-                                        <span class="text-jolly animate-bounce" title="Price Decreased">📉</span>
-                                    {% endif %}
-                                    <div class="text-xl font-black {{ 'text-jolly-vivid' if item.is_deal else 'text-jolly-dark' }}">
-                                        {% if item.price %}
-                                            {{ item.currency }} {{ "%.2f"|format(item.price) }}
-                                        {% else %}
-                                            <span class="text-jolly-dark/20 italic text-sm">Waiting...</span>
-                                        {% endif %}
+                                 <div class="flex items-center justify-end gap-2">
+                                     <div class="text-xl font-black {% if item.is_target_hit %}text-jolly-lime{% elif item.is_deal %}text-emerald-500{% elif item.is_price_drop %}text-blue-500{% else %}text-jolly-dark{% endif %} tabular-nums">
+                                         {% if item.price %}
+                                             {{ item.currency }} {{ "%.2f"|format(item.price) }}
+                                         {% else %}
+                                             <span class="text-jolly-dark/20 italic text-sm">---</span>
+                                         {% endif %}
+                                     </div>
+                                 </div>
+                             </div>
+                             
+                             <div class="mt-1 flex flex-col items-end gap-1">
+                                 {% if item.is_deal %}
+                                     <div class="flex flex-col items-end">
+                                         <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-black bg-emerald-500 text-white uppercase tracking-tighter shadow-sm border border-white/10" title="{{ item.deal_description or '' }}">
+                                             ✨ {{ (item.deal_type or 'Deal') | replace('_', ' ') }}
+                                         </span>
+                                     </div>
+                                 {% elif item.is_price_drop and not item.is_target_hit %}
+                                     <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-black bg-blue-500 text-white uppercase tracking-tighter shadow-sm border border-white/10">
+                                         📉 Drop
+                                     </span>
+                                 {% endif %}
+                                 
+                                 {% if item.unit_price and item.unit %}
+                                    <div class="text-[9px] text-jolly-dark/40 font-bold uppercase tracking-wider">
+                                        {{ item.currency }} {{ "%.2f"|format(item.unit_price) }}/{{ item.unit }}
                                     </div>
-                                </div>
-                            </div>
-                            
-                            {% if item.is_deal or item.deal_type %}
-                                <div class="mt-1 flex flex-col items-end">
-                                    {% set badge_color = 'bg-jolly-vivid' %}
-                                    {% if item.deal_type in ['bogo', '1+1 gratis', 'second_half_price'] %}
-                                        {% set badge_color = 'bg-emerald-500' %}
-                                    {% elif item.deal_type == 'multibuy' %}
-                                        {% set badge_color = 'bg-amber-500' %}
-                                    {% endif %}
-                                    
-                                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-black {{ badge_color }} text-white uppercase tracking-tighter shadow-sm border border-white/10" title="{{ item.deal_description or '' }}">
-                                        ✨ {{ item.deal_type or 'Price Drop' }}
-                                    </span>
-                                    {% if item.deal_description %}
-                                        <span class="text-[8px] text-jolly-dark/60 font-bold italic mt-0.5 max-w-[120px] leading-tight text-right block" title="{{ item.deal_description }}">{{ item.deal_description }}</span>
-                                    {% endif %}
-                                </div>
-                            {% endif %}
-                            
-                            {% if item.unit_price and item.unit %}
-                                <div class="text-[10px] text-jolly-dark/40 font-bold uppercase tracking-wider mt-1">
-                                    {{ item.currency }} {{ "%.2f"|format(item.unit_price) }}/{{ item.unit }}
-                                </div>
-                            {% endif %}
+                                 {% endif %}
+                             </div>
                         </div>
 
                         <div class="flex gap-1.5">
@@ -265,7 +257,7 @@
                                             error = data.error;
                                         } else {
                                             success = 'Goal!';
-                                            setTimeout(() => location.reload(), 2000);
+                                            setTimeout(() => location.reload(), 1500);
                                         }
                                     })
                                     .catch(e => { loading = false; error = e.message; })"
@@ -273,7 +265,7 @@
                                 :class="loading ? 'bg-jolly-lime/50 text-jolly-dark/30' : 'bg-jolly text-jolly-dark hover:bg-jolly-lime hover:shadow-lg hover:shadow-jolly/20'"
                                 class="px-4 py-2 text-[10px] font-black rounded-xl shadow-sm transition-all focus:ring-2 focus:ring-jolly/30 uppercase tracking-widest border border-jolly-dark/5">
                                 <span x-show="!loading">Spy</span>
-                                <span x-show="loading" class="flex items-center gap-1">
+                                <span x-show="loading">
                                     <svg class="animate-spin h-3 w-3 text-jolly-dark" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
                                 </span>
                             </button>
@@ -286,11 +278,6 @@
             {% endfor %}
         </div>
         
-        <!-- Quick Stats / Footer -->
-        <div class="px-6 py-3 bg-gray-50/50 text-[10px] text-jolly-dark/30 flex justify-between uppercase tracking-widest font-black">
-            <span>{{ product.tracked_items | length }} Tracking Points</span>
-            <span>Stock: {{ product.current_stock if product.current_stock else '-' }}</span>
-        </div>
     </div>
     {% endfor %}
 </div>

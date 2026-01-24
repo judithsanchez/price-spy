@@ -46,6 +46,7 @@ class PriceHistoryRecord(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: Optional[int] = None
+    item_id: Optional[int] = None
     product_name: str
     price: float
     currency: str = "EUR"

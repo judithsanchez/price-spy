@@ -138,7 +138,13 @@ async def extract_product_info(image_bytes: bytes, api_key: str) -> Union[Produc
         return text
 
 
-STRUCTURED_OUTPUT_PROMPT = """Extract price information from this product page screenshot.
+STRUCTURED_OUTPUT_PROMPT = """Extract price information and promotional details from this product page screenshot as a price extraction expert.
+
+Pay CRITICAL ATTENTION to these high-value visual areas:
+1. **Promotional Badges/Bubbles**: Look for circles, squares, or bubbles (often YELLOW with BLACK text or RED with WHITE text). Extract the text inside them (e.g., '2e HALVE PRIJS', '1+1 GRATIS').
+2. **Beside the Price**: Check immediately next to or above the main price tag for 'Original' or 'Adviesprijs' (this is your original_price).
+3. **Strikethrough Prices**: Any number with a line through it IS the original price.
+4. **Volume math**: If you see '2 for X' or '-25%', record it in the deal_description.
 
 Analyze the image and extract:
 - The current price (numeric value only)
@@ -149,8 +155,8 @@ Analyze the image and extract:
 - Whether the page is blocked by a cookie consent modal (is_blocked: boolean)
 - Original price before discount (original_price: number, if visible)
 - Type of deal: 'bogo', 'multibuy', 'discount', 'second_half_price', or 'none' (deal_type: enum string)
-- Brief description of the promotional offer (deal_description: string, e.g., '1+1 gratis', '2e halve prijs')
-- Additional notes (e.g., info about out-of-stock sizes/variants, upcoming restocks mentioned, or if only expensive options are left)
+- Brief description of the promotional offer (deal_description: string)
+- Additional notes (e.g., specific terms found inside badges)
 
 Return the data as JSON. If is_blocked is true, provide the best guess for other fields.
 If fields are missing or unreadable, use 0.0 for price and "N/A" for currency.

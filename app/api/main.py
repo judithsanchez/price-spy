@@ -91,6 +91,8 @@ class DashboardItem(BaseModel):
     deal_type: Optional[str] = None
     deal_description: Optional[str] = None
     is_deal: bool = False
+    is_price_drop: bool = False
+    is_target_hit: bool = False
 
 
 class ExtractResponse(BaseModel):
@@ -261,18 +263,29 @@ async def get_items():
             store = store_repo.get_by_id(item.store_id)
             latest_price = price_repo.get_latest_by_url(item.url)
 
-            # Check if screenshot exists
-            screenshot_path = f"screenshots/{item.id}.png"
-            has_screenshot = Path(screenshot_path).exists()
+            # Get history for price drop detection
+            history = price_repo.get_recent_history_by_url(item.url, limit=2)
+            prev_price = history[1].price if len(history) > 1 else None
+            
+            latest_val = latest_price.price if latest_price else None
+            target_val = product.target_price if product else None
+            
+            is_target_hit = latest_val is not None and target_val is not None and latest_val <= target_val
+            is_price_drop = latest_val is not None and prev_price is not None and latest_val < prev_price
+            is_deal = False
+            if latest_price:
+                has_original_higher = latest_price.original_price is not None and latest_price.original_price > latest_price.price
+                has_deal_type = latest_price.deal_type is not None and latest_price.deal_type.lower() != "none"
+                is_deal = has_original_higher or has_deal_type
 
             dashboard_item = DashboardItem(
                 id=item.id,
                 product_name=product.name if product else "Unknown",
                 store_name=store.name if store else "Unknown",
                 url=item.url,
-                price=latest_price.price if latest_price else None,
+                price=latest_val,
                 currency=latest_price.currency if latest_price else "EUR",
-                target_price=product.target_price if product else None,
+                target_price=target_val,
                 is_available=latest_price.is_available if latest_price else None,
                 notes=latest_price.notes if latest_price else None,
                 screenshot_path=screenshot_path if has_screenshot else None,
@@ -280,7 +293,9 @@ async def get_items():
                 original_price=latest_price.original_price if latest_price else None,
                 deal_type=latest_price.deal_type if latest_price else None,
                 deal_description=latest_price.deal_description if latest_price else None,
-                is_deal=(latest_price.original_price is not None and latest_price.original_price > latest_price.price) or (latest_price.deal_type is not None and latest_price.deal_type.lower() != "none") if latest_price else False,
+                is_deal=is_deal,
+                is_price_drop=is_price_drop,
+                is_target_hit=is_target_hit,
             )
             result.append(dashboard_item)
 
@@ -307,17 +322,29 @@ async def get_item(item_id: int):
         store = store_repo.get_by_id(item.store_id)
         latest_price = price_repo.get_latest_by_url(item.url)
 
-        screenshot_path = f"screenshots/{item.id}.png"
-        has_screenshot = Path(screenshot_path).exists()
+        # Get history for price drop detection
+        history = price_repo.get_recent_history_by_url(item.url, limit=2)
+        prev_price = history[1].price if len(history) > 1 else None
+        
+        latest_val = latest_price.price if latest_price else None
+        target_val = product.target_price if product else None
+        
+        is_target_hit = latest_val is not None and target_val is not None and latest_val <= target_val
+        is_price_drop = latest_val is not None and prev_price is not None and latest_val < prev_price
+        is_deal = False
+        if latest_price:
+            has_original_higher = latest_price.original_price is not None and latest_price.original_price > latest_price.price
+            has_deal_type = latest_price.deal_type is not None and latest_price.deal_type.lower() != "none"
+            is_deal = has_original_higher or has_deal_type
 
         return DashboardItem(
             id=item.id,
             product_name=product.name if product else "Unknown",
             store_name=store.name if store else "Unknown",
             url=item.url,
-            price=latest_price.price if latest_price else None,
+            price=latest_val,
             currency=latest_price.currency if latest_price else "EUR",
-            target_price=product.target_price if product else None,
+            target_price=target_val,
             is_available=latest_price.is_available if latest_price else None,
             notes=latest_price.notes if latest_price else None,
             screenshot_path=screenshot_path if has_screenshot else None,
@@ -325,7 +352,9 @@ async def get_item(item_id: int):
             original_price=latest_price.original_price if latest_price else None,
             deal_type=latest_price.deal_type if latest_price else None,
             deal_description=latest_price.deal_description if latest_price else None,
-            is_deal=(latest_price.original_price is not None and latest_price.original_price > latest_price.price) or (latest_price.deal_type is not None and latest_price.deal_type.lower() != "none") if latest_price else False,
+            is_deal=is_deal,
+            is_price_drop=is_price_drop,
+            is_target_hit=is_target_hit,
         )
     finally:
         db.close()
@@ -735,6 +764,9 @@ async def run_extraction(item_id: int, db_path: str):
             confidence=1.0,  # Structured output is trusted
             url=item.url,
             store_name=result.store_name,
+            original_price=result.original_price,
+            deal_type=result.deal_type,
+            deal_description=result.deal_description,
             notes=result.notes,
         )
         price_repo.insert(record)
@@ -836,6 +868,9 @@ async def trigger_extraction(item_id: int):
                 confidence=1.0,
                 url=item.url,
                 store_name=result.store_name,
+                original_price=result.original_price,
+                deal_type=result.deal_type,
+                deal_description=result.deal_description,
                 notes=result.notes,
             )
             price_repo.insert(record)
@@ -983,14 +1018,13 @@ async def dashboard(request: Request):
             deal_type = latest_price_rec.deal_type if latest_price_rec else None
             deal_description = latest_price_rec.deal_description if latest_price_rec else None
 
+            is_target_hit = price is not None and product.target_price is not None and price <= product.target_price
+            is_price_drop = trend == "down"
             is_deal = False
             if price is not None:
-                if product.target_price is not None and price <= product.target_price:
-                    is_deal = True
-                elif original_price is not None and original_price > price:
-                    is_deal = True
-                elif deal_type and deal_type.lower() != "none":
-                    is_deal = True
+                has_original_higher = original_price is not None and original_price > price
+                has_deal_type = deal_type is not None and deal_type.lower() != "none"
+                is_deal = has_original_higher or has_deal_type
 
             products_map[product.id]["tracked_items"].append({
                 "id": item.id,
@@ -1002,6 +1036,8 @@ async def dashboard(request: Request):
                 "unit": unit,
                 "trend": trend,
                 "is_deal": is_deal,
+                "is_price_drop": is_price_drop,
+                "is_target_hit": is_target_hit,
                 "is_available": latest_price_rec.is_available if latest_price_rec else None,
                 "notes": latest_price_rec.notes if latest_price_rec else None,
                 "screenshot_path": screenshot_path if has_screenshot else None,
@@ -1047,12 +1083,13 @@ async def dashboard(request: Request):
         all_deals = []
         for p in sorted_products:
             for item in p["tracked_items"]:
-                if item["is_deal"]:
+                if item["is_target_hit"] or item["is_deal"]:
                     all_deals.append({
                         "product_name": p["name"],
                         "price": item["price"],
                         "currency": item["currency"],
-                        "target_price": p["target_price"]
+                        "target_price": p["target_price"],
+                        "is_target_hit": item["is_target_hit"]
                     })
 
         return templates.TemplateResponse(

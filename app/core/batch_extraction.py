@@ -105,6 +105,9 @@ async def extract_single_item(
             "status": "success",
             "price": result.price,
             "currency": result.currency,
+            "original_price": result.original_price,
+            "deal_type": result.deal_type,
+            "deal_description": result.deal_description,
             "model_used": model_used,
             "duration_ms": duration_ms
         }
