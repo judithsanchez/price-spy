@@ -155,7 +155,7 @@ Analyze the image and extract:
 - The store/retailer name (if visible)
 - Whether the page is blocked by a cookie consent modal (is_blocked: boolean)
 - Original price (ONLY if there is a CLEAR previous price with a strikethrough or 'Van' label, otherwise leave null)
-- Deal type: Choose from 'bogo', 'multibuy', 'percentage_off', 'fixed_amount_off', 'second_unit_discount', 'value_pack', 'member_only', 'clearance', or 'none'.
+- Deal type: Choose from 'bogo', 'multibuy', 'percentage_off', 'fixed_amount_off', 'second_unit_discount', 'value_pack', 'member_only', 'clearance', or 'none'. Note: 'Value Pack' or 'Voordeelpak' often indicates a 'value_pack' deal type if accompanied by a lower unit price or discount.
 - Discount percentage: Extract if deal_type is 'percentage_off' (e.g., 20).
 - Discount fixed amount: Extract if deal_type is 'fixed_amount_off' (e.g., 5.00).
 - Brief description of any promotional offer (deal_description: string, e.g., '1+1 gratis')

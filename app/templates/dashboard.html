@@ -228,10 +228,16 @@
                              </div>
                              
                              <div class="mt-1 flex flex-col items-end gap-1">
-                                 {% if item.is_deal and item.deal_type != 'none' %}
+                                 {% if item.is_deal %}
                                      <div class="flex flex-col items-end">
                                          <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-black bg-emerald-500 text-white uppercase tracking-tighter shadow-sm border border-white/10" title="{{ item.deal_description or '' }}">
-                                             ✨ {{ (item.deal_type or 'Deal') | replace('_', ' ') }}
+                                             ✨ {% if item.deal_type and item.deal_type != 'none' %}
+                                                   {{ item.deal_type | replace('_', ' ') }}
+                                                {% elif item.deal_description %}
+                                                   {{ item.deal_description }}
+                                                {% else %}
+                                                   DEAL
+                                                {% endif %}
                                          </span>
                                      </div>
                                  {% elif item.is_price_drop and not item.is_target_hit %}
