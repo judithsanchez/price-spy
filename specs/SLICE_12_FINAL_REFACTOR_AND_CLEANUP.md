@@ -55,6 +55,9 @@
 - [x] Document production backup procedures in README.md.
 - [x] Implement database safety guard for tests.
 
+## 6. Bug Fixes
+- [x] **Etos "Member Only" Handling:** Fixed issue where membership status was treated as a discount type. Moved "Member Only" info to notes to avoid miscategorization.
+
 ---
 
 ## Definition of Done
