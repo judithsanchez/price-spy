@@ -146,11 +146,6 @@
             {% set has_price_drop = product.tracked_items | selectattr('is_price_drop') | list | length > 0 %}
 
             <div class="flex gap-2">
-                {% if product.has_best_deal %}
-                    <span class="flex-shrink-0 inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-black bg-amber-400 text-amber-900 shadow-sm animate-bounce border border-white" title="This product has a source with the best unit price!">
-                        ⭐ BEST VALUE
-                    </span>
-                {% endif %}
                 {% if has_target_hit %}
                     <span class="flex-shrink-0 inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-black bg-jolly-lime text-jolly-dark shadow-sm animate-bounce border border-white">
                         🎯 TARGET HIT!
@@ -193,6 +188,11 @@
                             <div class="flex items-center gap-2 mb-0.5">
                                 <span class="font-black text-jolly-dark uppercase tracking-tight text-[11px] flex items-center gap-1.5">
                                     {{ item.store_name }}
+                                    {% if item.is_best_deal %}
+                                        <span class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-amber-400 text-amber-900 text-[8px] font-black shadow-sm animate-bounce border border-white" title="Best Unit Price!">
+                                            <span>⭐</span> BEST VALUE
+                                        </span>
+                                    {% endif %}
                                 </span>
                                 {% if item.is_available is not none %}
                                     <span class="px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-tighter {{ 'bg-jolly/20 text-jolly-dark border border-jolly/30' if item.is_available else 'bg-jolly-rose/20 text-jolly-rose border border-jolly-rose/30' }}">
