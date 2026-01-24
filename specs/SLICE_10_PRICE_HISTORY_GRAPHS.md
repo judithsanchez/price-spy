@@ -260,13 +260,13 @@ Slice 10 is complete when:
 
 ---
 
-## Future Enhancements (Out of Scope)
+## Future Enhancements (CANCELLED - January 2026)
 
-- Export price history to CSV
-- Compare prices across multiple stores
-- Price prediction/forecasting
-- Customizable date ranges with date picker
-- Email alerts when price drops below target
+- ~~Export price history to CSV~~ [CANCELLED]
+- ~~Compare prices across multiple stores~~ [CANCELLED]
+- ~~Price prediction/forecasting~~ [CANCELLED]
+- ~~Customizable date ranges with date picker~~ [CANCELLED]
+- ~~Email alerts when price drops below target~~ [CANCELLED]
 
 ---
 

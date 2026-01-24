@@ -1,5 +1,12 @@
 # Slice 2: Full Data Model - Implementation Plan
 
+**STATUS: COMPLETE** ✅ (Updated January 2026)
+
+> [!NOTE]
+> **Reality Changes:** 
+> - `process_logs` table was superseded by a combination of `extraction_logs`, `scheduler_runs`, and `api_usage` for better granularity.
+> - `preferred_unit_size` was supplemented by `target_unit` for precise normalization and target hit calculations.
+
 ## Overview
 
 **Objective:** Implement the complete database schema from DATA_STRUCTURE.md to support multi-product, multi-store tracking with price comparison and unit price calculations.
