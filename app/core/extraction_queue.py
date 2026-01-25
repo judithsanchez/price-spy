@@ -75,8 +75,11 @@ async def extract_single_item(
 
         duration_ms = int((time.time() - start_time) * 1000)
 
+        import json
+        
         # Save to price history
         record = PriceHistoryRecord(
+            item_id=item_id,
             product_name=result.product_name,
             price=result.price,
             currency=result.currency,
@@ -88,6 +91,8 @@ async def extract_single_item(
             discount_percentage=result.discount_percentage,
             discount_fixed_amount=result.discount_fixed_amount,
             deal_description=result.deal_description,
+            available_sizes=json.dumps(result.available_sizes) if result.available_sizes else None,
+            is_available=result.is_available,
             notes=result.notes
         )
         price_repo.insert(record)

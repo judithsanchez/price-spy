@@ -61,6 +61,7 @@ class PriceHistoryRecord(BaseModel):
     discount_percentage: Optional[float] = None
     discount_fixed_amount: Optional[float] = None
     deal_description: Optional[str] = None
+    available_sizes: Optional[str] = Field(default=None, description="JSON string of available sizes")
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
@@ -76,6 +77,7 @@ class Product(BaseModel):
     purchase_type: Literal["recurring", "one_time"] = "recurring"
     target_price: Optional[float] = Field(default=None, gt=0)
     target_unit: Optional[str] = Field(default=None, max_length=20)
+    brand: Optional[str] = Field(default=None, max_length=100)
     preferred_unit_size: Optional[str] = Field(default=None, max_length=50)
     current_stock: int = Field(default=0, ge=0)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
@@ -107,6 +109,8 @@ class TrackedItem(BaseModel):
     quantity_unit: str = Field(default="st", min_length=1, max_length=20)
     items_per_lot: int = Field(default=1, ge=1)
     preferred_model: Optional[str] = Field(default=None, max_length=50)
+    target_size: Optional[str] = Field(default=None, max_length=20)
+    target_size_label: Optional[str] = Field(default=None, max_length=100)
     last_checked_at: Optional[datetime] = None
     is_active: bool = True
     alerts_enabled: bool = True
@@ -151,6 +155,7 @@ class ExtractionResult(BaseModel):
     discount_percentage: Optional[float] = Field(default=None, description="The percentage value of the discount")
     discount_fixed_amount: Optional[float] = Field(default=None, description="The absolute currency value off")
     deal_description: Optional[str] = Field(default=None, description="Brief description of the deal")
+    available_sizes: list[str] = Field(default_factory=list, description="List of sizes currently in stock")
     detected_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
     @field_validator("price")
@@ -183,6 +188,7 @@ class Category(BaseModel):
 
     id: Optional[int] = None
     name: str = Field(..., min_length=1, max_length=100)
+    is_size_sensitive: bool = Field(default=False)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
@@ -194,3 +200,15 @@ class Label(BaseModel):
     id: Optional[int] = None
     name: str = Field(..., min_length=1, max_length=100)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class BrandSize(BaseModel):
+    """User size preference for a brand and category."""
+
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    id: Optional[int] = None
+    brand: str = Field(..., min_length=1, max_length=100)
+    category: str = Field(..., min_length=1, max_length=100)
+    size: str = Field(..., min_length=1, max_length=20)
+    label: Optional[str] = Field(default=None, max_length=100)

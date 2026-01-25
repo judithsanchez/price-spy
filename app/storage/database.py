@@ -14,6 +14,7 @@ CREATE TABLE IF NOT EXISTS products (
     purchase_type TEXT CHECK(purchase_type IN ('recurring', 'one_time')) DEFAULT 'recurring',
     target_price REAL,
     target_unit TEXT,
+    brand TEXT,
     preferred_unit_size TEXT,
     current_stock INTEGER DEFAULT 0,
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
@@ -23,6 +24,7 @@ CREATE TABLE IF NOT EXISTS products (
 CREATE TABLE IF NOT EXISTS stores (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL UNIQUE,
+    is_size_sensitive INTEGER DEFAULT 0,
     shipping_cost_standard REAL DEFAULT 0,
     free_shipping_threshold REAL,
     notes TEXT
@@ -39,6 +41,8 @@ CREATE TABLE IF NOT EXISTS tracked_items (
     quantity_unit TEXT NOT NULL,
     items_per_lot INTEGER DEFAULT 1,
     preferred_model TEXT,
+    target_size TEXT,
+    target_size_label TEXT,
     last_checked_at TEXT,
     is_active INTEGER DEFAULT 1,
     alerts_enabled INTEGER DEFAULT 1,
@@ -66,6 +70,7 @@ CREATE TABLE IF NOT EXISTS price_history (
     original_price REAL,
     deal_type TEXT,
     deal_description TEXT,
+    available_sizes TEXT,
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     FOREIGN KEY (item_id) REFERENCES tracked_items (id) ON DELETE CASCADE
 );
@@ -135,6 +140,7 @@ CREATE INDEX IF NOT EXISTS idx_scheduler_runs_started_at ON scheduler_runs(start
 CREATE TABLE IF NOT EXISTS categories (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL UNIQUE,
+    is_size_sensitive INTEGER DEFAULT 0,
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
@@ -144,10 +150,23 @@ CREATE INDEX IF NOT EXISTS idx_categories_name ON categories(name);
 CREATE TABLE IF NOT EXISTS labels (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL UNIQUE,
+    is_size_sensitive INTEGER DEFAULT 0,
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
 CREATE INDEX IF NOT EXISTS idx_labels_name ON labels(name);
+
+-- Brand Sizes Table (User preferences)
+CREATE TABLE IF NOT EXISTS brand_sizes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    brand TEXT NOT NULL,
+    category TEXT NOT NULL,
+    size TEXT NOT NULL,
+    label TEXT, -- optional label to distinguish people
+    UNIQUE(brand, category, label)
+);
+
+CREATE INDEX IF NOT EXISTS idx_brand_sizes_brand_cat ON brand_sizes(brand, category);
 """
 
 
@@ -192,12 +211,16 @@ class Database:
             cursor.execute("ALTER TABLE products ADD COLUMN labels TEXT")
         if "target_unit" not in columns:
             cursor.execute("ALTER TABLE products ADD COLUMN target_unit TEXT")
+        if "brand" not in columns:
+            cursor.execute("ALTER TABLE products ADD COLUMN brand TEXT")
 
-        # Check tracked_items for preferred_model
+        # Check tracked_items for preferred_model and target_size
         cursor.execute("PRAGMA table_info(tracked_items)")
         columns = [row["name"] for row in cursor.fetchall()]
         if "preferred_model" not in columns:
             cursor.execute("ALTER TABLE tracked_items ADD COLUMN preferred_model TEXT")
+        if "target_size" not in columns:
+            cursor.execute("ALTER TABLE tracked_items ADD COLUMN target_size TEXT")
             
         # Check price_history for new columns
         cursor.execute("PRAGMA table_info(price_history)")
@@ -218,6 +241,8 @@ class Database:
             cursor.execute("ALTER TABLE price_history ADD COLUMN discount_fixed_amount REAL")
         if "deal_description" not in columns:
             cursor.execute("ALTER TABLE price_history ADD COLUMN deal_description TEXT")
+        if "available_sizes" not in columns:
+            cursor.execute("ALTER TABLE price_history ADD COLUMN available_sizes TEXT")
             
         # Seed categories if table is empty
         cursor.execute("SELECT COUNT(*) FROM categories")

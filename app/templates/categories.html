@@ -46,6 +46,7 @@
                 <thead class="bg-gray-50/50">
                     <tr>
                         <th class="px-6 py-4 text-left text-[10px] font-black text-jolly-dark/40 uppercase tracking-widest">Name</th>
+                        <th class="px-6 py-4 text-left text-[10px] font-black text-jolly-dark/40 uppercase tracking-widest">Size Sensitive</th>
                         <th class="px-6 py-4 text-left text-[10px] font-black text-jolly-dark/40 uppercase tracking-widest">Created At</th>
                         <th class="px-6 py-4 text-left text-[10px] font-black text-jolly-dark/40 uppercase tracking-widest">Actions</th>
                     </tr>
@@ -55,6 +56,14 @@
                         <tr class="hover:bg-jolly/5 transition-colors group">
                             <td class="px-6 py-5">
                                 <span class="font-black text-jolly-dark" x-text="category.name"></span>
+                            </td>
+                            <td class="px-6 py-5">
+                                <template x-if="category.is_size_sensitive">
+                                    <span class="px-2 py-0.5 rounded-full text-[8px] font-black bg-purple-100 text-purple-700 uppercase tracking-widest border border-purple-200">Yes</span>
+                                </template>
+                                <template x-if="!category.is_size_sensitive">
+                                    <span class="px-2 py-0.5 rounded-full text-[8px] font-black bg-gray-100 text-gray-400 uppercase tracking-widest border border-gray-200">No</span>
+                                </template>
                             </td>
                             <td class="px-6 py-5 whitespace-nowrap text-jolly-dark/40 text-xs font-bold" x-text="formatDate(category.created_at)"></td>
                             <td class="px-6 py-5 whitespace-nowrap">
@@ -98,10 +107,19 @@
                 </div>
                 <div x-show="error" class="mb-6 p-4 bg-jolly-rose/10 border border-jolly-rose/20 text-jolly-vivid rounded-2xl text-[11px] font-bold" x-text="error"></div>
                 <form @submit.prevent="saveCategory()">
-                    <div class="mb-8">
+                    <div class="mb-5">
                         <label class="block text-[11px] font-black text-jolly-dark/60 uppercase tracking-widest mb-1.5 ml-1">Category Name *</label>
                         <input type="text" x-model="formData.name" required
                                class="w-full border border-jolly-dark/10 rounded-2xl px-4 py-3 sm:py-2.5 focus:outline-none focus:ring-4 focus:ring-jolly/20 text-base sm:text-sm bg-gray-50/50 font-medium text-jolly-dark">
+                    </div>
+                    <div class="mb-8 p-4 bg-purple-50 rounded-2xl border border-purple-100">
+                        <label class="flex items-center cursor-pointer group">
+                            <input type="checkbox" x-model="formData.is_size_sensitive" class="w-5 h-5 mr-3 rounded-lg border-purple-200 text-purple-600 focus:ring-purple-500 transition-all">
+                            <div class="flex flex-col">
+                                <span class="text-sm font-black text-purple-900 leading-tight">Size Sensitive</span>
+                                <span class="text-[10px] font-bold text-purple-700/60 uppercase tracking-tight">Enable clothing size tracking/matching</span>
+                            </div>
+                        </label>
                     </div>
                     <div class="flex flex-col-reverse sm:flex-row justify-end gap-3 px-6 py-5 bg-gray-50/30 border-t border-jolly-dark/5 rounded-b-3xl mt-4 -mx-6 -mb-6 sm:-mx-8 sm:-mb-8">
                         <button type="button" @click="showForm = false" :disabled="saving"
@@ -132,7 +150,8 @@ function categoriesManager() {
         saving: false,
         error: null,
         formData: {
-            name: ''
+            name: '',
+            is_size_sensitive: false
         },
 
         async loadCategories() {
@@ -148,7 +167,8 @@ function categoriesManager() {
             this.editingCategory = category;
             this.error = null;
             this.formData = {
-                name: category.name
+                name: category.name,
+                is_size_sensitive: category.is_size_sensitive
             };
             this.showForm = true;
         },
@@ -158,11 +178,16 @@ function categoriesManager() {
             this.error = null;
 
             try {
-                const url = this.editingCategory ? `/api/categories/${this.editingCategory.id}?name=${encodeURIComponent(this.formData.name)}` : `/api/categories?name=${encodeURIComponent(this.formData.name)}`;
+                const url = this.editingCategory ? `/api/categories/${this.editingCategory.id}` : `/api/categories`;
                 const method = this.editingCategory ? 'PUT' : 'POST';
 
                 const response = await fetch(url, {
-                    method: method
+                    method: method,
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        name: this.formData.name,
+                        is_size_sensitive: this.formData.is_size_sensitive
+                    })
                 });
 
                 if (!response.ok) {

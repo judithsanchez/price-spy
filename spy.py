@@ -3,6 +3,7 @@
 
 import argparse
 import asyncio
+import json
 import os
 import sys
 import time
@@ -90,6 +91,7 @@ async def cmd_extract(args) -> int:
             discount_percentage=result.discount_percentage,
             discount_fixed_amount=result.discount_fixed_amount,
             deal_description=result.deal_description,
+            available_sizes=json.dumps(result.available_sizes) if result.available_sizes else None,
         )
         record_id = price_repo.insert(record)
         logger.info("Price saved to database", extra={"record_id": record_id})
@@ -114,6 +116,8 @@ async def cmd_extract(args) -> int:
         print(f"Stock: {'Available' if result.is_available else 'Out of stock'}")
         if result.notes:
             print(f"Notes: {result.notes}")
+        if result.available_sizes:
+            print(f"Detected sizes: {', '.join(result.available_sizes)}")
         print(f"Model used: {model_used}")
 
         # Show volume price if tracked

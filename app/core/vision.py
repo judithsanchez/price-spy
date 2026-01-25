@@ -36,6 +36,11 @@ EXTRACTION_SCHEMA = {
             "description": "The absolute currency value off (e.g., 5 for €5 off). Only fill if deal_type is fixed_amount_off."
         },
         "deal_description": {"type": "string"},
+        "available_sizes": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "List of sizes currently in stock and selectable (e.g. ['28', '30', 'XS', 'M'])"
+        },
         "notes": {"type": "string"}
     },
     "required": ["price", "currency", "is_available", "product_name"]
@@ -55,9 +60,16 @@ Return ONLY a valid JSON object with these exact fields:
     "currency": "string (3-letter ISO code, e.g., EUR, USD)",
     "store_name": "string or null (the retailer name)",
     "page_type": "single_product" or "search_results",
+    "is_available": boolean,
+    "available_sizes": ["size1", "size2", ...],
     "confidence_score": number (your confidence from 0.0 to 1.0),
     "is_blocked": boolean (true if a modal/consent banner blocks major content)
 }
+
+Important for Clothing:
+- Look for size selectors (labeled as 'Maat', 'Size', 'Mate', etc.).
+- List only the sizes that appear to be IN STOCK (not greyed out or struck through).
+- If it's not a clothing item, return an empty array for available_sizes.
 
 Important:
 - If is_blocked is true, still try to extract what you can, but set is_blocked: true.

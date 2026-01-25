@@ -18,6 +18,7 @@ from app.storage.repositories import (
     PriceHistoryRepository,
     CategoryRepository,
     LabelRepository,
+    BrandSizeRepository,
 )
 from app.core.scheduler import (
     get_scheduler_status,
@@ -116,6 +117,7 @@ class ProductCreate(BaseModel):
     purchase_type: Optional[str] = None
     target_price: Optional[float] = None
     target_unit: Optional[str] = None
+    brand: Optional[str] = None
     preferred_unit_size: Optional[str] = None
     current_stock: int = 0
 
@@ -129,6 +131,7 @@ class ProductResponse(BaseModel):
     purchase_type: Optional[str] = None
     target_price: Optional[float] = None
     target_unit: Optional[str] = None
+    brand: Optional[str] = None
     preferred_unit_size: Optional[str] = None
     current_stock: int = 0
 
@@ -139,6 +142,23 @@ class StoreCreate(BaseModel):
     shipping_cost_standard: Optional[float] = None
     free_shipping_threshold: Optional[float] = None
     notes: Optional[str] = None
+
+
+class BrandSizeCreate(BaseModel):
+    """Request model for creating/updating a brand size preference."""
+    brand: str
+    category: str
+    size: str
+    label: Optional[str] = None
+
+
+class BrandSizeResponse(BaseModel):
+    """Response model for a brand size preference."""
+    id: int
+    brand: str
+    category: str
+    size: str
+    label: Optional[str] = None
 
 
 class StoreResponse(BaseModel):
@@ -159,6 +179,8 @@ class TrackedItemCreate(BaseModel):
     quantity_size: float
     quantity_unit: str
     items_per_lot: int = 1
+    target_size: Optional[str] = None
+    target_size_label: Optional[str] = None
     is_active: bool = True
     alerts_enabled: bool = True
 
@@ -179,6 +201,8 @@ class TrackedItemResponse(BaseModel):
     quantity_size: float
     quantity_unit: str
     items_per_lot: int = 1
+    target_size: Optional[str] = None
+    target_size_label: Optional[str] = None
     is_active: bool = True
     alerts_enabled: bool = True
     latest_price: Optional[float] = None
@@ -231,10 +255,17 @@ class ApiUsageResponse(BaseModel):
     exhausted: bool
 
 
+class CategoryCreate(BaseModel):
+    """Request model for creating/updating a category."""
+    name: str
+    is_size_sensitive: bool = False
+
+
 class CategoryResponse(BaseModel):
     """Response model for category."""
     id: int
     name: str
+    is_size_sensitive: bool = False
     created_at: str
 
 
@@ -556,6 +587,7 @@ async def get_categories():
             CategoryResponse(
                 id=c.id,
                 name=c.name,
+                is_size_sensitive=c.is_size_sensitive,
                 created_at=c.created_at.isoformat()
             )
             for c in categories
@@ -575,6 +607,7 @@ async def search_categories(q: str):
             CategoryResponse(
                 id=c.id,
                 name=c.name,
+                is_size_sensitive=c.is_size_sensitive,
                 created_at=c.created_at.isoformat()
             )
             for c in categories
@@ -584,36 +617,39 @@ async def search_categories(q: str):
 
 
 @app.post("/api/categories", response_model=CategoryResponse)
-async def create_category(name: str):
+async def create_category(category: CategoryCreate):
     """Create a new category."""
     from app.models.schemas import Category as CategorySchema
     db = get_db()
     try:
         repo = CategoryRepository(db)
         # Check if already exists
-        existing = repo.get_by_name(name)
+        existing = repo.get_by_name(category.name)
         if existing:
             return CategoryResponse(
                 id=existing.id,
                 name=existing.name,
+                is_size_sensitive=existing.is_size_sensitive,
                 created_at=existing.created_at.isoformat()
             )
             
-        category = CategorySchema(name=name)
-        category_id = repo.insert(category)
-        new_category = repo.get_by_name(name)
+        new_cat = CategorySchema(name=category.name, is_size_sensitive=category.is_size_sensitive)
+        category_id = repo.insert(new_cat)
+        result = repo.get_by_name(category.name)
         return CategoryResponse(
-            id=new_category.id,
-            name=new_category.name,
-            created_at=new_category.created_at.isoformat()
+            id=result.id,
+            name=result.name,
+            is_size_sensitive=result.is_size_sensitive,
+            created_at=result.created_at.isoformat()
         )
     finally:
         db.close()
 
 
 @app.put("/api/categories/{category_id}", response_model=CategoryResponse)
-async def update_category(category_id: int, name: str):
-    """Update a category name and all associated products."""
+async def update_category(category_id: int, category: CategoryCreate):
+    """Update a category."""
+    from app.models.schemas import Category as CategorySchema
     db = get_db()
     try:
         repo = CategoryRepository(db)
@@ -621,20 +657,23 @@ async def update_category(category_id: int, name: str):
         if not old_category:
             raise HTTPException(status_code=404, detail="Category not found")
         
-        # Update products first
-        db.execute(
-            "UPDATE products SET category = ? WHERE category = ?",
-            (name, old_category.name)
-        )
+        # Update products if name changed
+        if category.name != old_category.name:
+            db.execute(
+                "UPDATE products SET category = ? WHERE category = ?",
+                (category.name, old_category.name)
+            )
         
         # Update category
-        repo.update(category_id, name)
+        updated = CategorySchema(name=category.name, is_size_sensitive=category.is_size_sensitive)
+        repo.update(category_id, updated)
         
-        category = repo.get_by_id(category_id)
+        result = repo.get_by_id(category_id)
         return CategoryResponse(
-            id=category.id,
-            name=category.name,
-            created_at=category.created_at.isoformat()
+            id=result.id,
+            name=result.name,
+            is_size_sensitive=result.is_size_sensitive,
+            created_at=result.created_at.isoformat()
         )
     finally:
         db.close()
@@ -660,6 +699,19 @@ async def delete_category(category_id: int):
         return {"status": "success", "message": "Category deleted"}
     finally:
         db.close()
+
+
+@app.get("/api/brands", response_model=List[str])
+async def get_brands():
+    """Get all unique brands."""
+    db = get_db()
+    try:
+        repo = ProductRepository(db)
+        return repo.get_unique_brands()
+    finally:
+        db.close()
+
+
 # --- Labels API ---
 
 @app.get("/api/labels", response_model=List[LabelResponse])
@@ -755,6 +807,86 @@ async def delete_label(label_id: int):
         repo = LabelRepository(db)
         repo.delete(label_id)
         return {"status": "success", "message": "Label deleted"}
+    finally:
+        db.close()
+
+
+# --- Brand Sizes API ---
+
+@app.get("/api/brand-sizes", response_model=List[BrandSizeResponse])
+async def get_brand_sizes():
+    """Get all brand size preferences."""
+    db = get_db()
+    try:
+        repo = BrandSizeRepository(db)
+        prefs = repo.get_all()
+        return [
+            BrandSizeResponse(
+                id=p.id,
+                brand=p.brand,
+                category=p.category,
+                size=p.size,
+                label=p.label
+            )
+            for p in prefs
+        ]
+    finally:
+        db.close()
+
+
+@app.post("/api/brand-sizes", response_model=BrandSizeResponse)
+async def create_brand_size(pref: BrandSizeCreate):
+    """Create a new brand size preference."""
+    from app.models.schemas import BrandSize as BrandSizeSchema
+    db = get_db()
+    try:
+        repo = BrandSizeRepository(db)
+        new_pref = BrandSizeSchema(**pref.model_dump())
+        pref_id = repo.insert(new_pref)
+        result = repo.get_all()
+        created = next(p for p in result if p.id == pref_id)
+        return BrandSizeResponse(
+            id=created.id,
+            brand=created.brand,
+            category=created.category,
+            size=created.size,
+            label=created.label
+        )
+    finally:
+        db.close()
+
+
+@app.put("/api/brand-sizes/{pref_id}", response_model=BrandSizeResponse)
+async def update_brand_size(pref_id: int, pref: BrandSizeCreate):
+    """Update a brand size preference."""
+    from app.models.schemas import BrandSize as BrandSizeSchema
+    db = get_db()
+    try:
+        repo = BrandSizeRepository(db)
+        updated_pref = BrandSizeSchema(**pref.model_dump())
+        repo.update(pref_id, updated_pref)
+        result = repo.get_all()
+        updated = next((p for p in result if p.id == pref_id), None)
+        if not updated:
+            raise HTTPException(status_code=404, detail="Preference not found")
+        return BrandSizeResponse(
+            id=updated.id,
+            brand=updated.brand,
+            category=updated.category,
+            size=updated.size,
+            label=updated.label
+        )
+    finally:
+        db.close()
+
+
+@app.delete("/api/brand-sizes/{pref_id}", status_code=204)
+async def delete_brand_size(pref_id: int):
+    """Delete a brand size preference."""
+    db = get_db()
+    try:
+        repo = BrandSizeRepository(db)
+        repo.delete(pref_id)
     finally:
         db.close()
 
@@ -994,6 +1126,8 @@ async def dashboard(request: Request):
         store_repo = StoreRepository(db)
         tracked_repo = TrackedItemRepository(db)
         price_repo = PriceHistoryRepository(db)
+        cat_repo = CategoryRepository(db)
+        size_repo = BrandSizeRepository(db)
 
         tracked_items = tracked_repo.get_all()
         products_map = {}
@@ -1099,6 +1233,30 @@ async def dashboard(request: Request):
                 has_deal_type = deal_type is not None and deal_type.lower() != "none"
                 is_deal = has_original_higher or has_deal_type
 
+            # Size availability logic
+            category_obj = cat_repo.get_by_name(product.category) if product.category else None
+            is_size_sensitive = category_obj.is_size_sensitive if category_obj else False
+            
+            # Find target size for matching
+            target_size = item.target_size
+            if not target_size and product.brand and product.category:
+                # Try item-specific label first, then fallback to default
+                pref = size_repo.get_by_brand_and_category(
+                    product.brand, 
+                    product.category, 
+                    label=item.target_size_label
+                )
+                if pref:
+                    target_size = pref.size
+            
+            from app.core.price_calculator import determine_effective_availability
+            effective_is_available = determine_effective_availability(
+                is_size_sensitive=is_size_sensitive,
+                raw_is_available=latest_price_rec.is_available if latest_price_rec else False,
+                available_sizes_json=latest_price_rec.available_sizes if latest_price_rec else None,
+                target_size=target_size
+            )
+
             products_map[product.id]["tracked_items"].append({
                 "id": item.id,
                 "store_name": store.name if store else "Unknown",
@@ -1113,7 +1271,7 @@ async def dashboard(request: Request):
                 "is_price_drop": is_price_drop,
                 "is_target_hit": is_target_hit,
                 "is_best_deal": False, # Will be calculated after collecting all sources
-                "is_available": latest_price_rec.is_available if latest_price_rec else None,
+                "is_available": effective_is_available,
                 "notes": latest_price_rec.notes if latest_price_rec else None,
                 "screenshot_path": screenshot_path if has_screenshot else None,
                 "original_price": original_price,
@@ -1242,6 +1400,12 @@ async def labels_page(request: Request):
     return templates.TemplateResponse(request, "labels.html", {})
 
 
+@app.get("/size-preferences")
+async def size_preferences_page(request: Request):
+    """Render size preferences page."""
+    return templates.TemplateResponse(request, "size-preferences.html", {})
+
+
 # --- Products API ---
 
 @app.get("/api/products", response_model=List[ProductResponse])
@@ -1259,6 +1423,7 @@ async def get_products():
                 purchase_type=p.purchase_type,
                 target_price=p.target_price,
                 target_unit=p.target_unit,
+                brand=p.brand,
                 preferred_unit_size=p.preferred_unit_size,
                 current_stock=p.current_stock,
             )
@@ -1288,6 +1453,8 @@ async def create_product(product: ProductCreate):
             kwargs["target_price"] = product.target_price
         if product.target_unit is not None:
             kwargs["target_unit"] = product.target_unit
+        if product.brand is not None:
+            kwargs["brand"] = product.brand
         if product.preferred_unit_size is not None:
             kwargs["preferred_unit_size"] = product.preferred_unit_size
         kwargs["current_stock"] = product.current_stock
@@ -1318,6 +1485,7 @@ async def create_product(product: ProductCreate):
             purchase_type=created.purchase_type,
             target_price=created.target_price,
             target_unit=created.target_unit,
+            brand=created.brand,
             preferred_unit_size=created.preferred_unit_size,
             current_stock=created.current_stock,
         )
@@ -1342,6 +1510,7 @@ async def get_product(product_id: int):
             purchase_type=product.purchase_type,
             target_price=product.target_price,
             target_unit=product.target_unit,
+            brand=product.brand,
             preferred_unit_size=product.preferred_unit_size,
             current_stock=product.current_stock,
         )
@@ -1372,6 +1541,8 @@ async def update_product(product_id: int, product: ProductCreate):
             kwargs["target_price"] = product.target_price
         if product.target_unit is not None:
             kwargs["target_unit"] = product.target_unit
+        if product.brand is not None:
+            kwargs["brand"] = product.brand
         if product.preferred_unit_size is not None:
             kwargs["preferred_unit_size"] = product.preferred_unit_size
         kwargs["current_stock"] = product.current_stock
@@ -1402,6 +1573,7 @@ async def update_product(product_id: int, product: ProductCreate):
             purchase_type=result.purchase_type,
             target_price=result.target_price,
             target_unit=result.target_unit,
+            brand=result.brand,
             preferred_unit_size=result.preferred_unit_size,
             current_stock=result.current_stock,
         )

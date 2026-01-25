@@ -13,6 +13,7 @@ from app.models.schemas import (
     ExtractionLog,
     Category,
     Label,
+    BrandSize,
 )
 
 
@@ -28,8 +29,8 @@ class PriceHistoryRepository:
             """
             INSERT INTO price_history
             (product_name, price, currency, is_available, confidence, url, store_name, page_type, notes,
-             original_price, deal_type, discount_percentage, discount_fixed_amount, deal_description)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+             original_price, deal_type, discount_percentage, discount_fixed_amount, deal_description, available_sizes)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 record.product_name,
@@ -46,6 +47,7 @@ class PriceHistoryRepository:
                 record.discount_percentage,
                 record.discount_fixed_amount,
                 record.deal_description,
+                record.available_sizes,
             )
         )
         self.db.commit()
@@ -116,6 +118,7 @@ class PriceHistoryRepository:
             discount_percentage=row["discount_percentage"],
             discount_fixed_amount=row["discount_fixed_amount"],
             deal_description=row["deal_description"],
+            available_sizes=row["available_sizes"],
             created_at=datetime.fromisoformat(row["created_at"]),
         )
 
@@ -209,8 +212,8 @@ class ProductRepository:
         cursor = self.db.execute(
             """
             INSERT INTO products
-            (name, category, labels, purchase_type, target_price, target_unit, preferred_unit_size, current_stock)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            (name, category, labels, purchase_type, target_price, target_unit, brand, preferred_unit_size, current_stock)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 product.name,
@@ -219,6 +222,7 @@ class ProductRepository:
                 product.purchase_type,
                 product.target_price,
                 product.target_unit,
+                product.brand,
                 product.preferred_unit_size,
                 product.current_stock,
             )
@@ -242,6 +246,11 @@ class ProductRepository:
         cursor = self.db.execute("SELECT * FROM products ORDER BY name")
         return [self._row_to_record(row) for row in cursor.fetchall()]
 
+    def get_unique_brands(self) -> List[str]:
+        """Get all unique brand names from products."""
+        cursor = self.db.execute("SELECT DISTINCT brand FROM products WHERE brand IS NOT NULL AND brand != '' ORDER BY brand")
+        return [row["brand"] for row in cursor.fetchall()]
+
     def update_stock(self, product_id: int, delta: int) -> None:
         """Update product stock by delta (positive or negative)."""
         self.db.execute(
@@ -261,6 +270,7 @@ class ProductRepository:
                 purchase_type = ?,
                 target_price = ?,
                 target_unit = ?,
+                brand = ?,
                 preferred_unit_size = ?,
                 current_stock = ?
             WHERE id = ?
@@ -272,6 +282,7 @@ class ProductRepository:
                 product.purchase_type,
                 product.target_price,
                 product.target_unit,
+                product.brand,
                 product.preferred_unit_size,
                 product.current_stock,
                 product_id,
@@ -294,6 +305,7 @@ class ProductRepository:
             purchase_type=row["purchase_type"],
             target_price=row["target_price"],
             target_unit=row["target_unit"],
+            brand=row["brand"],
             preferred_unit_size=row["preferred_unit_size"],
             current_stock=row["current_stock"],
             created_at=datetime.fromisoformat(row["created_at"]),
@@ -400,8 +412,8 @@ class TrackedItemRepository:
             """
             INSERT INTO tracked_items
             (product_id, store_id, url, item_name_on_site, quantity_size,
-             quantity_unit, items_per_lot, preferred_model, is_active, alerts_enabled)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+             quantity_unit, items_per_lot, preferred_model, target_size, target_size_label, is_active, alerts_enabled)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 item.product_id,
@@ -412,6 +424,8 @@ class TrackedItemRepository:
                 item.quantity_unit,
                 item.items_per_lot,
                 item.preferred_model,
+                item.target_size,
+                item.target_size_label,
                 1 if item.is_active else 0,
                 1 if item.alerts_enabled else 0,
             )
@@ -485,6 +499,8 @@ class TrackedItemRepository:
                 quantity_unit = ?,
                 items_per_lot = ?,
                 preferred_model = ?,
+                target_size = ?,
+                target_size_label = ?,
                 is_active = ?,
                 alerts_enabled = ?
             WHERE id = ?
@@ -498,6 +514,8 @@ class TrackedItemRepository:
                 item.quantity_unit,
                 item.items_per_lot,
                 item.preferred_model,
+                item.target_size,
+                item.target_size_label,
                 1 if item.is_active else 0,
                 1 if item.alerts_enabled else 0,
                 item_id,
@@ -534,6 +552,8 @@ class TrackedItemRepository:
             quantity_unit=row["quantity_unit"],
             items_per_lot=row["items_per_lot"],
             preferred_model=row["preferred_model"],
+            target_size=row["target_size"],
+            target_size_label=row["target_size_label"],
             last_checked_at=last_checked,
             is_active=bool(row["is_active"]),
             alerts_enabled=bool(row["alerts_enabled"]),
@@ -763,8 +783,8 @@ class CategoryRepository:
     def insert(self, category: Category) -> int:
         """Insert a category and return its ID."""
         cursor = self.db.execute(
-            "INSERT INTO categories (name) VALUES (?)",
-            (category.name,)
+            "INSERT INTO categories (name, is_size_sensitive) VALUES (?, ?)",
+            (category.name, 1 if category.is_size_sensitive else 0)
         )
         self.db.commit()
         return cursor.lastrowid
@@ -804,11 +824,11 @@ class CategoryRepository:
             return None
         return self._row_to_record(row)
 
-    def update(self, category_id: int, name: str) -> None:
-        """Update a category name."""
+    def update(self, category_id: int, category: Category) -> None:
+        """Update a category."""
         self.db.execute(
-            "UPDATE categories SET name = ? WHERE id = ?",
-            (name, category_id)
+            "UPDATE categories SET name = ?, is_size_sensitive = ? WHERE id = ?",
+            (category.name, 1 if category.is_size_sensitive else 0, category_id)
         )
         self.db.commit()
 
@@ -822,6 +842,7 @@ class CategoryRepository:
         return Category(
             id=row["id"],
             name=row["name"],
+            is_size_sensitive=bool(row["is_size_sensitive"]),
             created_at=datetime.fromisoformat(row["created_at"]),
         )
 
@@ -895,4 +916,65 @@ class LabelRepository:
             id=row["id"],
             name=row["name"],
             created_at=datetime.fromisoformat(row["created_at"]),
+        )
+
+
+class BrandSizeRepository:
+    """Repository for user size preference operations."""
+
+    def __init__(self, db: Database):
+        self.db = db
+
+    def insert(self, record: BrandSize) -> int:
+        """Insert a brand size preference and return its ID."""
+        cursor = self.db.execute(
+            "INSERT INTO brand_sizes (brand, category, size, label) VALUES (?, ?, ?, ?)",
+            (record.brand, record.category, record.size, record.label)
+        )
+        self.db.commit()
+        return cursor.lastrowid
+
+    def get_all(self) -> List[BrandSize]:
+        """Get all brand size preferences."""
+        cursor = self.db.execute("SELECT * FROM brand_sizes")
+        return [self._row_to_record(row) for row in cursor.fetchall()]
+
+    def get_by_brand_and_category(self, brand: str, category: str, label: Optional[str] = None) -> Optional[BrandSize]:
+        """Get size preference for a brand, category and optional label."""
+        query = "SELECT * FROM brand_sizes WHERE brand = ? AND category = ?"
+        params = [brand, category]
+        
+        if label:
+            query += " AND label = ?"
+            params.append(label)
+        else:
+            query += " AND label IS NULL"
+            
+        cursor = self.db.execute(query, tuple(params))
+        row = cursor.fetchone()
+        if row is None:
+            return None
+        return self._row_to_record(row)
+
+    def update(self, record_id: int, record: BrandSize) -> None:
+        """Update a brand size preference."""
+        self.db.execute(
+            "UPDATE brand_sizes SET brand = ?, category = ?, size = ?, label = ? WHERE id = ?",
+            (record.brand, record.category, record.size, record.label, record_id)
+        )
+        self.db.commit()
+
+    def delete(self, record_id: int) -> None:
+        """Delete a brand size preference."""
+        self.db.execute("DELETE FROM brand_sizes WHERE id = ?", (record_id,))
+        self.db.commit()
+
+    def _row_to_record(self, row) -> BrandSize:
+        """Convert a database row to a BrandSize record."""
+        return BrandSize(
+            id=row["id"],
+            brand=row["brand"],
+            category=row["category"],
+            size=row["size"],
+            label=row["label"],
         )

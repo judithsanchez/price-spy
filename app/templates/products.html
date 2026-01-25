@@ -63,6 +63,7 @@
                     <tr>
                         <th class="px-6 py-4 text-left text-[10px] font-black text-jolly-dark/40 uppercase tracking-widest">Name</th>
                         <th class="px-6 py-4 text-left text-[10px] font-black text-jolly-dark/40 uppercase tracking-widest hidden md:table-cell">Category</th>
+                        <th class="px-6 py-4 text-left text-[10px] font-black text-jolly-dark/40 uppercase tracking-widest hidden md:table-cell">Brand</th>
                         <th class="px-6 py-4 text-left text-[10px] font-black text-jolly-dark/40 uppercase tracking-widest">Target Price</th>
                         <th class="px-6 py-4 text-left text-[10px] font-black text-jolly-dark/40 uppercase tracking-widest hidden lg:table-cell">Stock</th>
                         <th class="px-6 py-4 text-left text-[10px] font-black text-jolly-dark/40 uppercase tracking-widest">Actions</th>
@@ -84,6 +85,9 @@
                             </td>
                             <td class="px-6 py-5 max-w-[120px] hidden md:table-cell">
                                 <span class="text-[10px] font-black uppercase text-jolly-dark/40 px-2.5 py-1 bg-gray-50 rounded-full border border-jolly-dark/5" x-text="product.category || '-'"></span>
+                            </td>
+                            <td class="px-6 py-5 max-w-[120px] hidden md:table-cell">
+                                <span class="text-[10px] font-black uppercase text-blue-600 px-2.5 py-1 bg-blue-50 rounded-full border border-blue-100" x-text="product.brand || '-'"></span>
                             </td>
                             <td class="px-6 py-5 whitespace-nowrap font-black text-jolly-dark">
                                 <span x-text="product.target_price ? '€' + product.target_price.toFixed(2) : '-'"></span>
@@ -136,6 +140,47 @@
                         <label class="block text-[11px] font-black text-jolly-dark/60 uppercase tracking-widest mb-1.5 ml-1">Product Name *</label>
                         <input type="text" x-model="formData.name" required
                                class="w-full border border-jolly-dark/10 rounded-2xl px-4 py-3 sm:py-2.5 focus:outline-none focus:ring-4 focus:ring-jolly/20 text-base sm:text-sm bg-gray-50/50 font-medium text-jolly-dark">
+                    </div>
+                    <div class="mb-5" x-data="{ 
+                        open: false, 
+                        brands: [], 
+                        async fetchBrands() {
+                            const q = formData.brand || '';
+                            const resp = await fetch('/api/brands');
+                            const allBrands = await resp.json();
+                            if (q === '') {
+                                this.brands = allBrands;
+                            } else {
+                                this.brands = allBrands.filter(b => b.toLowerCase().includes(q.toLowerCase()));
+                            }
+                        }
+                    }" @click.away="open = false">
+                        <label class="block text-[11px] font-black text-jolly-dark/60 uppercase tracking-widest mb-1.5 ml-1">Brand</label>
+                        <div class="relative">
+                            <input type="text" x-model="formData.brand"
+                                @input="open = true; fetchBrands()" 
+                                @focus="open = true; fetchBrands()"
+                                autocomplete="off"
+                                class="w-full border border-jolly-dark/10 rounded-2xl px-4 py-3 sm:py-2.5 focus:outline-none focus:ring-4 focus:ring-jolly/20 text-base sm:text-sm bg-gray-50/50 font-medium text-jolly-dark"
+                                placeholder="e.g. Nike, Zara...">
+                            <div x-show="open && (brands.length > 0 || (formData.brand && formData.brand.trim() !== ''))" 
+                                 x-cloak
+                                 class="absolute z-50 w-full mt-2 bg-white border border-jolly-dark/10 rounded-2xl shadow-xl max-h-60 overflow-y-auto p-2 border border-jolly-dark/5 shadow-jolly-dark/5">
+                                <template x-for="brand in brands" :key="brand">
+                                    <button type="button" @click="formData.brand = brand; open = false" 
+                                            class="w-full text-left px-4 py-2.5 hover:bg-jolly/10 rounded-xl text-sm font-medium text-jolly-dark transition-colors">
+                                        <span x-text="brand"></span>
+                                    </button>
+                                </template>
+                                <div x-show="formData.brand && !brands.some(b => b.toLowerCase() === formData.brand.toLowerCase())"
+                                     class="p-1">
+                                    <button type="button" @click="open = false"
+                                            class="w-full text-left px-4 py-2.5 bg-jolly/5 hover:bg-jolly/10 rounded-xl text-xs font-black text-jolly-dark/50 uppercase tracking-wider transition-colors">
+                                        ✨ New: "<span x-text="formData.brand"></span>"
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                     <div class="mb-5" x-data="{ 
                         open: false, 
@@ -303,6 +348,7 @@ function productsManager() {
         formData: {
             name: '',
             category: '',
+            brand: '',
             labels: '',
             target_price: '',
             target_unit: '',
@@ -324,6 +370,7 @@ function productsManager() {
             this.formData = {
                 name: product.name,
                 category: product.category || '',
+                brand: product.brand || '',
                 labels: product.labels || '',
                 target_price: product.target_price ?? '',
                 target_unit: product.target_unit || '',
@@ -339,6 +386,7 @@ function productsManager() {
             const data = {
                 name: this.formData.name,
                 category: this.formData.category || null,
+                brand: this.formData.brand || null,
                 labels: this.formData.labels || null,
                 target_price: this.formData.target_price !== '' ? parseFloat(this.formData.target_price) : null,
                 target_unit: this.formData.target_unit || null,
