@@ -14,6 +14,7 @@ from app.models.schemas import (
     Category,
     Label,
     BrandSize,
+    Profile,
 )
 
 
