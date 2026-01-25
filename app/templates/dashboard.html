@@ -77,7 +77,12 @@
                             {{ '🎯 Target Hit' if deal.is_target_hit else '✨ Promo' }}
                         </span>
                     </div>
-                    <span class="font-black text-jolly-dark whitespace-nowrap">{{ deal.currency }} {{ "%.2f"|format(deal.price) }}</span>
+                    <div class="flex flex-col items-end">
+                        <span class="font-black text-jolly-dark whitespace-nowrap">{{ deal.currency }} {{ "%.2f"|format(deal.price) }}</span>
+                        {% if deal.unit_price and deal.unit %}
+                            <span class="text-[9px] text-jolly-dark/40 uppercase tracking-tighter">{{ deal.currency }} {{ "%.2f"|format(deal.unit_price) }}/{{ deal.unit }}</span>
+                        {% endif %}
+                    </div>
                 </div>
                 {% endfor %}
             </div>

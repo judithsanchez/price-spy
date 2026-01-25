@@ -231,10 +231,40 @@
                             <input type="number" step="0.01" x-model="formData.target_price"
                                    class="w-full border border-jolly-dark/10 rounded-2xl px-4 py-3 sm:py-2.5 focus:outline-none focus:ring-4 focus:ring-jolly/20 text-base sm:text-sm bg-gray-50/50 font-medium text-jolly-dark">
                         </div>
-                        <div>
+                        <div x-data="{ 
+                            open: false, 
+                            commonUnits: ['unit', 'piece', 'ml', 'cl', 'dl', 'L', 'pint', 'gal', 'fl oz', 'mg', 'g', 'kg', 'lb', 'oz', 'mtr', 'cm', 'bunch', 'pack', 'roll', 'box'],
+                            get filteredUnits() {
+                                const q = formData.target_unit ? formData.target_unit.toLowerCase() : '';
+                                if (!q) return this.commonUnits;
+                                return this.commonUnits.filter(u => u.toLowerCase().includes(q));
+                            }
+                        }" @click.away="open = false">
                             <label class="block text-[11px] font-black text-jolly-dark/60 uppercase tracking-widest mb-1.5 ml-1">Target Unit</label>
-                            <input type="text" x-model="formData.target_unit" placeholder="e.g. kg, L, st"
-                                   class="w-full border border-jolly-dark/10 rounded-2xl px-4 py-3 sm:py-2.5 focus:outline-none focus:ring-4 focus:ring-jolly/20 text-base sm:text-sm bg-gray-50/50 font-medium text-jolly-dark">
+                            <div class="relative">
+                                <input type="text" x-model="formData.target_unit" 
+                                       @input="open = true" 
+                                       @focus="open = true"
+                                       class="w-full border border-jolly-dark/10 rounded-2xl px-4 py-3 sm:py-2.5 focus:outline-none focus:ring-4 focus:ring-jolly/20 text-base sm:text-sm bg-gray-50/50 font-medium text-jolly-dark" 
+                                       placeholder="e.g. kg, L, st">
+                                <div x-show="open" 
+                                     x-cloak
+                                     class="absolute z-50 w-full mt-2 bg-white border border-jolly-dark/10 rounded-2xl shadow-xl max-h-48 overflow-y-auto p-2 border border-jolly-dark/5 shadow-jolly-dark/5">
+                                    <template x-for="unit in filteredUnits" :key="unit">
+                                        <button type="button" @click="formData.target_unit = unit; open = false" 
+                                                class="w-full text-left px-4 py-2.5 hover:bg-jolly/10 rounded-xl text-sm font-medium text-jolly-dark transition-colors">
+                                            <span x-text="unit"></span>
+                                        </button>
+                                    </template>
+                                    <div x-show="formData.target_unit && !commonUnits.some(u => u.toLowerCase() === formData.target_unit.toLowerCase())"
+                                         class="p-1">
+                                        <button type="button" @click="open = false"
+                                                class="w-full text-left px-4 py-2.5 bg-jolly/5 hover:bg-jolly/10 rounded-xl text-xs font-black text-jolly-dark/50 uppercase tracking-wider transition-colors">
+                                            ✨ New: "<span x-text="formData.target_unit"></span>"
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                         <div>
                             <label class="block text-[11px] font-black text-jolly-dark/60 uppercase tracking-widest mb-1.5 ml-1">Current Stock</label>

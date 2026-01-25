@@ -298,7 +298,7 @@ async def get_items():
                     if unit_price is not None and norm_target_unit == norm_current_unit:
                         is_target_hit = unit_price <= target_val
                     else:
-                        is_target_hit = latest_val <= target_val
+                        is_target_hit = False
                 else:
                     is_target_hit = latest_val <= target_val
 
@@ -363,7 +363,26 @@ async def get_item(item_id: int):
         latest_val = latest_price.price if latest_price else None
         target_val = product.target_price if product else None
         
-        is_target_hit = latest_val is not None and target_val is not None and latest_val <= target_val
+        # Target hit logic
+        is_target_hit = False
+        if latest_val is not None and target_val is not None:
+            if product.target_unit:
+                from app.core.price_calculator import normalize_unit, calculate_volume_price
+                unit_price, unit = calculate_volume_price(
+                    latest_val,
+                    item.items_per_lot,
+                    item.quantity_size,
+                    item.quantity_unit
+                )
+                norm_target_unit = normalize_unit(product.target_unit)
+                norm_current_unit = normalize_unit(unit) if unit else None
+                if unit_price is not None and norm_target_unit == norm_current_unit:
+                    is_target_hit = unit_price <= target_val
+                else:
+                    is_target_hit = False
+            else:
+                is_target_hit = latest_val <= target_val
+
         is_price_drop = latest_val is not None and prev_price is not None and latest_val < prev_price
         is_deal = False
         if latest_price:
@@ -1003,6 +1022,7 @@ async def dashboard(request: Request):
                     "name": product.name,
                     "category": product.category,
                     "target_price": product.target_price,
+                    "target_unit": product.target_unit,
                     "current_stock": product.current_stock,
                     "tracked_items": []
                 }
@@ -1066,8 +1086,8 @@ async def dashboard(request: Request):
                     if unit_price is not None and normalized_target_unit == normalized_current_unit:
                         is_target_hit = unit_price <= product.target_price
                     else:
-                        # Unit mismatch or missing unit_price, fallback to total price comparison
-                        is_target_hit = price <= product.target_price
+                        # Unit mismatch or missing unit_price, don't consider it a hit
+                        is_target_hit = False
                 else:
                     # No target unit set, use total price
                     is_target_hit = price <= product.target_price
@@ -1163,7 +1183,10 @@ async def dashboard(request: Request):
                         "product_name": p["name"],
                         "price": item["price"],
                         "currency": item["currency"],
+                        "unit_price": item["unit_price"],
+                        "unit": item["unit"],
                         "target_price": p["target_price"],
+                        "target_unit": p["target_unit"],
                         "is_target_hit": item["is_target_hit"]
                     })
 
@@ -1263,6 +1286,8 @@ async def create_product(product: ProductCreate):
             kwargs["purchase_type"] = product.purchase_type
         if product.target_price is not None:
             kwargs["target_price"] = product.target_price
+        if product.target_unit is not None:
+            kwargs["target_unit"] = product.target_unit
         if product.preferred_unit_size is not None:
             kwargs["preferred_unit_size"] = product.preferred_unit_size
         kwargs["current_stock"] = product.current_stock
@@ -1345,6 +1370,8 @@ async def update_product(product_id: int, product: ProductCreate):
             kwargs["purchase_type"] = product.purchase_type
         if product.target_price is not None:
             kwargs["target_price"] = product.target_price
+        if product.target_unit is not None:
+            kwargs["target_unit"] = product.target_unit
         if product.preferred_unit_size is not None:
             kwargs["preferred_unit_size"] = product.preferred_unit_size
         kwargs["current_stock"] = product.current_stock
