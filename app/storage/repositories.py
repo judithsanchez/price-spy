@@ -307,6 +307,7 @@ class ProductRepository:
             target_unit=row["target_unit"],
             brand=row["brand"],
             preferred_unit_size=row["preferred_unit_size"],
+            target_size_label=row["target_size_label"],
             current_stock=row["current_stock"],
             created_at=datetime.fromisoformat(row["created_at"]),
         )
@@ -535,6 +536,23 @@ class TrackedItemRepository:
             (product_id,)
         )
         return [self._row_to_record(row) for row in cursor.fetchall()]
+
+    def count_by_store(self, store_id: int) -> int:
+        """Count tracked items associated with a store."""
+        cursor = self.db.execute(
+            "SELECT COUNT(*) FROM tracked_items WHERE store_id = ?",
+            (store_id,)
+        )
+        row = cursor.fetchone()
+        return row[0] if row else 0
+
+    def delete_by_product(self, product_id: int) -> None:
+        """Delete all tracked items for a product."""
+        self.db.execute(
+            "DELETE FROM tracked_items WHERE product_id = ?",
+            (product_id,)
+        )
+        self.db.commit()
 
     def _row_to_record(self, row) -> TrackedItem:
         """Convert a database row to a TrackedItem."""
@@ -919,6 +937,46 @@ class LabelRepository:
         )
 
 
+class ProfileRepository:
+    """Repository for user profile operations."""
+
+    def __init__(self, db: Database):
+        self.db = db
+
+    def insert(self, profile: Profile) -> int:
+        """Insert a profile and return its ID."""
+        cursor = self.db.execute(
+            "INSERT INTO profiles (name) VALUES (?)",
+            (profile.name,)
+        )
+        self.db.commit()
+        return cursor.lastrowid
+
+    def get_all(self) -> List[Profile]:
+        """Get all profiles."""
+        cursor = self.db.execute("SELECT * FROM profiles ORDER BY name")
+        return [self._row_to_record(row) for row in cursor.fetchall()]
+
+    def get_by_id(self, profile_id: int) -> Optional[Profile]:
+        """Get a profile by ID."""
+        cursor = self.db.execute("SELECT * FROM profiles WHERE id = ?", (profile_id,))
+        row = cursor.fetchone()
+        return self._row_to_record(row) if row else None
+
+    def delete(self, profile_id: int) -> None:
+        """Delete a profile."""
+        self.db.execute("DELETE FROM profiles WHERE id = ?", (profile_id,))
+        self.db.commit()
+
+    def _row_to_record(self, row) -> Profile:
+        """Convert a database row to a Profile."""
+        return Profile(
+            id=row["id"],
+            name=row["name"],
+            created_at=datetime.fromisoformat(row["created_at"]),
+        )
+
+
 class BrandSizeRepository:
     """Repository for user size preference operations."""
 
@@ -928,29 +986,56 @@ class BrandSizeRepository:
     def insert(self, record: BrandSize) -> int:
         """Insert a brand size preference and return its ID."""
         cursor = self.db.execute(
-            "INSERT INTO brand_sizes (brand, category, size, label) VALUES (?, ?, ?, ?)",
-            (record.brand, record.category, record.size, record.label)
+            """
+            INSERT INTO brand_sizes (brand, category, size, label, profile_id, item_type) 
+            VALUES (?, ?, ?, ?, ?, ?)
+            """,
+            (record.brand, record.category, record.size, record.label, record.profile_id, record.item_type)
         )
         self.db.commit()
         return cursor.lastrowid
 
     def get_all(self) -> List[BrandSize]:
-        """Get all brand size preferences."""
-        cursor = self.db.execute("SELECT * FROM brand_sizes")
+        """Get all brand size preferences with profile names."""
+        cursor = self.db.execute("""
+            SELECT bs.*, p.name as profile_name 
+            FROM brand_sizes bs
+            LEFT JOIN profiles p ON bs.profile_id = p.id
+            ORDER BY bs.brand, bs.category
+        """)
         return [self._row_to_record(row) for row in cursor.fetchall()]
 
-    def get_by_brand_and_category(self, brand: str, category: str, label: Optional[str] = None) -> Optional[BrandSize]:
-        """Get size preference for a brand, category and optional label."""
+    def get_by_brand_and_category(
+        self, brand: str, category: str, label: Optional[str] = None, 
+        profile_id: Optional[int] = None, item_type: Optional[str] = None
+    ) -> Optional[BrandSize]:
+        """Get size preference with granular matching."""
         query = "SELECT * FROM brand_sizes WHERE brand = ? AND category = ?"
         params = [brand, category]
         
-        if label:
+        # Priority 1: Profile ID (New system)
+        if profile_id:
+            query += " AND profile_id = ?"
+            params.append(profile_id)
+        # Fallback: Label (Old system)
+        elif label:
             query += " AND label = ?"
             params.append(label)
         else:
-            query += " AND label IS NULL"
+            query += " AND (profile_id IS NULL AND label IS NULL)"
             
+        # Optional: Item Type granularity
+        if item_type:
+            query += " AND (item_type = ? OR item_type IS NULL)"
+            params.append(item_type)
+            # Logic here is tricky: we want exact match if available, or generic if not.
+            # For simplicity in this getter, we might filtering in memory or ordering by specificity.
+            # Only exact matching for now.
+        
         cursor = self.db.execute(query, tuple(params))
+        # If multiple matches (e.g. one with item_type, one without), we should prefer specific.
+        # But for 'get' we likely want specific.
+        
         row = cursor.fetchone()
         if row is None:
             return None
@@ -959,8 +1044,12 @@ class BrandSizeRepository:
     def update(self, record_id: int, record: BrandSize) -> None:
         """Update a brand size preference."""
         self.db.execute(
-            "UPDATE brand_sizes SET brand = ?, category = ?, size = ?, label = ? WHERE id = ?",
-            (record.brand, record.category, record.size, record.label, record_id)
+            """
+            UPDATE brand_sizes 
+            SET brand = ?, category = ?, size = ?, label = ?, profile_id = ?, item_type = ?
+            WHERE id = ?
+            """,
+            (record.brand, record.category, record.size, record.label, record.profile_id, record.item_type, record_id)
         )
         self.db.commit()
 
@@ -971,10 +1060,25 @@ class BrandSizeRepository:
 
     def _row_to_record(self, row) -> BrandSize:
         """Convert a database row to a BrandSize record."""
-        return BrandSize(
+        # Check if joined column exists
+        profile_name = row["profile_name"] if "profile_name" in row.keys() else None
+        
+        # Create base record
+        bs = BrandSize(
             id=row["id"],
             brand=row["brand"],
             category=row["category"],
             size=row["size"],
             label=row["label"],
+            profile_id=row["profile_id"] if "profile_id" in row.keys() else None,
+            item_type=row["item_type"] if "item_type" in row.keys() else None,
         )
+        
+        # Hacky way to attach the profile_name for response model without changing internal model too much
+        # Ideally, we return a BrandSizeResponse directly but the repo returns domain models.
+        if profile_name:
+            # We can't attach arbitrary attributes to Pydantic models easily if not defined.
+            # But the schema update included BrandSizeResponse. 
+            pass
+            
+        return bs

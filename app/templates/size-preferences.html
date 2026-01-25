@@ -6,10 +6,16 @@
 <div x-data="sizePrefsManager()" x-init="init()">
     <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-8">
         <h2 class="text-2xl font-black text-jolly-dark">📏 Size Preferences</h2>
-        <button @click="openAddForm()"
-                class="bg-purple-600 text-white px-6 py-3 sm:py-2 rounded-2xl hover:bg-purple-700 transition-all font-black uppercase tracking-widest text-[10px] shadow-sm border border-purple-800/10">
-            Add New Preference
-        </button>
+        <div class="flex gap-2">
+            <button @click="openProfileModal()"
+                    class="bg-purple-100 text-purple-700 px-4 py-3 sm:py-2 rounded-2xl hover:bg-purple-200 transition-all font-black uppercase tracking-widest text-[10px] shadow-sm border border-purple-800/5">
+                Manage Profiles
+            </button>
+            <button @click="openAddForm()"
+                    class="bg-purple-600 text-white px-6 py-3 sm:py-2 rounded-2xl hover:bg-purple-700 transition-all font-black uppercase tracking-widest text-[10px] shadow-sm border border-purple-800/10">
+                Add New Preference
+            </button>
+        </div>
     </div>
 
     <!-- Info Box -->
@@ -29,7 +35,8 @@
                     <tr>
                         <th class="px-6 py-4 text-left text-[10px] font-black text-jolly-dark/40 uppercase tracking-widest">Brand</th>
                         <th class="px-6 py-4 text-left text-[10px] font-black text-jolly-dark/40 uppercase tracking-widest">Category</th>
-                        <th class="px-6 py-4 text-left text-[10px] font-black text-jolly-dark/40 uppercase tracking-widest">Profile / Person</th>
+                        <th class="px-6 py-4 text-left text-[10px] font-black text-jolly-dark/40 uppercase tracking-widest">Details</th>
+                        <th class="px-6 py-4 text-left text-[10px] font-black text-jolly-dark/40 uppercase tracking-widest">Profile</th>
                         <th class="px-6 py-4 text-left text-[10px] font-black text-jolly-dark/40 uppercase tracking-widest">Target Size</th>
                         <th class="px-6 py-4 text-left text-[10px] font-black text-jolly-dark/40 uppercase tracking-widest">Actions</th>
                     </tr>
@@ -43,7 +50,11 @@
                             <td class="px-6 py-5">
                                 <span class="text-[10px] font-black uppercase text-jolly-dark/40 px-2.5 py-1 bg-gray-50 rounded-full border border-jolly-dark/5" x-text="pref.category"></span>
                             </td>
-                            <td class="px-6 py-5 font-bold text-purple-600" x-text="pref.label || 'Default'"></td>
+                            <td class="px-6 py-5">
+                                <span x-show="pref.item_type" class="text-[10px] font-bold text-gray-500 uppercase tracking-wide bg-gray-100 px-2 py-1 rounded" x-text="pref.item_type"></span>
+                                <span x-show="!pref.item_type" class="text-gray-300 text-xs italic">Any</span>
+                            </td>
+                            <td class="px-6 py-5 font-bold text-purple-600" x-text="pref.profile_name || 'Global'"></td>
                             <td class="px-6 py-5">
                                 <span class="font-black text-jolly-dark bg-white border border-jolly-dark/10 px-3 py-1 rounded-lg shadow-sm" x-text="pref.size"></span>
                             </td>
@@ -56,7 +67,7 @@
                         </tr>
                     </template>
                     <tr x-show="preferences.length === 0">
-                        <td colspan="5" class="px-6 py-8 text-center text-gray-400 italic font-medium">No preferences set yet.</td>
+                        <td colspan="6" class="px-6 py-8 text-center text-gray-400 italic font-medium">No preferences set yet.</td>
                     </tr>
                 </tbody>
             </table>
@@ -135,11 +146,31 @@
                             </template>
                         </select>
                     </div>
-                    <div class="mb-5">
-                        <label class="block text-[11px] font-black text-jolly-dark/60 uppercase tracking-widest mb-1.5 ml-1">Profile / Person Label (Optional)</label>
-                        <input type="text" x-model="formData.label"
+
+                    <!-- Item Type: Only showed if category is selected -->
+                     <div class="mb-5" x-show="formData.category && isSizeSensitive(formData.category)" x-transition>
+                        <label class="block text-[11px] font-black text-jolly-dark/60 uppercase tracking-widest mb-1.5 ml-1">Item Type (Granular)</label>
+                        <!-- Simple autocomplete for Item Type could be added here later, for now text -->
+                        <input type="text" x-model="formData.item_type"
                                class="w-full border border-jolly-dark/10 rounded-2xl px-4 py-3 focus:outline-none focus:ring-4 focus:ring-purple-200 text-sm bg-gray-50/50 font-medium text-jolly-dark"
-                               placeholder="e.g. Judith, John (Leave empty for default)">
+                               placeholder="e.g. Jeans, T-Shirt, Jacket... (Optional)">
+                        <p class="text-[10px] text-jolly-dark/40 mt-1 ml-1">Leave empty to apply to entire category.</p>
+                    </div>
+
+                    <div class="mb-5">
+                        <label class="block text-[11px] font-black text-jolly-dark/60 uppercase tracking-widest mb-1.5 ml-1">Profile / Person</label>
+                        <div class="flex gap-2">
+                            <select x-model="formData.profile_id"
+                                    class="w-full border border-jolly-dark/10 rounded-2xl px-4 py-3 focus:outline-none focus:ring-4 focus:ring-purple-200 text-sm bg-gray-50/50 font-medium text-jolly-dark">
+                                <option value="">Global (All Profiles)</option>
+                                <template x-for="profile in profiles" :key="profile.id">
+                                    <option :value="profile.id" x-text="profile.name" :selected="profile.id == formData.profile_id"></option>
+                                </template>
+                            </select>
+                            <button type="button" @click="showForm = false; openProfileModal()" class="bg-purple-100 text-purple-600 p-3 rounded-2xl hover:bg-purple-200 transition-colors" title="Manage Profiles">
+                                👥
+                            </button>
+                        </div>
                     </div>
                     <div class="mb-8">
                         <label class="block text-[11px] font-black text-jolly-dark/60 uppercase tracking-widest mb-1.5 ml-1">Target Size *</label>
@@ -163,6 +194,38 @@
             </div>
         </div>
     </div>
+    <!-- Manage Profiles Modal -->
+    <div x-show="showProfileModal" x-cloak style="display: none;" class="fixed inset-0 bg-jolly-dark/40 backdrop-blur-sm flex items-center justify-center z-50">
+        <div class="bg-white w-full sm:rounded-3xl shadow-2xl sm:w-full sm:max-w-md max-h-[80vh] overflow-hidden rounded-t-3xl border border-jolly-dark/5"
+             @click.away="showProfileModal = false">
+            <div class="p-6 bg-gray-50/50 border-b border-jolly-dark/5 flex justify-between items-center">
+                <h3 class="text-xl font-black text-jolly-dark">👥 Manage Profiles</h3>
+                <button @click="showProfileModal = false" class="text-jolly-dark/20 hover:text-jolly-rose transition-colors">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+            </div>
+            <div class="p-6 overflow-y-auto max-h-[60vh]">
+                <form @submit.prevent="createProfile()" class="flex gap-2 mb-6">
+                    <input type="text" x-model="newProfileName" required placeholder="New Profile Name (e.g. Kids)" 
+                           class="flex-1 border border-jolly-dark/10 rounded-xl px-4 py-2 focus:outline-none focus:ring-4 focus:ring-purple-200 text-sm bg-white font-medium text-jolly-dark">
+                    <button type="submit" class="bg-purple-600 text-white px-4 py-2 rounded-xl font-bold text-sm hover:bg-purple-700 transition-colors">Add</button>
+                </form>
+                
+                <div class="space-y-2">
+                    <template x-for="profile in profiles" :key="profile.id">
+                        <div class="flex justify-between items-center p-3 bg-white border border-jolly-dark/5 rounded-xl">
+                            <span class="font-bold text-jolly-dark" x-text="profile.name"></span>
+                            <button @click="deleteProfile(profile.id)" class="text-jolly-rose/60 hover:text-jolly-rose hover:bg-jolly-rose/10 p-1.5 rounded-lg transition-colors" title="Delete Profile">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                            </button>
+                        </div>
+                    </template>
+                    <div x-show="profiles.length === 0" class="text-center text-gray-400 text-sm py-4 italic">No profiles created yet.</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
 </div>
 
 <script>
@@ -170,21 +233,29 @@ function sizePrefsManager() {
     return {
         preferences: [],
         categories: [],
+        profiles: [],
+        
         showForm: false,
+        showProfileModal: false,
         editingPref: null,
         saving: false,
         error: null,
+        
+        newProfileName: '',
+        
         formData: {
             brand: '',
             category: '',
             size: '',
-            label: ''
+            profile_id: '',
+            item_type: ''
         },
 
         async init() {
             await Promise.all([
                 this.loadPreferences(),
-                this.loadCategories()
+                this.loadCategories(),
+                this.loadProfiles()
             ]);
         },
 
@@ -198,18 +269,63 @@ function sizePrefsManager() {
             this.categories = await resp.json();
         },
 
+        async loadProfiles() {
+            const resp = await fetch('/api/profiles');
+            this.profiles = await resp.json();
+        },
+
         openAddForm() {
             this.editingPref = null;
-            this.formData = { brand: '', category: '', size: '', label: '' };
+            this.formData = { brand: '', category: '', size: '', profile_id: '', item_type: '' };
             this.error = null;
             this.showForm = true;
+        },
+        
+        openProfileModal() {
+            this.newProfileName = '';
+            this.showProfileModal = true;
         },
 
         editPref(pref) {
             this.editingPref = pref;
-            this.formData = { ...pref, label: pref.label || '' };
+            this.formData = { 
+                brand: pref.brand,
+                category: pref.category,
+                size: pref.size,
+                profile_id: pref.profile_id || '',
+                item_type: pref.item_type || ''
+            };
             this.error = null;
             this.showForm = true;
+        },
+
+        isSizeSensitive(catName) {
+            if (!catName) return false;
+            const cat = this.categories.find(c => c.name === catName);
+            return cat ? (cat.is_size_sensitive === 1 || cat.is_size_sensitive === true) : false;
+        },
+
+        async createProfile() {
+            if (!this.newProfileName.trim()) return;
+            try {
+                const resp = await fetch('/api/profiles', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ name: this.newProfileName })
+                });
+                if (!resp.ok) throw new Error('Failed to create profile');
+                await this.loadProfiles();
+                this.newProfileName = '';
+            } catch (e) {
+                alert(e.message);
+            }
+        },
+
+        async deleteProfile(id) {
+            if (confirm('Delete this profile? Preferences linked to it may lose their association.')) {
+                await fetch(`/api/profiles/${id}`, { method: 'DELETE' });
+                await this.loadProfiles();
+            }
         },
 
         async savePref() {
@@ -219,12 +335,17 @@ function sizePrefsManager() {
                 const url = this.editingPref ? `/api/brand-sizes/${this.editingPref.id}` : '/api/brand-sizes';
                 const method = this.editingPref ? 'PUT' : 'POST';
                 
-                const data = { ...this.formData, label: this.formData.label || null };
+                // Convert empty strings to null for optional fields
+                const payload = {
+                    ...this.formData,
+                    profile_id: this.formData.profile_id ? parseInt(this.formData.profile_id) : null,
+                    item_type: this.formData.item_type || null
+                };
                 
                 const resp = await fetch(url, {
                     method: method,
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify(data)
+                    body: JSON.stringify(payload)
                 });
                 
                 if (!resp.ok) {

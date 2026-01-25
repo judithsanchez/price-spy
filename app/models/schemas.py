@@ -79,6 +79,7 @@ class Product(BaseModel):
     target_unit: Optional[str] = Field(default=None, max_length=20)
     brand: Optional[str] = Field(default=None, max_length=100)
     preferred_unit_size: Optional[str] = Field(default=None, max_length=50)
+    target_size_label: Optional[str] = Field(default=None, max_length=100)
     current_stock: int = Field(default=0, ge=0)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
@@ -202,13 +203,35 @@ class Label(BaseModel):
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
-class BrandSize(BaseModel):
-    """User size preference for a brand and category."""
-
-    model_config = ConfigDict(str_strip_whitespace=True)
-
-    id: Optional[int] = None
+class BrandSizeBase(BaseModel):
     brand: str = Field(..., min_length=1, max_length=100)
     category: str = Field(..., min_length=1, max_length=100)
     size: str = Field(..., min_length=1, max_length=20)
     label: Optional[str] = Field(default=None, max_length=100)
+    profile_id: Optional[int] = Field(default=None)
+    item_type: Optional[str] = Field(default=None, max_length=100)
+
+class BrandSizeCreate(BrandSizeBase):
+    pass
+
+class BrandSize(BrandSizeBase):
+    """User size preference for a brand and category."""
+    model_config = ConfigDict(str_strip_whitespace=True)
+    id: int
+
+class BrandSizeResponse(BrandSize):
+    profile_name: Optional[str] = None
+
+
+class ProfileBase(BaseModel):
+    name: str = Field(..., min_length=1, max_length=100)
+
+class ProfileCreate(ProfileBase):
+    pass
+
+class Profile(ProfileBase):
+    """User profile definition."""
+    model_config = ConfigDict(from_attributes=True)
+    
+    id: int
+    created_at: datetime

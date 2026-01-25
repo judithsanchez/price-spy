@@ -19,6 +19,7 @@ from app.storage.repositories import (
     CategoryRepository,
     LabelRepository,
     BrandSizeRepository,
+    ProfileRepository,
 )
 from app.core.scheduler import (
     get_scheduler_status,
@@ -1425,6 +1426,7 @@ async def get_products():
                 target_unit=p.target_unit,
                 brand=p.brand,
                 preferred_unit_size=p.preferred_unit_size,
+                target_size_label=p.target_size_label,
                 current_stock=p.current_stock,
             )
             for p in products
@@ -1590,6 +1592,11 @@ async def delete_product(product_id: int):
         existing = repo.get_by_id(product_id)
         if not existing:
             raise HTTPException(status_code=404, detail="Product not found")
+        
+        # Cascade delete tracked items
+        ti_repo = TrackedItemRepository(db)
+        ti_repo.delete_by_product(product_id)
+        
         repo.delete(product_id)
     finally:
         db.close()
@@ -1711,6 +1718,16 @@ async def delete_store(store_id: int):
         existing = repo.get_by_id(store_id)
         if not existing:
             raise HTTPException(status_code=404, detail="Store not found")
+        
+        # Check for active tracked items
+        ti_repo = TrackedItemRepository(db)
+        count = ti_repo.count_by_store(store_id)
+        if count > 0:
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Cannot delete store. It is used by {count} tracked items. Please remove/move them first."
+            )
+            
         repo.delete(store_id)
     finally:
         db.close()

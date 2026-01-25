@@ -59,7 +59,7 @@
                                             <template x-if="item.latest_original_price && item.latest_original_price > item.latest_price">
                                                 <span class="text-[9px] text-jolly-rose line-through font-bold opacity-60" x-text="item.latest_currency + ' ' + item.latest_original_price.toFixed(2)"></span>
                                             </template>
-                                            <span class="font-black text-jolly-dark bg-white border border-jolly-dark/5 px-2 py-0.5 rounded shadow-sm" x-text="item.latest_currency + ' ' + item.latest_price.toFixed(2)"></span>
+                                            <span class="font-black text-jolly-dark bg-white border border-jolly-dark/5 px-2 py-0.5 rounded shadow-sm" x-text="item.latest_currency + ' ' + (item.latest_price || 0).toFixed(2)"></span>
                                             
                                             <template x-if="item.latest_deal_type || item.is_deal">
                                                 <span class="px-1.5 py-0.5 rounded text-white text-[9px] font-black uppercase tracking-tighter" 
@@ -189,7 +189,7 @@
                         <input type="text" x-model="formData.item_name_on_site"
                                class="w-full border border-jolly-dark/10 rounded-2xl px-4 py-3 sm:py-2.5 focus:outline-none focus:ring-4 focus:ring-jolly/20 text-base sm:text-sm bg-gray-50/50 font-medium text-jolly-dark">
                     </div>
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4" x-show="isSizeSensitive()">
                         <div>
                             <label class="block text-[11px] font-black text-jolly-dark/60 uppercase tracking-widest mb-1.5 ml-1">🎯 Target Size</label>
                             <input type="text" x-model="formData.target_size"
@@ -209,10 +209,40 @@
                             <input type="number" step="0.01" x-model="formData.quantity_size" required
                                    class="w-full border border-jolly-dark/10 rounded-2xl px-4 py-3 sm:py-2.5 focus:outline-none focus:ring-4 focus:ring-jolly/20 text-base sm:text-sm bg-gray-50/50 font-medium text-jolly-dark">
                         </div>
-                        <div>
+                        <div x-data="{
+                                open: false,
+                                commonUnits: ['ml', 'cl', 'dl', 'L', 'g', 'kg', 'lb', 'oz', 'fl oz', 'piece', 'pack', 'pair', 'set', 'tube', 'bottle', 'can', 'box', 'bag', 'tub', 'jar', 'unit'],
+                                get filteredUnits() {
+                                    const q = formData.quantity_unit ? formData.quantity_unit.toLowerCase() : '';
+                                    if (!q) return this.commonUnits;
+                                    return this.commonUnits.filter(u => u.toLowerCase().includes(q));
+                                }
+                            }" @click.away="open = false" class="relative">
                             <label class="block text-[11px] font-black text-jolly-dark/60 uppercase tracking-widest mb-1.5 ml-1">⚖️ Unit *</label>
-                            <input type="text" x-model="formData.quantity_unit" required placeholder="ml, g, kg..."
-                                   class="w-full border border-jolly-dark/10 rounded-2xl px-4 py-3 sm:py-2.5 focus:outline-none focus:ring-4 focus:ring-jolly/20 text-base sm:text-sm bg-gray-50/50 font-medium text-jolly-dark placeholder-jolly-dark/20">
+                            <input type="text" x-model="formData.quantity_unit" 
+                                   @input="open = true" 
+                                   @focus="open = true"
+                                   required placeholder="ml, g, kg..."
+                                   class="w-full border border-jolly-dark/10 rounded-2xl px-4 py-3 sm:py-2.5 focus:outline-none focus:ring-4 focus:ring-jolly/20 text-base sm:text-sm bg-gray-50/50 font-medium text-jolly-dark placeholder-jolly-dark/20 relative z-10">
+                            
+                            <!-- Autocomplete Dropdown -->
+                            <div x-show="open" 
+                                 x-cloak
+                                 class="absolute z-50 w-full mt-1 bg-white border border-jolly-dark/10 rounded-xl shadow-xl max-h-32 overflow-y-auto p-1 border border-jolly-dark/5 shadow-jolly-dark/5">
+                                <template x-for="unit in filteredUnits" :key="unit">
+                                    <button type="button" @click="formData.quantity_unit = unit; open = false" 
+                                            class="w-full text-left px-3 py-1.5 hover:bg-jolly/10 rounded-lg text-xs font-medium text-jolly-dark transition-colors">
+                                        <span x-text="unit"></span>
+                                    </button>
+                                </template>
+                                <!-- Option to add new unit if not found -->
+                                <div x-show="formData.quantity_unit && !commonUnits.includes(formData.quantity_unit)" class="p-1">
+                                    <button type="button" @click="open = false"
+                                            class="w-full text-left px-3 py-1.5 bg-jolly/5 hover:bg-jolly/10 rounded-lg text-[10px] font-black text-jolly-dark/50 uppercase tracking-wider transition-colors">
+                                        New: "<span x-text="formData.quantity_unit"></span>"
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                         <div class="col-span-2 sm:col-span-1">
                             <label class="block text-[11px] font-black text-jolly-dark/60 uppercase tracking-widest mb-1.5 ml-1">📦 Items/Lot</label>
@@ -256,6 +286,7 @@ function trackedItemsManager() {
         items: [],
         products: [],
         stores: [],
+        categories: [],
         showForm: false,
         editingItem: null,
         saving: false,
@@ -278,7 +309,8 @@ function trackedItemsManager() {
                 await Promise.all([
                     this.loadItems(),
                     this.loadProducts(),
-                    this.loadStores()
+                    this.loadStores(),
+                    this.loadCategories()
                 ]);
             } catch (e) {
                 console.error('Failed to initialize:', e);
@@ -298,6 +330,11 @@ function trackedItemsManager() {
         async loadStores() {
             const response = await fetch('/api/stores');
             this.stores = await response.json();
+        },
+
+        async loadCategories() {
+            const response = await fetch('/api/categories');
+            this.categories = await response.json();
         },
 
         getGroupedItems() {
@@ -346,7 +383,9 @@ function trackedItemsManager() {
                 is_active: true,
                 alerts_enabled: true
             };
-            this.showForm = true;
+            this.loadCategories().then(() => {
+                this.showForm = true;
+            });
         },
 
         editItem(item) {
@@ -420,6 +459,24 @@ function trackedItemsManager() {
                     console.error('Delete error:', e);
                 }
             }
+        },
+
+        isSizeSensitive() {
+            // "Fail Closed" strategy: Default to FALSE (Hidden) to avoid clutter.
+            // Only show if we are 100% sure it is a sensitive category.
+
+            if (!this.formData.product_id) return false;
+            if (!this.categories || this.categories.length === 0) return false; 
+
+            const product = this.products.find(p => p.id === parseInt(this.formData.product_id));
+            if (!product || !product.category) return false;
+            
+            // Trim and lowercase for robust matching
+            const productCat = product.category.trim().toLowerCase();
+            const category = this.categories.find(c => c.name.trim().toLowerCase() === productCat);
+            
+            // Default to FALSE (hidden) if category is not found. 
+            return category ? (category.is_size_sensitive === 1 || category.is_size_sensitive === true) : false;
         },
 
         async toggleActive(item) {
