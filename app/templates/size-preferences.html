@@ -215,9 +215,14 @@
                     <template x-for="profile in profiles" :key="profile.id">
                         <div class="flex justify-between items-center p-3 bg-white border border-jolly-dark/5 rounded-xl">
                             <span class="font-bold text-jolly-dark" x-text="profile.name"></span>
-                            <button @click="deleteProfile(profile.id)" class="text-jolly-rose/60 hover:text-jolly-rose hover:bg-jolly-rose/10 p-1.5 rounded-lg transition-colors" title="Delete Profile">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
-                            </button>
+                            <div class="flex gap-1">
+                                <button @click="editProfile(profile)" class="text-purple-600/60 hover:text-purple-600 hover:bg-purple-100/50 p-1.5 rounded-lg transition-colors" title="Edit Profile">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
+                                </button>
+                                <button @click="deleteProfile(profile.id)" class="text-jolly-rose/60 hover:text-jolly-rose hover:bg-jolly-rose/10 p-1.5 rounded-lg transition-colors" title="Delete Profile">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                                </button>
+                            </div>
                         </div>
                     </template>
                     <div x-show="profiles.length === 0" class="text-center text-gray-400 text-sm py-4 italic">No profiles created yet.</div>
@@ -313,11 +318,34 @@ function sizePrefsManager() {
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({ name: this.newProfileName })
                 });
-                if (!resp.ok) throw new Error('Failed to create profile');
+                if (!resp.ok) {
+                    const err = await resp.json();
+                    throw new Error(err.detail || 'Failed to create profile');
+                }
                 await this.loadProfiles();
                 this.newProfileName = '';
             } catch (e) {
                 alert(e.message);
+            }
+        },
+
+        async editProfile(profile) {
+            const newName = prompt("Rename profile:", profile.name);
+            if (newName && newName.trim() !== "" && newName !== profile.name) {
+                 try {
+                    const resp = await fetch(`/api/profiles/${profile.id}`, {
+                        method: 'PUT',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({ name: newName })
+                    });
+                    if (!resp.ok) {
+                        const err = await resp.json();
+                        throw new Error(err.detail || 'Failed to update profile');
+                    }
+                    await this.loadProfiles();
+                } catch (e) {
+                    alert(e.message);
+                }
             }
         },
 
@@ -336,9 +364,17 @@ function sizePrefsManager() {
                 const method = this.editingPref ? 'PUT' : 'POST';
                 
                 // Convert empty strings to null for optional fields
+                // Ensure profile_id is number or null
+                let pid = this.formData.profile_id;
+                if (pid === '' || pid === null || pid === undefined) {
+                    pid = null;
+                } else {
+                    pid = parseInt(pid);
+                }
+
                 const payload = {
                     ...this.formData,
-                    profile_id: this.formData.profile_id ? parseInt(this.formData.profile_id) : null,
+                    profile_id: pid,
                     item_type: this.formData.item_type || null
                 };
                 
@@ -350,7 +386,11 @@ function sizePrefsManager() {
                 
                 if (!resp.ok) {
                     const err = await resp.json();
-                    throw new Error(err.detail || 'Failed to save preference');
+                    let msg = 'Failed to save preference';
+                    if (err.detail) {
+                        msg = typeof err.detail === 'string' ? err.detail : JSON.stringify(err.detail);
+                    }
+                    throw new Error(msg);
                 }
                 
                 this.showForm = false;

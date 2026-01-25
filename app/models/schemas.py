@@ -209,6 +209,7 @@ class BrandSizeBase(BaseModel):
     size: str = Field(..., min_length=1, max_length=20)
     label: Optional[str] = Field(default=None, max_length=100)
     profile_id: Optional[int] = Field(default=None)
+    profile_name: Optional[str] = Field(default=None)
     item_type: Optional[str] = Field(default=None, max_length=100)
 
 class BrandSizeCreate(BrandSizeBase):

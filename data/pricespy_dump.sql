@@ -12,14 +12,15 @@ INSERT INTO "api_usage" VALUES(1,'gemini-2.5-flash','2026-01-21',14,'2026-01-22T
 INSERT INTO "api_usage" VALUES(15,'gemini-2.5-flash','2026-01-22',12,'2026-01-22T13:41:29.693709+00:00',0);
 INSERT INTO "api_usage" VALUES(27,'gemini-2.5-flash-lite','2026-01-23',40,'2026-01-24T06:39:26.823230+00:00',0);
 INSERT INTO "api_usage" VALUES(67,'gemini-2.5-flash-lite','2026-01-24',9,'2026-01-24T23:20:57.234222+00:00',0);
-INSERT INTO "api_usage" VALUES(76,'gemini-2.5-flash-lite','2026-01-25',5,'2026-01-25T17:19:01.715080+00:00',0);
+INSERT INTO "api_usage" VALUES(76,'gemini-2.5-flash-lite','2026-01-25',8,'2026-01-25T17:57:55.216286+00:00',0);
 CREATE TABLE brand_sizes (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     brand TEXT NOT NULL,
     category TEXT NOT NULL,
-    size TEXT NOT NULL, label TEXT,
+    size TEXT NOT NULL, label TEXT, profile_id INTEGER REFERENCES profiles(id), item_type TEXT,
     UNIQUE(brand, category)
 );
+INSERT INTO "brand_sizes" VALUES(1,'Levis','Clothing','M',NULL,1,'Overall');
 CREATE TABLE categories (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL UNIQUE,
@@ -86,9 +87,9 @@ INSERT INTO "categories" VALUES(58,'Board Games','2026-01-23 13:30:37',0);
 INSERT INTO "categories" VALUES(59,'Crafts & Hobbies','2026-01-23 13:30:37',0);
 INSERT INTO "categories" VALUES(60,'Party Supplies','2026-01-23 13:30:37',0);
 INSERT INTO "categories" VALUES(61,'Gift Wrapping','2026-01-23 13:30:37',0);
-INSERT INTO "categories" VALUES(62,'Clothing','2026-01-23 13:30:37',0);
-INSERT INTO "categories" VALUES(63,'Underwear & Sleepwear','2026-01-23 13:30:37',0);
-INSERT INTO "categories" VALUES(64,'Footwear','2026-01-23 13:30:37',0);
+INSERT INTO "categories" VALUES(62,'Clothing','2026-01-23 13:30:37',1);
+INSERT INTO "categories" VALUES(63,'Underwear & Sleepwear','2026-01-23 13:30:37',1);
+INSERT INTO "categories" VALUES(64,'Footwear','2026-01-23 13:30:37',1);
 INSERT INTO "categories" VALUES(65,'Accessories','2026-01-23 13:30:37',0);
 INSERT INTO "categories" VALUES(66,'Jewelry','2026-01-23 13:30:37',0);
 INSERT INTO "categories" VALUES(67,'Luggage & Bags','2026-01-23 13:30:37',0);
@@ -467,6 +468,11 @@ INSERT INTO "extraction_logs" VALUES(93,32,'success','gemini-2.5-flash-lite',50.
 INSERT INTO "extraction_logs" VALUES(94,35,'error',NULL,NULL,NULL,'',68624,'2026-01-25 17:17:16');
 INSERT INTO "extraction_logs" VALUES(95,37,'success','gemini-2.5-flash-lite',16.65,'EUR',NULL,14036,'2026-01-25 17:18:30');
 INSERT INTO "extraction_logs" VALUES(96,34,'success','gemini-2.5-flash-lite',13.99,'EUR',NULL,9413,'2026-01-25 17:19:01');
+INSERT INTO "extraction_logs" VALUES(97,36,'error',NULL,NULL,NULL,'',72100,'2026-01-25 17:43:31');
+INSERT INTO "extraction_logs" VALUES(98,36,'success','gemini-2.5-flash-lite',28.95,'EUR',NULL,13732,'2026-01-25 17:44:19');
+INSERT INTO "extraction_logs" VALUES(99,33,'success','gemini-2.5-flash-lite',12.99,'EUR',NULL,11927,'2026-01-25 17:45:34');
+INSERT INTO "extraction_logs" VALUES(100,38,'error',NULL,NULL,NULL,'',69299,'2026-01-25 17:47:15');
+INSERT INTO "extraction_logs" VALUES(101,39,'success','gemini-2.5-flash-lite',49.99,'EUR',NULL,11381,'2026-01-25 17:57:55');
 CREATE TABLE labels (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL UNIQUE,
@@ -754,6 +760,9 @@ INSERT INTO "price_history" VALUES(84,'Whiskas 7+ Kattenbrokken - Kip - Zak 6 x 
 INSERT INTO "price_history" VALUES(85,'ACIDIC BONDING CONCENTRATE conditioner',50.0,'EUR',1.0,'https://www.amazon.nl/-/en/916-89702-ACIDIC-BONDING-CONCENTRATE-conditioner/dp/B0C31QQYVL/ref=sr_1_15?crid=2G2LWT0HV2IEY&dib=eyJ2IjoiMSJ9.ZqzK-u2o4rC2tz2rBeC3zJFBnapphKtmXIg7fK7U0axvLAS1bFzwnFd7ittp-oMVznEl4bEJIYqDXOBuhUEbIG0rhc60RbvDWli7ek7FYHvK94VxsfF4AAEqOfoKJ9hbnI1DwNDBSsB7y5E5EvhG9gy_T9trKW4pM--xBxBu8opPW7t4EMPB-tu2MKv4O30-ElLLATCHdqeaGeqI5QrNWwV-o8pMhGH-nHaQr3NiiVTIbZ-Wgk1FCu8e4SALD2J8uz_hDA9M2jT4o86tQhtY-a-7Q6kUeUt4WBdZvGeA3Ks.AJGKCFhfsQpvfc78_ZVkOlJcrngMD7xQeupbs-_WCM8&dib_tag=se&keywords=Redken+Acidic+Bonding+Concentrate+conditioner&qid=1769354336&sprefix=redken+acidic+bonding+concentrate+conditione%2Caps%2C247&sr=8-15','Amazon.nl (Redken Store is mentioned, but Amazon is the retailer of the page itself.)',NULL,'2026-01-25 15:26:06',1,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL);
 INSERT INTO "price_history" VALUES(86,'CeraVe Schuimende Reiniger Navulling 473 ml',16.65,'EUR',1.0,'https://www.etos.nl/producten/cerave-schuimende-reinigingsgel-navulling-473-ml-120850931.html','Etos',NULL,'2026-01-25 17:18:30',1,'Online bijna uitverkocht. Voor 22:00 uur besteld, morgen in huis. Beperkt beschikbaar in winkels.',NULL,0.0,'none','Nóg meer voordeel met Mijn Etos',0.0,0.0,NULL);
 INSERT INTO "price_history" VALUES(87,'L''Oréal Paris Elvive Bond Repair Rescue Pre-Shampoo',13.99,'EUR',1.0,'https://www.kruidvat.nl/loreal-paris-elvive-bond-repair-rescue-pre-shampoo/p/5786583','Kruidvat',NULL,'2026-01-25 17:19:01',1,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL);
+INSERT INTO "price_history" VALUES(88,'CeraVe Schuimende reiniger',28.95,'EUR',1.0,'https://www.etos.nl/producten/cerave-schuimende-reinigingsgel-976-ml-120599556.html','Etos',NULL,'2026-01-25 17:44:19',1,'Online op voorraad',NULL,0.0,'none','Gratis bezorging vanaf €35',NULL,NULL,NULL);
+INSERT INTO "price_history" VALUES(89,'L''Oréal Paris Elvive Bond Repair Pre-shampoo',12.99,'EUR',1.0,'https://www.etos.nl/producten/loreal-paris-elvive-bond-repair-pre-shampoo-200-ml-120662519.html','Etos.nl (inferred from logo and URL structure if available, but not explicitly in the image elements that were provided to analyze on its own.)',NULL,'2026-01-25 17:45:34',1,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL);
+INSERT INTO "price_history" VALUES(90,'LEGO Botanicals madeliefjes 11508',49.99,'EUR',1.0,'https://www.intertoys.nl/lego-botanicals-madeliefjes-11508','Intertoys',NULL,'2026-01-25 17:57:55',1,'50 minuten korting!',NULL,0.0,'percentage_off','Op dit moment 50 minuten korting!',0.0,0.0,NULL);
 CREATE TABLE products (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
@@ -763,19 +772,27 @@ CREATE TABLE products (
     preferred_unit_size TEXT,
     current_stock INTEGER DEFAULT 0,
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
-, labels TEXT, target_unit TEXT, brand TEXT);
-INSERT INTO "products" VALUES(2,'LED Strip','Lighting','recurring',65.0,NULL,0,'2026-01-21 13:17:17',NULL,NULL,NULL);
-INSERT INTO "products" VALUES(3,'Power Supply Light Strip','power supply','recurring',13.0,NULL,0,'2026-01-21 13:23:10',NULL,NULL,NULL);
-INSERT INTO "products" VALUES(4,'ZigBee 3.0 Pro+ Smart LED Controller',NULL,'recurring',25.0,NULL,0,'2026-01-21 13:29:58',NULL,'unit',NULL);
-INSERT INTO "products" VALUES(5,'Whiskas 7+ Kattenbrokken',NULL,'recurring',51.0,NULL,0,'2026-01-21 13:32:13',NULL,'pack',NULL);
-INSERT INTO "products" VALUES(10,'Perfumes','Fragrance','recurring',100.0,NULL,1,'2026-01-22 02:52:34',NULL,'l',NULL);
-INSERT INTO "products" VALUES(11,'OLAPLEX No. 7 Bonding Oil',NULL,'recurring',666.33,NULL,0,'2026-01-22 03:26:55',NULL,'l',NULL);
-INSERT INTO "products" VALUES(18,'Psyllium Husk','Health','recurring',20.0,NULL,0,'2026-01-23 22:50:36',NULL,'kg',NULL);
-INSERT INTO "products" VALUES(19,'ABC Conditioner','Hair Care','recurring',50.0,NULL,0,'2026-01-25 15:24:58',NULL,'L','Redken');
-INSERT INTO "products" VALUES(20,'Bond Repair Pre-shampoo','Hair Care','recurring',NULL,NULL,0,'2026-01-25 15:31:31',NULL,NULL,'Elvive');
-INSERT INTO "products" VALUES(21,'ABC Shampoo','Hair Care','recurring',40.0,NULL,0,'2026-01-25 15:42:03',NULL,'L','Redken');
-INSERT INTO "products" VALUES(29,'Moisturizing Cleansing Foam','Skincare','recurring',25.0,NULL,0,'2026-01-25 17:05:59',NULL,'L','CeraVe');
-INSERT INTO "products" VALUES(30,'Botanicals Bouquet with Tulips','Home Decor','recurring',35.0,NULL,0,'2026-01-25 17:23:21',NULL,'unit','LEGO');
+, labels TEXT, target_unit TEXT, brand TEXT, target_size_label TEXT);
+INSERT INTO "products" VALUES(2,'LED Strip','Lighting','recurring',65.0,NULL,0,'2026-01-21 13:17:17',NULL,NULL,NULL,NULL);
+INSERT INTO "products" VALUES(3,'Power Supply Light Strip','power supply','recurring',13.0,NULL,0,'2026-01-21 13:23:10',NULL,NULL,NULL,NULL);
+INSERT INTO "products" VALUES(4,'ZigBee 3.0 Pro+ Smart LED Controller',NULL,'recurring',25.0,NULL,0,'2026-01-21 13:29:58',NULL,'unit',NULL,NULL);
+INSERT INTO "products" VALUES(5,'Whiskas 7+ Kattenbrokken',NULL,'recurring',51.0,NULL,0,'2026-01-21 13:32:13',NULL,'pack',NULL,NULL);
+INSERT INTO "products" VALUES(10,'Perfumes','Fragrance','recurring',100.0,NULL,1,'2026-01-22 02:52:34',NULL,'l',NULL,NULL);
+INSERT INTO "products" VALUES(11,'OLAPLEX No. 7 Bonding Oil',NULL,'recurring',666.33,NULL,0,'2026-01-22 03:26:55',NULL,'l',NULL,NULL);
+INSERT INTO "products" VALUES(18,'Psyllium Husk','Health','recurring',20.0,NULL,0,'2026-01-23 22:50:36',NULL,'kg',NULL,NULL);
+INSERT INTO "products" VALUES(19,'ABC Conditioner','Hair Care','recurring',50.0,NULL,0,'2026-01-25 15:24:58',NULL,'L','Redken',NULL);
+INSERT INTO "products" VALUES(20,'Bond Repair Pre-shampoo','Hair Care','recurring',NULL,NULL,0,'2026-01-25 15:31:31',NULL,NULL,'Elvive',NULL);
+INSERT INTO "products" VALUES(21,'ABC Shampoo','Hair Care','recurring',40.0,NULL,0,'2026-01-25 15:42:03',NULL,'L','Redken',NULL);
+INSERT INTO "products" VALUES(29,'Moisturizing Cleansing Foam','Skincare','recurring',25.0,NULL,0,'2026-01-25 17:05:59',NULL,'L','CeraVe',NULL);
+INSERT INTO "products" VALUES(30,'Botanicals Bouquet with Tulips','Home Decor','recurring',35.0,NULL,0,'2026-01-25 17:23:21',NULL,'unit','LEGO',NULL);
+INSERT INTO "products" VALUES(31,'Botanicals Daisies','Home Decor','recurring',11.0,NULL,0,'2026-01-25 17:55:33',NULL,'unit','LEGO',NULL);
+INSERT INTO "products" VALUES(32,'Overall',NULL,'recurring',NULL,NULL,0,'2026-01-25 19:20:06',NULL,NULL,'Levis',NULL);
+CREATE TABLE profiles (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT UNIQUE NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+INSERT INTO "profiles" VALUES(1,'Yuyi','2026-01-25 19:56:34');
 CREATE TABLE scheduler_runs (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     started_at TEXT NOT NULL DEFAULT (datetime('now')),
@@ -804,6 +821,7 @@ INSERT INTO "stores" VALUES(5,'Douglas',5.0,NULL,NULL);
 INSERT INTO "stores" VALUES(6,'Etos',0.0,20.0,NULL);
 INSERT INTO "stores" VALUES(7,'Kruidvat',2.99,20.0,NULL);
 INSERT INTO "stores" VALUES(8,'Albert Heijn',0.0,NULL,NULL);
+INSERT INTO "stores" VALUES(9,'Intertoys',0.0,NULL,NULL);
 CREATE TABLE tracked_items (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     product_id INTEGER NOT NULL,
@@ -847,12 +865,14 @@ INSERT INTO "tracked_items" VALUES(29,11,7,'https://www.kruidvat.nl/olaplex-5x-n
 INSERT INTO "tracked_items" VALUES(30,4,1,'https://www.amazon.nl/-/en/ZigBee-Controller-DC12-24V-Compatible-Control/dp/B0CXJF6DRM/ref=sr_1_1?crid=3KJFSUOFW9KK&dib=eyJ2IjoiMSJ9.7Az3zpxSW3xYEMYzQmVlCUgJDtuPAMTVhy4aovkVQzC7jfTFxhDdKihAQXq0_bvvuWvbGWsmJpZ1BOAwd5wP8AhOWOyZ0pJdrCqTf4C4t5a6eQuEC62gGOt1V0vaRms3HBtu6Hp0YbgiIPaEVG3GW1zdNta20SEGxfZempAfYeEHIeoxX2I6ecea2OE3ZB0F_mpElLk7WVN95YsK9j7S78taU73Ao0rgLqk4M945MtCatpIL0UJZKCniTngmDKYwNunZKYHWFdAG8CDIu78xk_X5r1BzTanTKN9rhH2KNX8.pJHofQ12tn8kgRAF7YSHkHJ1iX7HibYhsc-lpX3zIvU&dib_tag=se&keywords=ZigBee+3.0+Pro%2B+Smart+LED+Controller&qid=1769353809&sprefix=zigbee+3.0+pro+smart+led+controller%2Caps%2C243&sr=8-1','ZigBee 3.0 Pro+ Smart LED Controller, 5-in-1, 2.4GHz, WiFi, PWM, LED Controller, 20A Max DC12-24V, Compatible with Alexa, Google Home, Smart Life, Tuya, Smart APP Control for Dimmer, CCT RGB RGBW',1.0,'unit',1,'2026-01-25 15:11:38',1,1,NULL,NULL,NULL);
 INSERT INTO "tracked_items" VALUES(31,5,2,'https://www.bol.com/nl/nl/p/whiskas-1-kattenbrokken-kip-zak-6-x-1-9kg/9200000072257568/?cid=1768770255524-1740561506859&bltgh=tvPN9yKWu3yjWl3bpZ1BNw.4_25.28.ProductImage','Whiskas 7+ Kattenbrokken - Kip - Zak 6 x 1.9kg',1.9,'kg',6,'2026-01-25 15:13:30',1,1,NULL,NULL,NULL);
 INSERT INTO "tracked_items" VALUES(32,19,1,'https://www.amazon.nl/-/en/916-89702-ACIDIC-BONDING-CONCENTRATE-conditioner/dp/B0C31QQYVL/ref=sr_1_15?crid=2G2LWT0HV2IEY&dib=eyJ2IjoiMSJ9.ZqzK-u2o4rC2tz2rBeC3zJFBnapphKtmXIg7fK7U0axvLAS1bFzwnFd7ittp-oMVznEl4bEJIYqDXOBuhUEbIG0rhc60RbvDWli7ek7FYHvK94VxsfF4AAEqOfoKJ9hbnI1DwNDBSsB7y5E5EvhG9gy_T9trKW4pM--xBxBu8opPW7t4EMPB-tu2MKv4O30-ElLLATCHdqeaGeqI5QrNWwV-o8pMhGH-nHaQr3NiiVTIbZ-Wgk1FCu8e4SALD2J8uz_hDA9M2jT4o86tQhtY-a-7Q6kUeUt4WBdZvGeA3Ks.AJGKCFhfsQpvfc78_ZVkOlJcrngMD7xQeupbs-_WCM8&dib_tag=se&keywords=Redken+Acidic+Bonding+Concentrate+conditioner&qid=1769354336&sprefix=redken+acidic+bonding+concentrate+conditione%2Caps%2C247&sr=8-15','ACIDIC BONDING CONCENTRATE conditioner',1.0,'L',1,'2026-01-25 15:26:06',1,1,NULL,NULL,NULL);
-INSERT INTO "tracked_items" VALUES(33,20,6,'https://www.etos.nl/producten/loreal-paris-elvive-bond-repair-pre-shampoo-200-ml-120662519.html','L''Oréal Paris Elvive Bond Repair Pre-shampoo 200 ML',200.0,'ml',1,NULL,1,1,NULL,NULL,NULL);
+INSERT INTO "tracked_items" VALUES(33,20,6,'https://www.etos.nl/producten/loreal-paris-elvive-bond-repair-pre-shampoo-200-ml-120662519.html','L''Oréal Paris Elvive Bond Repair Pre-shampoo 200 ML',200.0,'ml',1,'2026-01-25 17:45:34',1,1,NULL,NULL,NULL);
 INSERT INTO "tracked_items" VALUES(34,20,7,'https://www.kruidvat.nl/loreal-paris-elvive-bond-repair-rescue-pre-shampoo/p/5786583','L''Oréal Paris Elvive Bond Repair Rescue Pre-Shampoo',200.0,'ml',1,'2026-01-25 17:19:01',1,1,NULL,NULL,NULL);
 INSERT INTO "tracked_items" VALUES(35,21,1,'https://www.amazon.nl/-/en/REDKEN-Acidic-Bonding-Concentrate-Shampoo/dp/B093QNKSYR/ref=pd_bxgy_d_sccl_1/260-1856934-5132330?pd_rd_w=5uDZy&content-id=amzn1.sym.f55d1bfa-6e70-4525-8a1e-d27f38476426&pf_rd_p=f55d1bfa-6e70-4525-8a1e-d27f38476426&pf_rd_r=JCXHMAPQWYV6JP5TJZSB&pd_rd_wg=hEwbq&pd_rd_r=46f5e312-c293-4f76-a698-d15ab20bd67b&pd_rd_i=B093QNKSYR&psc=1','REDKEN, Acidic Bonding Concentrate Shampoo,1 L (1er Pack),No',1.0,'L',1,NULL,1,1,NULL,NULL,NULL);
-INSERT INTO "tracked_items" VALUES(36,29,6,'https://www.etos.nl/producten/cerave-schuimende-reinigingsgel-976-ml-120599556.html','CeraVe Foaming Cleansing Gel 976 ml',976.0,'ml',1,NULL,1,1,NULL,NULL,NULL);
+INSERT INTO "tracked_items" VALUES(36,29,6,'https://www.etos.nl/producten/cerave-schuimende-reinigingsgel-976-ml-120599556.html','CeraVe Foaming Cleansing Gel 976 ml',976.0,'ml',1,'2026-01-25 17:44:19',1,1,NULL,NULL,NULL);
 INSERT INTO "tracked_items" VALUES(37,29,6,'https://www.etos.nl/producten/cerave-schuimende-reinigingsgel-navulling-473-ml-120850931.html','CeraVe Foaming Cleansing Gel Refill 473 ml',473.0,'ml',1,'2026-01-25 17:18:30',1,1,NULL,NULL,NULL);
 INSERT INTO "tracked_items" VALUES(38,29,1,'https://www.amazon.nl/-/en/Cerave-Moisturizing-Cleansing-Foam-1l/dp/B07HF991NV/ref=sr_1_1?crid=27345PXLH8UFV&dib=eyJ2IjoiMSJ9.25cFludDdSedIn9rU8Kttm2NGT1hEv-WfRrRxylpBOxfH3kXlEoAKwg-JFmT4L6IqRVRfUxanEY1uL_9__4lnM9sK_xcMlhaj1Go_9lx5W9p84t3bQ318x5ehGwvZh7qNqyJxwmKU4kZXZKSFZDGEma3PRlsaRC1IbIGgdcbUwdtG333gAMPTt5woXkK9pQI1AUWthldiXGxKj6xIHPAQRSoncVkw6Ew1l2ZF2diPtQLiufAFF809KkIh1iAz1tYajd4V3Y9to86d1lvGGy9rMo9Wmtv9wCrsNCws-zCqCc.rKXuS6CYv0o8ZdlePhzWgE6M8VTismUwWDTcQDEFWgo&dib_tag=se&keywords=CeraVe%2BFoaming%2BCleansing%2BGel&qid=1769360669&sprefix=cerave%2Bfoaming%2Bcleansing%2Bgel%2Caps%2C318&sr=8-1&th=1','Cerave Moisturizing Cleansing Foam 1l',976.0,'ml',1,NULL,1,1,NULL,NULL,NULL);
+INSERT INTO "tracked_items" VALUES(39,31,9,'https://www.intertoys.nl/lego-botanicals-madeliefjes-11508','LEGO Botanicals Daisies 11508',1.0,'unit',1,'2026-01-25 17:57:55',1,1,NULL,NULL,NULL);
+INSERT INTO "tracked_items" VALUES(40,31,1,'https://www.amazon.nl/-/en/LEGO-Botanicals-Daisies-Artificial-Decoration/dp/B0FPXDY3X2/ref=pd_bxgy_d_sccl_1/260-1856934-5132330?pd_rd_w=OYdup&content-id=amzn1.sym.75142c34-87ae-4c36-8448-6beafeb35427&pf_rd_p=75142c34-87ae-4c36-8448-6beafeb35427&pf_rd_r=8KJ8VYFM9K2CF5MNBJ29&pd_rd_wg=9DuqP&pd_rd_r=d60108d7-aa92-446d-9e7d-4020d765d07a&pd_rd_i=B0FPXDY3X2&psc=1','LEGO Botanicals Daisies – Artificial Flowers Bouquet with Lavender – Building Kit for Children and Children''s Room Decoration – Gift for Valentine for Girls from 9 Years and Flower Lovers – 11508',1.0,'unit',1,NULL,1,1,NULL,NULL,NULL);
 CREATE INDEX idx_tracked_items_url ON tracked_items(url);
 CREATE INDEX idx_tracked_items_product ON tracked_items(product_id);
 CREATE INDEX idx_tracked_items_active ON tracked_items(is_active);
@@ -868,14 +888,16 @@ CREATE INDEX idx_categories_name ON categories(name);
 CREATE INDEX idx_labels_name ON labels(name);
 CREATE INDEX idx_brand_sizes_brand_cat ON brand_sizes(brand, category);
 DELETE FROM "sqlite_sequence";
-INSERT INTO "sqlite_sequence" VALUES('products',30);
-INSERT INTO "sqlite_sequence" VALUES('stores',8);
-INSERT INTO "sqlite_sequence" VALUES('tracked_items',38);
-INSERT INTO "sqlite_sequence" VALUES('api_usage',80);
-INSERT INTO "sqlite_sequence" VALUES('price_history',87);
-INSERT INTO "sqlite_sequence" VALUES('extraction_logs',96);
+INSERT INTO "sqlite_sequence" VALUES('products',32);
+INSERT INTO "sqlite_sequence" VALUES('stores',9);
+INSERT INTO "sqlite_sequence" VALUES('tracked_items',40);
+INSERT INTO "sqlite_sequence" VALUES('api_usage',83);
+INSERT INTO "sqlite_sequence" VALUES('price_history',90);
+INSERT INTO "sqlite_sequence" VALUES('extraction_logs',101);
 INSERT INTO "sqlite_sequence" VALUES('scheduler_runs',3);
 INSERT INTO "sqlite_sequence" VALUES('categories',155);
 INSERT INTO "sqlite_sequence" VALUES('labels',151);
 INSERT INTO "sqlite_sequence" VALUES('error_log',4);
+INSERT INTO "sqlite_sequence" VALUES('profiles',1);
+INSERT INTO "sqlite_sequence" VALUES('brand_sizes',1);
 COMMIT;

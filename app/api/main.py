@@ -28,6 +28,12 @@ from app.core.scheduler import (
     resume_scheduler,
     lifespan_scheduler,
 )
+from app.models.schemas import (
+    BrandSizeCreate,
+    BrandSizeResponse,
+    Profile,
+    ProfileCreate,
+)
 
 app = FastAPI(
     title="Price Spy",
@@ -145,21 +151,7 @@ class StoreCreate(BaseModel):
     notes: Optional[str] = None
 
 
-class BrandSizeCreate(BaseModel):
-    """Request model for creating/updating a brand size preference."""
-    brand: str
-    category: str
-    size: str
-    label: Optional[str] = None
 
-
-class BrandSizeResponse(BaseModel):
-    """Response model for a brand size preference."""
-    id: int
-    brand: str
-    category: str
-    size: str
-    label: Optional[str] = None
 
 
 class StoreResponse(BaseModel):
@@ -827,7 +819,10 @@ async def get_brand_sizes():
                 brand=p.brand,
                 category=p.category,
                 size=p.size,
-                label=p.label
+                label=p.label,
+                profile_id=p.profile_id,
+                item_type=p.item_type,
+                profile_name=getattr(p, 'profile_name', None)
             )
             for p in prefs
         ]
@@ -838,20 +833,25 @@ async def get_brand_sizes():
 @app.post("/api/brand-sizes", response_model=BrandSizeResponse)
 async def create_brand_size(pref: BrandSizeCreate):
     """Create a new brand size preference."""
-    from app.models.schemas import BrandSize as BrandSizeSchema
     db = get_db()
     try:
         repo = BrandSizeRepository(db)
-        new_pref = BrandSizeSchema(**pref.model_dump())
-        pref_id = repo.insert(new_pref)
-        result = repo.get_all()
-        created = next(p for p in result if p.id == pref_id)
+        # Pass Create model directly; repo doesn't need id field from object
+        pref_id = repo.insert(pref)
+        
+        # Fetch full object to return (with potential joined fields)
+        all_prefs = repo.get_all()
+        created = next(p for p in all_prefs if p.id == pref_id)
+        
         return BrandSizeResponse(
             id=created.id,
             brand=created.brand,
             category=created.category,
             size=created.size,
-            label=created.label
+            label=created.label,
+            profile_id=created.profile_id,
+            item_type=created.item_type,
+            profile_name=getattr(created, 'profile_name', None)
         )
     finally:
         db.close()
@@ -860,22 +860,30 @@ async def create_brand_size(pref: BrandSizeCreate):
 @app.put("/api/brand-sizes/{pref_id}", response_model=BrandSizeResponse)
 async def update_brand_size(pref_id: int, pref: BrandSizeCreate):
     """Update a brand size preference."""
-    from app.models.schemas import BrandSize as BrandSizeSchema
     db = get_db()
     try:
         repo = BrandSizeRepository(db)
-        updated_pref = BrandSizeSchema(**pref.model_dump())
-        repo.update(pref_id, updated_pref)
-        result = repo.get_all()
-        updated = next((p for p in result if p.id == pref_id), None)
-        if not updated:
+        
+        # Verify exists
+        existing = next((p for p in repo.get_all() if p.id == pref_id), None)
+        if not existing:
             raise HTTPException(status_code=404, detail="Preference not found")
+            
+        repo.update(pref_id, pref)
+        
+        # Fetch updated
+        all_prefs = repo.get_all()
+        updated = next(p for p in all_prefs if p.id == pref_id)
+        
         return BrandSizeResponse(
             id=updated.id,
             brand=updated.brand,
             category=updated.category,
             size=updated.size,
-            label=updated.label
+            label=updated.label,
+            profile_id=updated.profile_id,
+            item_type=updated.item_type,
+            profile_name=getattr(updated, 'profile_name', None)
         )
     finally:
         db.close()
@@ -888,6 +896,67 @@ async def delete_brand_size(pref_id: int):
     try:
         repo = BrandSizeRepository(db)
         repo.delete(pref_id)
+    finally:
+        db.close()
+
+
+# --- Profiles API ---
+
+@app.get("/api/profiles", response_model=List[Profile])
+async def get_profiles():
+    """Get all profiles."""
+    db = get_db()
+    try:
+        repo = ProfileRepository(db)
+        return repo.get_all()
+    finally:
+        db.close()
+
+@app.post("/api/profiles", response_model=Profile)
+async def create_profile(profile: ProfileCreate):
+    """Create a new profile."""
+    from app.models.schemas import Profile as ProfileSchema
+    db = get_db()
+    try:
+        repo = ProfileRepository(db)
+        try:
+            # Create object merely to satisfy type hint, though repo uses raw attributes usually
+            # But repo logic expects object. 
+            # In repository.py: cursor.execute("INSERT ...", (profile.name,))
+            # So passing the Pydantic model is fine.
+            new_id = repo.insert(profile)
+            return repo.get_by_id(new_id)
+        except Exception as e:
+             if "UNIQUE constraint failed" in str(e):
+                 raise HTTPException(status_code=400, detail="Profile name already exists")
+             raise e
+    finally:
+        db.close()
+
+@app.put("/api/profiles/{profile_id}", response_model=Profile)
+async def update_profile(profile_id: int, profile: ProfileCreate):
+    """Update a profile."""
+    db = get_db()
+    try:
+        repo = ProfileRepository(db)
+        try:
+            repo.update(profile_id, profile.name)
+            return repo.get_by_id(profile_id)
+        except Exception as e:
+             if "UNIQUE constraint failed" in str(e):
+                 raise HTTPException(status_code=400, detail="Profile name already exists")
+             raise e
+    finally:
+        db.close()
+
+@app.delete("/api/profiles/{profile_id}")
+async def delete_profile(profile_id: int):
+    """Delete a profile."""
+    db = get_db()
+    try:
+        repo = ProfileRepository(db)
+        repo.delete(profile_id)
+        return {"status": "success"}
     finally:
         db.close()
 

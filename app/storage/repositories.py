@@ -964,6 +964,14 @@ class ProfileRepository:
         row = cursor.fetchone()
         return self._row_to_record(row) if row else None
 
+    def update(self, profile_id: int, name: str) -> None:
+        """Update a profile name."""
+        self.db.execute(
+            "UPDATE profiles SET name = ? WHERE id = ?",
+            (name, profile_id)
+        )
+        self.db.commit()
+
     def delete(self, profile_id: int) -> None:
         """Delete a profile."""
         self.db.execute("DELETE FROM profiles WHERE id = ?", (profile_id,))
@@ -986,12 +994,16 @@ class BrandSizeRepository:
 
     def insert(self, record: BrandSize) -> int:
         """Insert a brand size preference and return its ID."""
+        # Use getattr for optional new fields to be safe against stale definitions
+        p_id = getattr(record, 'profile_id', None)
+        i_type = getattr(record, 'item_type', None)
+        
         cursor = self.db.execute(
             """
             INSERT INTO brand_sizes (brand, category, size, label, profile_id, item_type) 
             VALUES (?, ?, ?, ?, ?, ?)
             """,
-            (record.brand, record.category, record.size, record.label, record.profile_id, record.item_type)
+            (record.brand, record.category, record.size, record.label, p_id, i_type)
         )
         self.db.commit()
         return cursor.lastrowid
@@ -1044,13 +1056,17 @@ class BrandSizeRepository:
 
     def update(self, record_id: int, record: BrandSize) -> None:
         """Update a brand size preference."""
+        # Use getattr for optional new fields to be safe against stale definitions
+        p_id = getattr(record, 'profile_id', None)
+        i_type = getattr(record, 'item_type', None)
+
         self.db.execute(
             """
             UPDATE brand_sizes 
             SET brand = ?, category = ?, size = ?, label = ?, profile_id = ?, item_type = ?
             WHERE id = ?
             """,
-            (record.brand, record.category, record.size, record.label, record.profile_id, record.item_type, record_id)
+            (record.brand, record.category, record.size, record.label, p_id, i_type, record_id)
         )
         self.db.commit()
 
@@ -1061,9 +1077,6 @@ class BrandSizeRepository:
 
     def _row_to_record(self, row) -> BrandSize:
         """Convert a database row to a BrandSize record."""
-        # Check if joined column exists
-        profile_name = row["profile_name"] if "profile_name" in row.keys() else None
-        
         # Create base record
         bs = BrandSize(
             id=row["id"],
@@ -1072,14 +1085,8 @@ class BrandSizeRepository:
             size=row["size"],
             label=row["label"],
             profile_id=row["profile_id"] if "profile_id" in row.keys() else None,
+            profile_name=row["profile_name"] if "profile_name" in row.keys() else None,
             item_type=row["item_type"] if "item_type" in row.keys() else None,
         )
         
-        # Hacky way to attach the profile_name for response model without changing internal model too much
-        # Ideally, we return a BrandSizeResponse directly but the repo returns domain models.
-        if profile_name:
-            # We can't attach arbitrary attributes to Pydantic models easily if not defined.
-            # But the schema update included BrandSizeResponse. 
-            pass
-            
         return bs
