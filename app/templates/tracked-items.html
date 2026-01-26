@@ -151,9 +151,14 @@
                         <span x-text="editingItem ? '✏️' : '✨'"></span>
                         <span x-text="editingItem ? 'Edit Tracked Item' : 'Add Tracked Item'"></span>
                     </h3>
-                    <button @click="showForm = false" class="text-jolly-dark/20 hover:text-jolly-rose transition-colors">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-                    </button>
+                    <div class="flex items-center gap-4">
+                        <div class="text-[8px] font-black text-jolly-dark/20 uppercase tracking-widest bg-gray-50 px-2 py-1 rounded-lg border border-jolly-dark/5">
+                            Reg: <span x-text="brandSizes.length">0</span>
+                        </div>
+                        <button @click="showForm = false" class="text-jolly-dark/20 hover:text-jolly-rose transition-colors">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                        </button>
+                    </div>
                 </div>
                 <div x-show="error" class="mb-6 p-4 bg-jolly-rose/10 border border-jolly-rose/20 text-jolly-vivid rounded-2xl text-[11px] font-bold" x-text="error"></div>
                 <form @submit.prevent="saveItem()">
@@ -179,6 +184,24 @@
                             </select>
                         </div>
                     </div>
+
+
+                    <!-- Registered Preferences Section -->
+                    <template x-if="registryMatches.length > 0">
+                        <div class="mb-4">
+                            <label class="block text-[10px] font-black text-indigo-600 uppercase tracking-widest mb-2 ml-1">💡 Registered Preferences</label>
+                            <div class="flex flex-wrap gap-2">
+                                <template x-for="match in registryMatches" :key="match.id">
+                                    <button type="button" @click="applyRegistryMatch(match)"
+                                            class="bg-indigo-50 hover:bg-indigo-100 border border-indigo-100 text-indigo-700 px-3 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-2 active:scale-95">
+                                        <span>👤</span>
+                                        <span x-text="match.profile_name || match.label"></span>
+                                        <span class="opacity-50">(<span x-text="match.size"></span>)</span>
+                                    </button>
+                                </template>
+                            </div>
+                        </div>
+                    </template>
                     <div class="mb-4">
                         <label class="block text-[11px] font-black text-jolly-dark/60 uppercase tracking-widest mb-1.5 ml-1">🔗 URL *</label>
                         <input type="url" x-model="formData.url" required
@@ -198,9 +221,21 @@
                         </div>
                         <div>
                             <label class="block text-[11px] font-black text-jolly-dark/60 uppercase tracking-widest mb-1.5 ml-1">👤 Person Profile (Optional)</label>
-                            <input type="text" x-model="formData.target_size_label"
-                                   class="w-full border border-jolly-dark/10 rounded-2xl px-4 py-3 sm:py-2.5 focus:outline-none focus:ring-4 focus:ring-jolly/20 text-base sm:text-sm bg-gray-50/50 font-medium text-jolly-dark"
-                                   placeholder="e.g. Judith, John...">
+                            <select x-model="formData.target_size_label"
+                                    class="w-full border border-jolly-dark/10 rounded-2xl px-4 py-3 sm:py-2.5 focus:outline-none focus:ring-4 focus:ring-jolly/20 text-base sm:text-sm bg-gray-50/50 font-medium text-jolly-dark">
+                                <option value="">Select Profile...</option>
+                                <template x-for="p in profiles" :key="p.id">
+                                    <option :value="p.name" x-text="p.name" :selected="formData.target_size_label === p.name"></option>
+                                </template>
+                            </select>
+
+                            <!-- Associated Brands Info -->
+                            <div class="mt-2 ml-1" x-show="formData.target_size_label">
+                                <label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Associated Brands</label>
+                                <input type="text" :value="associatedBrands.length > 0 ? associatedBrands.join(', ') : 'None registered'" readonly
+                                       class="w-full border border-gray-100 rounded-xl px-3 py-2 text-[10px] font-mono bg-gray-50 font-bold outline-none cursor-default"
+                                       :class="associatedBrands.length > 0 ? 'text-indigo-600' : 'text-gray-400'">
+                            </div>
                         </div>
                     </div>
                     <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4 mb-6">
@@ -287,22 +322,12 @@ function trackedItemsManager() {
         products: [],
         stores: [],
         categories: [],
+        brandSizes: [],
+        profiles: [],
         showForm: false,
         editingItem: null,
         saving: false,
         error: null,
-        formData: {
-            product_id: '',
-            store_id: '',
-            url: '',
-            item_name_on_site: '',
-            quantity_unit: '',
-            items_per_lot: 1,
-            target_size: '',
-            target_size_label: '',
-            is_active: true,
-            alerts_enabled: true
-        },
 
         async init() {
             try {
@@ -310,13 +335,122 @@ function trackedItemsManager() {
                     this.loadItems(),
                     this.loadProducts(),
                     this.loadStores(),
-                    this.loadCategories()
+                    this.loadCategories(),
+                    this.loadRegistry()
                 ]);
             } catch (e) {
                 console.error('Failed to initialize:', e);
             }
         },
 
+        async loadRegistry() {
+            try {
+                const [bsResp, profResp] = await Promise.all([
+                    fetch('/api/brand-sizes'),
+                    fetch('/api/profiles')
+                ]);
+                this.brandSizes = await bsResp.json();
+                this.profiles = await profResp.json();
+            } catch (e) {
+                console.error('Failed to load registry:', e);
+            }
+        },
+
+        get registryMatches() {
+            const pid = this.formData.product_id;
+            if (!pid) return [];
+            const product = this.products.find(p => p.id == pid);
+            if (!product) {
+                console.debug(`[Registry] Product ID ${pid} not found in products list of length ${this.products.length}`);
+                return [];
+            }
+
+            const raw = [...this.brandSizes];
+            const matches = raw.filter(bs => {
+                const result = this.isMatch(bs, product);
+                return result;
+            });
+            
+            console.log(`[Registry] Matches for ${product.name}: ${matches.length}/${raw.length}`);
+            return matches;
+        },
+
+        isMatch(bs, product = null) {
+            if (!bs) return false;
+            const p = product || this.products.find(x => x.id == this.formData.product_id);
+            if (!p) return false;
+
+            const pB = String(p.brand || '').toLowerCase().trim();
+            const pC = String(p.category || '').toLowerCase().trim();
+            const pN = String(p.name || '').toLowerCase().trim();
+
+            const b = String(bs.brand || '').toLowerCase().trim();
+            const c = String(bs.category || '').toLowerCase().trim();
+            const t = String(bs.item_type || '').toLowerCase().trim();
+            
+            const bM = !b || (pB === b);
+            const cM = !c || (pC === c);
+            const tM = !t || pN.includes(t);
+            
+            return bM && cM && tM;
+        },
+
+        getMatchTrace(bs) {
+            const product = this.products.find(x => x.id == this.formData.product_id);
+            if (!product) return "No Selection";
+
+            const pB = String(product.brand || '').toLowerCase().trim();
+            const pC = String(product.category || '').toLowerCase().trim();
+            const pN = String(product.name || '').toLowerCase().trim();
+            const b = String(bs.brand || '').toLowerCase().trim();
+            const c = String(bs.category || '').toLowerCase().trim();
+            const t = String(bs.item_type || '').toLowerCase().trim();
+            
+            const bM = !b || (pB === b);
+            const cM = !c || (pC === c);
+            const tM = !t || pN.includes(t);
+            
+            return `B:${bM ? '✅' : '❌'}|C:${cM ? '✅' : '❌'}|T:${tM ? '✅' : '❌'}`;
+        },
+
+        applyRegistryMatch(match) {
+            this.formData.target_size = match.size;
+            this.formData.target_size_label = match.profile_name || match.label || 'Standard';
+        },
+
+        get associatedBrands() {
+            const prof = String(this.formData.target_size_label || '').toLowerCase().trim();
+            if (!prof) return [];
+            
+            const rawRules = [...this.brandSizes];
+            const matches = rawRules.filter(bs => {
+                const ruleProf = String(bs.profile_name || bs.label || '').toLowerCase().trim();
+                const matched = ruleProf === prof;
+                return matched;
+            });
+
+            console.log(`[Registry] Brands for "${prof}": matching against ${rawRules.length} rules. Found ${matches.length}`, matches);
+
+            const brands = matches
+                .map(bs => bs.brand)
+                .filter((v, i, a) => v && a.indexOf(v) === i);
+                
+            return brands.sort();
+        },
+
+        formData: {
+            product_id: '',
+            store_id: '',
+            url: '',
+            item_name_on_site: '',
+            quantity_size: '',
+            quantity_unit: '',
+            items_per_lot: 1,
+            target_size: '',
+            target_size_label: '',
+            is_active: true,
+            alerts_enabled: true
+        },
         async loadItems() {
             const response = await fetch('/api/tracked-items');
             this.items = await response.json();
