@@ -254,19 +254,25 @@
 
 
                                         <!-- Quantity & Size Row -->
-                                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                                            <div>
+                                        <div class="grid grid-cols-2 sm:grid-cols-5 gap-3">
+                                            <template x-if="isCategorySizeSensitive()">
+                                                <div>
+                                                    <label class="block text-[9px] font-black text-jolly-dark/40 uppercase tracking-widest ml-1 mb-1">Size</label>
+                                                    <input type="text" x-model="item.target_size" placeholder="Size" 
+                                                           class="w-full border border-jolly-dark/10 rounded-xl px-3 py-2 text-xs font-medium text-jolly-dark bg-white focus:outline-none focus:ring-2 focus:ring-jolly/20 placeholder-jolly-dark/30">
+                                                </div>
+                                            </template>
+                                            <div :class="isCategorySizeSensitive() ? 'col-span-1' : 'col-span-2'">
                                                 <label class="block text-[9px] font-black text-jolly-dark/40 uppercase tracking-widest ml-1 mb-1">Qty</label>
                                                 <input type="number" step="0.01" x-model="item.quantity_size" placeholder="100" required
                                                        class="w-full border border-jolly-dark/10 rounded-xl px-3 py-2 text-xs font-medium text-jolly-dark bg-white focus:outline-none focus:ring-2 focus:ring-jolly/20">
                                             </div>
                                             <div x-data="{
                                                 open: false,
-                                                commonUnits: ['ml', 'cl', 'dl', 'L', 'g', 'kg', 'lb', 'oz', 'fl oz', 'piece', 'pack', 'pair', 'set', 'tube', 'bottle', 'can', 'box', 'bag', 'tub', 'jar', 'unit'],
                                                 get filteredUnits() {
                                                     const q = item.quantity_unit ? item.quantity_unit.toLowerCase() : '';
-                                                    if (!q) return this.commonUnits;
-                                                    return this.commonUnits.filter(u => u.toLowerCase().includes(q));
+                                                    if (!q) return allUnits;
+                                                    return allUnits.filter(u => u.toLowerCase().includes(q));
                                                 }
                                             }" @click.away="open = false" class="relative">
                                                 <label class="block text-[9px] font-black text-jolly-dark/40 uppercase tracking-widest ml-1 mb-1">Unit</label>
@@ -287,7 +293,7 @@
                                                         </button>
                                                     </template>
                                                     <!-- Option to add new unit if not found -->
-                                                    <div x-show="item.quantity_unit && !commonUnits.includes(item.quantity_unit)" class="p-1">
+                                                    <div x-show="item.quantity_unit && !allUnits.includes(item.quantity_unit)" class="p-1">
                                                         <button type="button" @click="open = false"
                                                                 class="w-full text-left px-3 py-1.5 bg-jolly/5 hover:bg-jolly/10 rounded-lg text-[10px] font-black text-jolly-dark/50 uppercase tracking-wider transition-colors">
                                                             New: "<span x-text="item.quantity_unit"></span>"
@@ -335,7 +341,9 @@ function productsManager() {
     return {
         products: [],
         stores: [],
+        stores: [],
         allCategories: [],
+        allUnits: [],
         newTrackedItems: [],
         showForm: false,
         editingProduct: null,
@@ -353,16 +361,27 @@ function productsManager() {
             await this.loadProducts();
             await this.loadStores();
             await this.loadCategories();
+            await this.loadUnits();
         },
 
 
         async loadCategories() {
             try {
                 const response = await fetch('/api/categories');
-                this.allCategories = await response.json();
+                const data = await response.json();
+                this.allCategories = data;
+                // Map names to sensitivity
+                data.forEach(c => {
+                    this.categoryDetails[c.name] = c.is_size_sensitive;
+                });
             } catch (e) {
                 console.error('Failed to load categories:', e);
             }
+        },
+
+        isCategorySizeSensitive() {
+            if (!this.formData.category) return false;
+            return this.categoryDetails[this.formData.category] || false;
         },
 
         async loadProducts() {
@@ -380,6 +399,16 @@ function productsManager() {
                 this.stores = await response.json();
             } catch (e) {
                 console.error('Failed to load stores:', e);
+            }
+        },
+
+        async loadUnits() {
+             try {
+                const response = await fetch('/api/units');
+                const units = await response.json();
+                this.allUnits = units.map(u => u.name);
+            } catch (e) {
+                console.error('Failed to load units:', e);
             }
         },
 

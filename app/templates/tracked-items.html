@@ -183,6 +183,10 @@
                                class="w-full border border-jolly-dark/10 rounded-2xl px-4 py-3 sm:py-2.5 focus:outline-none focus:ring-4 focus:ring-jolly/20 text-base sm:text-sm bg-gray-50/50 font-medium text-jolly-dark">
                     </div>
                     <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4 mb-6">
+                        <div x-show="isCategorySizeSensitive()">
+                            <input type="text" x-model="formData.target_size" placeholder="Size"
+                                   class="w-full border border-jolly-dark/10 rounded-2xl px-4 py-3 sm:py-2.5 focus:outline-none focus:ring-4 focus:ring-jolly/20 text-base sm:text-sm bg-gray-50/50 font-medium text-jolly-dark">
+                        </div>
                         <div>
                             <label class="block text-[11px] font-black text-jolly-dark/60 uppercase tracking-widest mb-1.5 ml-1">🔢 Quantity *</label>
                             <input type="number" step="0.01" x-model="formData.quantity_size" required
@@ -190,11 +194,10 @@
                         </div>
                         <div x-data="{
                                 open: false,
-                                commonUnits: ['ml', 'cl', 'dl', 'L', 'g', 'kg', 'lb', 'oz', 'fl oz', 'piece', 'pack', 'pair', 'set', 'tube', 'bottle', 'can', 'box', 'bag', 'tub', 'jar', 'unit'],
                                 get filteredUnits() {
                                     const q = formData.quantity_unit ? formData.quantity_unit.toLowerCase() : '';
-                                    if (!q) return this.commonUnits;
-                                    return this.commonUnits.filter(u => u.toLowerCase().includes(q));
+                                    if (!q) return allUnits;
+                                    return allUnits.filter(u => u.toLowerCase().includes(q));
                                 }
                             }" @click.away="open = false" class="relative">
                             <label class="block text-[11px] font-black text-jolly-dark/60 uppercase tracking-widest mb-1.5 ml-1">⚖️ Unit *</label>
@@ -215,7 +218,7 @@
                                     </button>
                                 </template>
                                 <!-- Option to add new unit if not found -->
-                                <div x-show="formData.quantity_unit && !commonUnits.includes(formData.quantity_unit)" class="p-1">
+                                <div x-show="formData.quantity_unit && !allUnits.includes(formData.quantity_unit)" class="p-1">
                                     <button type="button" @click="open = false"
                                             class="w-full text-left px-3 py-1.5 bg-jolly/5 hover:bg-jolly/10 rounded-lg text-[10px] font-black text-jolly-dark/50 uppercase tracking-wider transition-colors">
                                         New: "<span x-text="formData.quantity_unit"></span>"
@@ -266,11 +269,14 @@ function trackedItemsManager() {
         products: [],
         stores: [],
         categories: [],
+        allUnits: [],
+        categoryDetails: {},
 
         formData: {
             product_id: '',
             store_id: '',
             url: '',
+            target_size: '',
             quantity_size: '',
             quantity_unit: '',
             items_per_lot: 1,
@@ -288,7 +294,8 @@ function trackedItemsManager() {
                     this.loadItems(),
                     this.loadProducts(),
                     this.loadStores(),
-                    this.loadCategories()
+                    this.loadCategories(),
+                    this.loadUnits()
                 ]);
             } catch (e) {
                 console.error('Failed to initialize:', e);
@@ -312,7 +319,29 @@ function trackedItemsManager() {
 
         async loadCategories() {
             const response = await fetch('/api/categories');
-            this.categories = await response.json();
+            const data = await response.json();
+            this.categories = data;
+            // Map names to sensitivity
+            data.forEach(c => {
+                this.categoryDetails[c.name] = c.is_size_sensitive;
+            });
+        },
+
+        async loadUnits() {
+             try {
+                const response = await fetch('/api/units');
+                const units = await response.json();
+                this.allUnits = units.map(u => u.name);
+            } catch (e) {
+                console.error('Failed to load units:', e);
+            }
+        },
+
+        isCategorySizeSensitive() {
+            if (!this.formData.product_id) return false;
+            const product = this.products.find(p => p.id == this.formData.product_id);
+            if (!product || !product.category) return false;
+            return this.categoryDetails[product.category] || false;
         },
 
         getGroupedItems() {
@@ -352,6 +381,7 @@ function trackedItemsManager() {
                 product_id: '',
                 store_id: '',
                 url: '',
+                target_size: '',
                 quantity_size: '',
                 quantity_unit: '',
                 items_per_lot: 1,
@@ -370,6 +400,7 @@ function trackedItemsManager() {
                 product_id: item.product_id,
                 store_id: item.store_id,
                 url: item.url,
+                target_size: item.target_size,
                 quantity_size: item.quantity_size,
                 quantity_unit: item.quantity_unit,
                 items_per_lot: item.items_per_lot || 1,
@@ -387,6 +418,7 @@ function trackedItemsManager() {
                 product_id: parseInt(this.formData.product_id),
                 store_id: parseInt(this.formData.store_id),
                 url: this.formData.url,
+                target_size: this.isCategorySizeSensitive() ? this.formData.target_size || null : null,
                 quantity_size: parseFloat(this.formData.quantity_size),
                 quantity_unit: this.formData.quantity_unit,
                 items_per_lot: parseInt(this.formData.items_per_lot) || 1,
