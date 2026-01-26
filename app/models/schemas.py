@@ -116,15 +116,29 @@ class ProductResponse(BaseModel):
 
 
 class Store(BaseModel):
-    """Store definition with shipping rules."""
-
+    """Store definition (Names only)."""
     model_config = ConfigDict(str_strip_whitespace=True)
-
     id: Optional[int] = None
     name: str = Field(..., min_length=1, max_length=100)
-    shipping_cost_standard: float = Field(default=0, ge=0)
-    free_shipping_threshold: Optional[float] = Field(default=None, ge=0)
-    notes: Optional[str] = Field(default=None, max_length=500)
+
+
+class StoreCreate(BaseModel):
+    """Request model for creating a store."""
+    model_config = ConfigDict(str_strip_whitespace=True)
+    name: str = Field(..., min_length=1, max_length=100)
+
+
+class StoreUpdate(BaseModel):
+    """Request model for partially updating a store."""
+    model_config = ConfigDict(str_strip_whitespace=True)
+    name: Optional[str] = Field(default=None, min_length=1, max_length=100)
+
+
+class StoreResponse(BaseModel):
+    """Response model for store."""
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    name: str
 
 
 class TrackedItem(BaseModel):
