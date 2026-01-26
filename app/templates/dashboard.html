@@ -297,8 +297,8 @@
                         </div>
                     </div>
                 </div>
-                <div x-show="error" class="mt-2 text-[10px] text-red-500 bg-red-50 p-1.5 rounded border border-red-100" x-text="error"></div>
-                <div x-show="success" class="mt-2 text-[10px] text-green-600 font-bold" x-text="success"></div>
+                <div x-show="error" x-cloak class="mt-2 text-[10px] text-red-500 bg-red-50 p-1.5 rounded border border-red-100" x-text="error"></div>
+                <div x-show="success" x-cloak class="mt-2 text-[10px] text-green-600 font-bold" x-text="success"></div>
             </div>
             {% endfor %}
         </div>
@@ -314,7 +314,7 @@
             <h3 class="text-sm font-black text-jolly-dark uppercase tracking-wider flex items-center gap-2">
                 <span>📜</span> Recent Extractions
             </h3>
-            <div x-show="stats" class="text-[10px] font-black text-jolly-dark/40 uppercase bg-gray-50 px-3 py-1 rounded-full border border-gray-100">
+            <div x-show="stats" x-cloak class="text-[10px] font-black text-jolly-dark/40 uppercase bg-gray-50 px-3 py-1 rounded-full border border-gray-100">
                 SUCCESS: <span class="text-jolly" x-text="stats?.success_count || 0"></span>
             </div>
         </div>
