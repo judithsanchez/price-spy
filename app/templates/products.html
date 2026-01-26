@@ -3,10 +3,10 @@
 {% block title %}Products - Price Spy{% endblock %}
 
 {% block content %}
-<div x-data="productsManager()" x-init="loadProducts()">
+<div x-data="productsManager()" x-init="init()">
     <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-8">
         <h2 class="text-2xl font-black text-jolly-dark">📦 Products</h2>
-        <button @click="showForm = true; editingProduct = null; formData = {name: '', category: '', target_price: '', current_stock: 0}"
+        <button @click="resetForm()"
                 class="bg-jolly text-jolly-dark px-6 py-3 sm:py-2 rounded-2xl hover:bg-jolly-lime transition-all font-black uppercase tracking-widest text-[10px] shadow-sm border border-jolly-dark/5">
             Add New Product
         </button>
@@ -63,6 +63,7 @@
                     <tr>
                         <th class="px-6 py-4 text-left text-[10px] font-black text-jolly-dark/40 uppercase tracking-widest">Name</th>
                         <th class="px-6 py-4 text-left text-[10px] font-black text-jolly-dark/40 uppercase tracking-widest hidden md:table-cell">Category</th>
+                        <th class="px-6 py-4 text-left text-[10px] font-black text-jolly-dark/40 uppercase tracking-widest hidden md:table-cell">Brand</th>
                         <th class="px-6 py-4 text-left text-[10px] font-black text-jolly-dark/40 uppercase tracking-widest">Target Price</th>
                         <th class="px-6 py-4 text-left text-[10px] font-black text-jolly-dark/40 uppercase tracking-widest hidden lg:table-cell">Stock</th>
                         <th class="px-6 py-4 text-left text-[10px] font-black text-jolly-dark/40 uppercase tracking-widest">Actions</th>
@@ -84,6 +85,9 @@
                             </td>
                             <td class="px-6 py-5 max-w-[120px] hidden md:table-cell">
                                 <span class="text-[10px] font-black uppercase text-jolly-dark/40 px-2.5 py-1 bg-gray-50 rounded-full border border-jolly-dark/5" x-text="product.category || '-'"></span>
+                            </td>
+                            <td class="px-6 py-5 max-w-[120px] hidden md:table-cell">
+                                <span class="text-[10px] font-black uppercase text-blue-600 px-2.5 py-1 bg-blue-50 rounded-full border border-blue-100" x-text="product.brand || '-'"></span>
                             </td>
                             <td class="px-6 py-5 whitespace-nowrap font-black text-jolly-dark">
                                 <span x-text="product.target_price ? '€' + product.target_price.toFixed(2) : '-'"></span>
@@ -108,7 +112,7 @@
 
     <!-- Modal Form -->
     <div x-show="showForm" x-cloak style="display: none;" class="fixed inset-0 bg-jolly-dark/40 backdrop-blur-sm flex items-end sm:items-center justify-center z-50">
-        <div class="bg-white w-full sm:rounded-3xl shadow-2xl sm:w-full sm:max-w-md max-h-[90vh] overflow-y-auto rounded-t-3xl border border-jolly-dark/5"
+        <div class="bg-white w-full sm:rounded-3xl shadow-2xl sm:w-full sm:max-w-3xl max-h-[90vh] overflow-y-auto rounded-t-3xl border border-jolly-dark/5"
              @click.away="showForm = false"
              x-transition:enter="transition ease-out duration-300"
              x-transition:enter-start="opacity-0 translate-y-full sm:translate-y-0 sm:scale-95"
@@ -120,8 +124,8 @@
             <div class="sm:hidden flex justify-center py-3">
                 <div class="w-12 h-1.5 bg-jolly-lime/30 rounded-full"></div>
             </div>
-            <div class="p-6 sm:p-8">
-                <div class="flex justify-between items-center mb-6">
+            <div class="p-5 sm:p-6">
+                <div class="flex justify-between items-center mb-4">
                     <h3 class="text-xl font-black text-jolly-dark flex items-center gap-2">
                         <span x-text="editingProduct ? '✏️' : '✨'"></span>
                         <span x-text="editingProduct ? 'Edit Product' : 'Add Product'"></span>
@@ -132,48 +136,94 @@
                 </div>
                 <div x-show="error" class="mb-6 p-4 bg-jolly-rose/10 border border-jolly-rose/20 text-jolly-vivid rounded-2xl text-[11px] font-bold" x-text="error"></div>
                 <form @submit.prevent="saveProduct()">
-                    <div class="mb-5">
+                    <div class="mb-3">
                         <label class="block text-[11px] font-black text-jolly-dark/60 uppercase tracking-widest mb-1.5 ml-1">Product Name *</label>
                         <input type="text" x-model="formData.name" required
                                class="w-full border border-jolly-dark/10 rounded-2xl px-4 py-3 sm:py-2.5 focus:outline-none focus:ring-4 focus:ring-jolly/20 text-base sm:text-sm bg-gray-50/50 font-medium text-jolly-dark">
                     </div>
-                    <div class="mb-5" x-data="{ 
-                        open: false, 
-                        categories: [], 
-                        async fetchCategories() {
-                            const q = formData.category || '';
-                            const url = q === '' ? '/api/categories' : `/api/categories/search?q=${encodeURIComponent(q)}`;
-                            const resp = await fetch(url);
-                            this.categories = await resp.json();
-                        }
-                    }" @click.away="open = false">
-                        <label class="block text-[11px] font-black text-jolly-dark/60 uppercase tracking-widest mb-1.5 ml-1">Category</label>
-                        <div class="relative">
-                            <input type="text" x-model="formData.category" 
-                                   @input="open = true; fetchCategories()" 
-                                   @focus="open = true; fetchCategories()"
-                                   class="w-full border border-jolly-dark/10 rounded-2xl px-4 py-3 sm:py-2.5 focus:outline-none focus:ring-4 focus:ring-jolly/20 text-base sm:text-sm bg-gray-50/50 font-medium text-jolly-dark" 
-                                   placeholder="Search or add category...">
-                            <div x-show="open && (categories.length > 0 || (formData.category && formData.category.trim() !== ''))" 
-                                 x-cloak
-                                 class="absolute z-50 w-full mt-2 bg-white border border-jolly-dark/10 rounded-2xl shadow-xl max-h-60 overflow-y-auto p-2 border border-jolly-dark/5 shadow-jolly-dark/5">
-                                <template x-for="cat in categories" :key="cat.id">
-                                    <button type="button" @click="formData.category = cat.name; open = false" 
-                                            class="w-full text-left px-4 py-2.5 hover:bg-jolly/10 rounded-xl text-sm font-medium text-jolly-dark transition-colors">
-                                        <span x-text="cat.name"></span>
-                                    </button>
-                                </template>
-                                <div x-show="formData.category && !categories.some(c => c.name.toLowerCase() === formData.category.toLowerCase())"
-                                     class="p-1">
-                                    <button type="button" @click="open = false"
-                                            class="w-full text-left px-4 py-2.5 bg-jolly/5 hover:bg-jolly/10 rounded-xl text-xs font-black text-jolly-dark/50 uppercase tracking-wider transition-colors">
-                                        ✨ New: "<span x-text="formData.category"></span>"
-                                    </button>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-5 mb-3">
+                        <div x-data="{ 
+                            open: false, 
+                            brands: [], 
+                            async fetchBrands() {
+                                const q = formData.brand || '';
+                                const resp = await fetch('/api/brands');
+                                const allBrands = await resp.json();
+                                if (q === '') {
+                                    this.brands = allBrands;
+                                } else {
+                                    this.brands = allBrands.filter(b => b.toLowerCase().includes(q.toLowerCase()));
+                                }
+                            }
+                        }" @click.away="open = false">
+                            <label class="block text-[11px] font-black text-jolly-dark/60 uppercase tracking-widest mb-1.5 ml-1">Brand</label>
+                            <div class="relative">
+                                <input type="text" x-model="formData.brand"
+                                    @input="open = true; fetchBrands()" 
+                                    @focus="open = true; fetchBrands()"
+                                    autocomplete="off"
+                                    class="w-full border border-jolly-dark/10 rounded-2xl px-4 py-3 sm:py-2.5 focus:outline-none focus:ring-4 focus:ring-jolly/20 text-base sm:text-sm bg-gray-50/50 font-medium text-jolly-dark"
+                                    placeholder="e.g. Nike, Zara...">
+                                <div x-show="open && (brands.length > 0 || (formData.brand && formData.brand.trim() !== ''))" 
+                                     x-cloak
+                                     class="absolute z-50 w-full mt-2 bg-white border border-jolly-dark/10 rounded-2xl shadow-xl max-h-60 overflow-y-auto p-2 border border-jolly-dark/5 shadow-jolly-dark/5">
+                                    <template x-for="brand in brands" :key="brand">
+                                        <button type="button" @click="formData.brand = brand; open = false" 
+                                                class="w-full text-left px-4 py-2.5 hover:bg-jolly/10 rounded-xl text-sm font-medium text-jolly-dark transition-colors">
+                                            <span x-text="brand"></span>
+                                        </button>
+                                    </template>
+                                    <div x-show="formData.brand && !brands.some(b => b.toLowerCase() === formData.brand.toLowerCase())"
+                                         class="p-1">
+                                        <button type="button" @click="open = false"
+                                                class="w-full text-left px-4 py-2.5 bg-jolly/5 hover:bg-jolly/10 rounded-xl text-xs font-black text-jolly-dark/50 uppercase tracking-wider transition-colors">
+                                            ✨ New: "<span x-text="formData.brand"></span>"
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div x-data="{ 
+                            open: false, 
+                            categories: [], 
+                            async fetchCategories() {
+                                const q = formData.category || '';
+                                const url = q === '' ? '/api/categories' : `/api/categories/search?q=${encodeURIComponent(q)}`;
+                                const resp = await fetch(url);
+                                this.categories = await resp.json();
+                            }
+                        }" @click.away="open = false">
+                            <label class="block text-[11px] font-black text-jolly-dark/60 uppercase tracking-widest mb-1.5 ml-1">Category</label>
+                            <div class="relative">
+                                <input type="text" x-model="formData.category" 
+                                       @input="open = true; fetchCategories()" 
+                                       @focus="open = true; fetchCategories()"
+                                       class="w-full border border-jolly-dark/10 rounded-2xl px-4 py-3 sm:py-2.5 focus:outline-none focus:ring-4 focus:ring-jolly/20 text-base sm:text-sm bg-gray-50/50 font-medium text-jolly-dark" 
+                                       placeholder="Search or add category...">
+                                <div x-show="open && (categories.length > 0 || (formData.category && formData.category.trim() !== ''))" 
+                                     x-cloak
+                                     class="absolute z-50 w-full mt-2 bg-white border border-jolly-dark/10 rounded-2xl shadow-xl max-h-60 overflow-y-auto p-2 border border-jolly-dark/5 shadow-jolly-dark/5">
+                                    <template x-for="cat in categories" :key="cat.id">
+                                        <button type="button" @click="formData.category = cat.name; open = false" 
+                                                class="w-full text-left px-4 py-2.5 hover:bg-jolly/10 rounded-xl text-sm font-medium text-jolly-dark transition-colors">
+                                            <span x-text="cat.name"></span>
+                                        </button>
+                                    </template>
+                                    <div x-show="formData.category && !categories.some(c => c.name.toLowerCase() === formData.category.toLowerCase())"
+                                         class="p-1">
+                                        <button type="button" @click="open = false"
+                                                class="w-full text-left px-4 py-2.5 bg-jolly/5 hover:bg-jolly/10 rounded-xl text-xs font-black text-jolly-dark/50 uppercase tracking-wider transition-colors">
+                                            ✨ New: "<span x-text="formData.category"></span>"
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
-                    <div class="mb-5" x-data="{ 
+
+
+                    <div class="mb-3" x-data="{ 
                         open: false, 
                         allLabels: [], 
                         async fetchLabels() {
@@ -225,7 +275,7 @@
                             </div>
                         </div>
                     </div>
-                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
                         <div>
                             <label class="block text-[11px] font-black text-jolly-dark/60 uppercase tracking-widest mb-1.5 ml-1">Target Price (EUR)</label>
                             <input type="number" step="0.01" x-model="formData.target_price"
@@ -272,7 +322,123 @@
                                    class="w-full border border-jolly-dark/10 rounded-2xl px-4 py-3 sm:py-2.5 focus:outline-none focus:ring-4 focus:ring-jolly/20 text-base sm:text-sm bg-gray-50/50 font-medium text-jolly-dark">
                         </div>
                     </div>
-                    <div class="flex flex-col-reverse sm:flex-row justify-end gap-3 px-6 py-5 bg-gray-50/30 border-t border-jolly-dark/5 rounded-b-3xl mt-4 -mx-6 -mb-6 sm:-mx-8 sm:-mb-8">
+
+                    
+                    <!-- Tracked Items Section -->
+                    <div class="mb-4 pt-4 border-t border-jolly-dark/5">
+                        <div class="flex justify-between items-center mb-3">
+                            <label class="block text-[11px] font-black text-jolly-dark/60 uppercase tracking-widest ml-1">🔗 Tracked Items (Optional)</label>
+                            <button type="button" @click="addTrackedItem()"
+                                    class="text-[10px] font-black uppercase tracking-widest text-jolly hover:text-jolly-lime transition-colors flex items-center gap-1">
+                                <span>➕ Add URL</span>
+                            </button>
+                        </div>
+                        
+                        <div class="space-y-3">
+                            <template x-for="(item, index) in newTrackedItems" :key="index">
+                                <div class="bg-gray-50/50 p-3 rounded-2xl border border-jolly-dark/5 relative group">
+                                    <button type="button" @click="removeTrackedItem(index)" 
+                                            class="absolute -top-2 -right-2 bg-white text-jolly-rose shadow-sm rounded-full w-6 h-6 flex items-center justify-center hover:bg-jolly-rose hover:text-white transition-all border border-jolly-rose/20 text-xs z-10">
+                                        ✕
+                                    </button>
+                                    
+                                    <div class="grid grid-cols-1 gap-3">
+                                        <!-- Store & URL Row -->
+                                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                            <!-- Store Selection -->
+                                            <div>
+                                                <div x-show="!item.is_new_store" class="flex gap-2">
+                                                    <select x-model="item.store_id" class="w-full border border-jolly-dark/10 rounded-xl px-3 py-2 text-xs font-medium text-jolly-dark bg-white focus:outline-none focus:ring-2 focus:ring-jolly/20" :required="!item.is_new_store && item.url">
+                                                        <option value="">Select Store</option>
+                                                        <template x-for="store in stores" :key="store.id">
+                                                            <option :value="store.id" x-text="store.name"></option>
+                                                        </template>
+                                                    </select>
+                                                    <button type="button" @click="item.is_new_store = true" class="shrink-0 px-2 py-1 bg-jolly/10 hover:bg-jolly/20 rounded-lg text-jolly-dark text-xs font-bold transition-colors" title="New Store">
+                                                        ➕
+                                                    </button>
+                                                </div>
+                                                
+                                                <div x-show="item.is_new_store" class="flex gap-2">
+                                                    <input type="text" x-model="item.new_store_name" placeholder="New Store Name" 
+                                                           class="w-full border border-jolly-dark/10 rounded-xl px-3 py-2 text-xs font-bold text-jolly-dark focus:outline-none focus:ring-2 focus:ring-jolly/20 placeholder-jolly-dark/30"
+                                                           :required="item.is_new_store && item.url">
+                                                    <button type="button" @click="item.is_new_store = false; item.new_store_name = ''" class="shrink-0 px-2 py-1 bg-gray-100 hover:bg-gray-200 rounded-lg text-jolly-dark/60 text-xs font-bold transition-colors" title="Cancel">
+                                                        ✕
+                                                    </button>
+                                                </div>
+                                            </div>
+                                            <!-- URL Input -->
+                                            <div>
+                                                <input type="url" x-model="item.url" placeholder="https://..." 
+                                                       class="w-full border border-jolly-dark/10 rounded-xl px-3 py-2 text-xs text-jolly-dark bg-white focus:outline-none focus:ring-2 focus:ring-jolly/20 placeholder-jolly-dark/30" :required="item.store_id || item.new_store_name">
+                                            </div>
+                                        </div>
+
+                                        <!-- Item Name Row -->
+                                        <div>
+                                            <input type="text" x-model="item.item_name_on_site" placeholder="Item Name on Site (Optional)" 
+                                                   class="w-full border border-jolly-dark/10 rounded-xl px-3 py-2 text-xs text-jolly-dark bg-white focus:outline-none focus:ring-2 focus:ring-jolly/20 placeholder-jolly-dark/30">
+                                        </div>
+
+                                        <!-- Quantity & Size Row -->
+                                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                                            <div>
+                                                <label class="block text-[9px] font-black text-jolly-dark/40 uppercase tracking-widest ml-1 mb-1">Qty</label>
+                                                <input type="number" step="0.01" x-model="item.quantity_size" placeholder="100" required
+                                                       class="w-full border border-jolly-dark/10 rounded-xl px-3 py-2 text-xs font-medium text-jolly-dark bg-white focus:outline-none focus:ring-2 focus:ring-jolly/20">
+                                            </div>
+                                            <div x-data="{
+                                                open: false,
+                                                commonUnits: ['ml', 'cl', 'dl', 'L', 'g', 'kg', 'lb', 'oz', 'fl oz', 'piece', 'pack', 'pair', 'set', 'tube', 'bottle', 'can', 'box', 'bag', 'tub', 'jar', 'unit'],
+                                                get filteredUnits() {
+                                                    const q = item.quantity_unit ? item.quantity_unit.toLowerCase() : '';
+                                                    if (!q) return this.commonUnits;
+                                                    return this.commonUnits.filter(u => u.toLowerCase().includes(q));
+                                                }
+                                            }" @click.away="open = false" class="relative">
+                                                <label class="block text-[9px] font-black text-jolly-dark/40 uppercase tracking-widest ml-1 mb-1">Unit</label>
+                                                <input type="text" x-model="item.quantity_unit" 
+                                                       @input="open = true" 
+                                                       @focus="open = true"
+                                                       placeholder="ml" required
+                                                       class="w-full border border-jolly-dark/10 rounded-xl px-3 py-2 text-xs font-medium text-jolly-dark bg-white focus:outline-none focus:ring-2 focus:ring-jolly/20 relative z-10">
+                                                
+                                                <!-- Autocomplete Dropdown -->
+                                                <div x-show="open" 
+                                                     x-cloak
+                                                     class="absolute z-50 w-full mt-1 bg-white border border-jolly-dark/10 rounded-xl shadow-xl max-h-32 overflow-y-auto p-1 border border-jolly-dark/5 shadow-jolly-dark/5">
+                                                    <template x-for="unit in filteredUnits" :key="unit">
+                                                        <button type="button" @click="item.quantity_unit = unit; open = false" 
+                                                                class="w-full text-left px-3 py-1.5 hover:bg-jolly/10 rounded-lg text-xs font-medium text-jolly-dark transition-colors">
+                                                            <span x-text="unit"></span>
+                                                        </button>
+                                                    </template>
+                                                    <!-- Option to add new unit if not found -->
+                                                    <div x-show="item.quantity_unit && !commonUnits.includes(item.quantity_unit)" class="p-1">
+                                                        <button type="button" @click="open = false"
+                                                                class="w-full text-left px-3 py-1.5 bg-jolly/5 hover:bg-jolly/10 rounded-lg text-[10px] font-black text-jolly-dark/50 uppercase tracking-wider transition-colors">
+                                                            New: "<span x-text="item.quantity_unit"></span>"
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="col-span-2">
+                                                <label class="block text-[9px] font-black text-jolly-dark/40 uppercase tracking-widest ml-1 mb-1">Items/Lot</label>
+                                                <input type="number" x-model="item.items_per_lot" placeholder="1"
+                                                       class="w-full border border-jolly-dark/10 rounded-xl px-3 py-2 text-xs font-medium text-jolly-dark bg-white focus:outline-none focus:ring-2 focus:ring-jolly/20">
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </template>
+                            <div x-show="newTrackedItems.length === 0" class="text-center py-4 bg-gray-50/30 rounded-xl border border-dashed border-jolly-dark/10">
+                                <span class="text-[10px] text-jolly-dark/40 uppercase tracking-widest">No items added</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex flex-col-reverse sm:flex-row justify-end gap-3 px-6 py-5 bg-gray-50/30 border-t border-jolly-dark/5 rounded-b-3xl mt-4 -mx-5 -mb-5 sm:-mx-6 sm:-mb-6">
                         <button type="button" @click="showForm = false" :disabled="saving"
                                 class="px-6 py-3 bg-white text-jolly-dark/60 font-black rounded-2xl hover:bg-gray-100 transition-all uppercase tracking-widest text-[10px] border border-jolly-dark/5 shadow-sm disabled:opacity-50">
                             Cancel
@@ -296,6 +462,9 @@
 function productsManager() {
     return {
         products: [],
+        stores: [],
+        allCategories: [],
+        newTrackedItems: [],
         showForm: false,
         editingProduct: null,
         saving: false,
@@ -303,10 +472,27 @@ function productsManager() {
         formData: {
             name: '',
             category: '',
+            brand: '',
             labels: '',
             target_price: '',
             target_unit: '',
             current_stock: 0
+        },
+
+        async init() {
+            await this.loadProducts();
+            await this.loadStores();
+            await this.loadCategories();
+        },
+
+
+        async loadCategories() {
+            try {
+                const response = await fetch('/api/categories');
+                this.allCategories = await response.json();
+            } catch (e) {
+                console.error('Failed to load categories:', e);
+            }
         },
 
         async loadProducts() {
@@ -318,18 +504,87 @@ function productsManager() {
             }
         },
 
+        async loadStores() {
+             try {
+                const response = await fetch('/api/stores');
+                this.stores = await response.json();
+            } catch (e) {
+                console.error('Failed to load stores:', e);
+            }
+        },
+
+        resetForm() {
+            this.editingProduct = null;
+            this.error = null;
+            this.newTrackedItems = [];
+            this.formData = {
+                name: '',
+                category: '',
+                brand: '',
+                labels: '',
+                target_price: '',
+                target_unit: '',
+                current_stock: 0
+            };
+            this.showForm = true;
+        },
+
         editProduct(product) {
             this.editingProduct = product;
             this.error = null;
+            this.newTrackedItems = []; // Reset tracked items for existing product edits (future: fetch existing)
             this.formData = {
                 name: product.name,
                 category: product.category || '',
+                brand: product.brand || '',
                 labels: product.labels || '',
                 target_price: product.target_price ?? '',
                 target_unit: product.target_unit || '',
                 current_stock: product.current_stock ?? 0
             };
             this.showForm = true;
+        },
+
+        addTrackedItem() {
+            this.newTrackedItems.push({
+                store_id: '',
+                url: '',
+                item_name_on_site: '',
+                is_new_store: false,
+                new_store_name: '',
+                target_size: '',
+                target_size_label: '',
+                quantity_size: '',
+                quantity_unit: '',
+                items_per_lot: 1
+            });
+        },
+
+        removeTrackedItem(index) {
+            this.newTrackedItems.splice(index, 1);
+        },
+
+        checkCategorySensitivity(categoryName) {
+            if (!this.allCategories || this.allCategories.length === 0) return true; 
+            const cat = this.allCategories.find(c => c.name.toLowerCase() === categoryName.toLowerCase());
+            return cat ? (cat.is_size_sensitive === 1 || cat.is_size_sensitive === true) : true;
+        },
+
+        async createStore(name) {
+             try {
+                const response = await fetch('/api/stores', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({name: name})
+                });
+                if (!response.ok) throw new Error('Failed to create store');
+                const newStore = await response.json();
+                this.stores.push(newStore);
+                return newStore.id;
+            } catch (e) {
+                console.error('Store creation error:', e);
+                throw e;
+            }
         },
 
         async saveProduct() {
@@ -339,6 +594,7 @@ function productsManager() {
             const data = {
                 name: this.formData.name,
                 category: this.formData.category || null,
+                brand: this.formData.brand || null,
                 labels: this.formData.labels || null,
                 target_price: this.formData.target_price !== '' ? parseFloat(this.formData.target_price) : null,
                 target_unit: this.formData.target_unit || null,
@@ -346,6 +602,7 @@ function productsManager() {
             };
 
             try {
+                // 1. Save Product
                 const url = this.editingProduct ? `/api/products/${this.editingProduct.id}` : '/api/products';
                 const method = this.editingProduct ? 'PUT' : 'POST';
 
@@ -358,6 +615,42 @@ function productsManager() {
                 if (!response.ok) {
                     const err = await response.json();
                     throw new Error(err.detail || 'Failed to save product');
+                }
+
+                const savedProduct = await response.json();
+                const productId = savedProduct.id;
+
+                // 2. Save Tracked Items
+                for (const item of this.newTrackedItems) {
+                    if (!item.url) continue;
+
+                    let storeId = item.store_id;
+                    
+                    // Create new store if needed
+                    if (item.is_new_store && item.new_store_name) {
+                        storeId = await this.createStore(item.new_store_name);
+                    }
+
+                    if (!storeId) continue;
+
+                    // Create tracked item
+                    await fetch('/api/tracked-items', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({
+                            product_id: productId,
+                            store_id: storeId,
+                            url: item.url,
+                            item_name_on_site: item.item_name_on_site || null,
+                            target_size: item.target_size || null,
+                            target_size_label: item.target_size_label || null,
+                            quantity_size: item.quantity_size ? parseFloat(item.quantity_size) : null,
+                            quantity_unit: item.quantity_unit || null,
+                            items_per_lot: parseInt(item.items_per_lot) || 1,
+                            is_active: true,
+                            alerts_enabled: true
+                        })
+                    });
                 }
 
                 this.showForm = false;

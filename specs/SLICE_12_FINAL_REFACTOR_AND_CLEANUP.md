@@ -57,6 +57,8 @@
 
 ## 6. Bug Fixes
 - [x] **Etos "Member Only" Handling:** Fixed issue where membership status was treated as a discount type. Moved "Member Only" info to notes to avoid miscategorization.
+- [x] **Hot Deals logic:** Fixed item-level deal filtering by correcting the target hit logic for unit-based items.
+- [x] **Target Price Logic & UI:** Fixed persistence of `target_unit` in the API, corrected target hit false positives for unit-based targets, and verified UI displays units correctly.
 
 ---
 

@@ -130,3 +130,47 @@ def compare_prices(
         discount_fixed_amount=discount_fixed_amount,
         deal_description=deal_description
     )
+
+
+def is_size_available(target_size: str, available_sizes: list[str]) -> bool:
+    """
+    Check if a target size is present in the list of available sizes.
+    Performs case-insensitive matching and strips whitespace.
+    """
+    if not target_size or not available_sizes:
+        return False
+    
+    target = target_size.lower().strip()
+    return any(s.lower().strip() == target for s in available_sizes)
+
+
+def determine_effective_availability(
+    is_size_sensitive: bool,
+    raw_is_available: bool,
+    available_sizes_json: Optional[str],
+    target_size: Optional[str]
+) -> bool:
+    """
+    Determine the effective availability of an item.
+    If category is size-sensitive and we have a target size, 
+    availability depends on that size being in stock.
+    Otherwise, it uses the raw availability from the page.
+    """
+    if not raw_is_available:
+        return False
+        
+    if not is_size_sensitive:
+        return raw_is_available
+        
+    if not target_size or not available_sizes_json:
+        # Sensitive but no target or no sizes extracted, fall back to raw
+        return raw_is_available
+        
+    import json
+    try:
+        extracted_sizes = json.loads(available_sizes_json)
+        if not isinstance(extracted_sizes, list):
+            return raw_is_available
+        return is_size_available(target_size, extracted_sizes)
+    except:
+        return raw_is_available
