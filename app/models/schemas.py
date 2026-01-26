@@ -1,7 +1,7 @@
 """Pydantic models for Price Spy data validation."""
 
 from datetime import datetime, timezone
-from typing import Literal, Optional
+from typing import Literal, Optional, List
 
 from pydantic import BaseModel, Field, field_validator, ConfigDict
 
@@ -143,23 +143,63 @@ class StoreResponse(BaseModel):
 
 class TrackedItem(BaseModel):
     """URL to track - linked to product and store."""
-
     model_config = ConfigDict(str_strip_whitespace=True)
-
     id: Optional[int] = None
     product_id: int = Field(...)
     store_id: int = Field(...)
     url: str = Field(..., min_length=1)
-    item_name_on_site: Optional[str] = Field(default=None, max_length=300)
+    target_size: Optional[str] = Field(default=None, max_length=50)
     quantity_size: float = Field(default=1.0, gt=0)
-    quantity_unit: str = Field(default="st", min_length=1, max_length=20)
+    quantity_unit: str = Field(..., min_length=1, max_length=20)
     items_per_lot: int = Field(default=1, ge=1)
-    preferred_model: Optional[str] = Field(default=None, max_length=50)
-    target_size: Optional[str] = Field(default=None, max_length=20)
-    target_size_label: Optional[str] = Field(default=None, max_length=100)
     last_checked_at: Optional[datetime] = None
     is_active: bool = True
     alerts_enabled: bool = True
+
+
+class TrackedItemCreate(BaseModel):
+    """Request model for creating a tracked item."""
+    model_config = ConfigDict(str_strip_whitespace=True)
+    product_id: int
+    store_id: int
+    url: str = Field(..., min_length=1)
+    target_size: Optional[str] = Field(default=None, max_length=50)
+    quantity_size: float = Field(default=1.0, gt=0)
+    quantity_unit: str = Field(..., min_length=1, max_length=20)
+    items_per_lot: int = 1
+    label_ids: Optional[List[int]] = None
+
+
+class TrackedItemUpdate(BaseModel):
+    """Request model for partially updating a tracked item."""
+    model_config = ConfigDict(str_strip_whitespace=True)
+    product_id: Optional[int] = None
+    store_id: Optional[int] = None
+    url: Optional[str] = None
+    target_size: Optional[str] = None
+    quantity_size: Optional[float] = None
+    quantity_unit: Optional[str] = None
+    items_per_lot: Optional[int] = None
+    is_active: Optional[bool] = None
+    alerts_enabled: Optional[bool] = None
+    label_ids: Optional[List[int]] = None
+
+
+class TrackedItemResponse(BaseModel):
+    """Response model for tracked item."""
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    product_id: int
+    store_id: int
+    url: str
+    target_size: Optional[str] = None
+    quantity_size: float
+    quantity_unit: str
+    items_per_lot: int
+    last_checked_at: Optional[datetime] = None
+    is_active: bool
+    alerts_enabled: bool
+    labels: List["LabelResponse"] = []
 
 
 class PriceComparison(BaseModel):
@@ -262,48 +302,33 @@ class CategoryResponse(BaseModel):
 
 
 class Label(BaseModel):
-    """Label definition for products."""
-
+    """Label for tracked items."""
     model_config = ConfigDict(str_strip_whitespace=True)
-
     id: Optional[int] = None
-    name: str = Field(..., min_length=1, max_length=100)
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    name: str = Field(..., min_length=1, max_length=50)
+    created_at: Optional[datetime] = None
 
 
-class BrandSizeBase(BaseModel):
-    brand: str = Field(..., min_length=1, max_length=100)
-    category: str = Field(..., min_length=1, max_length=100)
-    size: str = Field(..., min_length=1, max_length=20)
-    label: Optional[str] = Field(default=None, max_length=100)
-    profile_id: Optional[int] = Field(default=None)
-    profile_name: Optional[str] = Field(default=None)
-    item_type: Optional[str] = Field(default=None, max_length=100)
-
-class BrandSizeCreate(BrandSizeBase):
-    pass
-
-class BrandSize(BrandSizeBase):
-    """User size preference for a brand and category."""
+class LabelCreate(BaseModel):
+    """Request model for creating a label."""
     model_config = ConfigDict(str_strip_whitespace=True)
-    id: int
-
-class BrandSizeResponse(BrandSize):
-    profile_name: Optional[str] = None
+    name: str = Field(..., min_length=1, max_length=50)
 
 
-class ProfileBase(BaseModel):
-    name: str = Field(..., min_length=1, max_length=100)
+class LabelUpdate(BaseModel):
+    """Request model for partially updating a label."""
+    model_config = ConfigDict(str_strip_whitespace=True)
+    name: Optional[str] = Field(default=None, min_length=1, max_length=50)
 
-class ProfileCreate(ProfileBase):
-    pass
 
-class Profile(ProfileBase):
-    """User profile definition."""
+class LabelResponse(BaseModel):
+    """Response model for label."""
     model_config = ConfigDict(from_attributes=True)
-    
     id: int
+    name: str
     created_at: datetime
+
+
 
 
 class Unit(BaseModel):

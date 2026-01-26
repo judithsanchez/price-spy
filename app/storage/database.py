@@ -40,18 +40,24 @@ CREATE TABLE IF NOT EXISTS tracked_items (
     product_id INTEGER NOT NULL,
     store_id INTEGER NOT NULL,
     url TEXT NOT NULL,
-    item_name_on_site TEXT,
+    target_size TEXT,
     quantity_size REAL NOT NULL,
     quantity_unit TEXT NOT NULL,
     items_per_lot INTEGER DEFAULT 1,
-    preferred_model TEXT,
-    target_size TEXT,
-    target_size_label TEXT,
     last_checked_at TEXT,
     is_active INTEGER DEFAULT 1,
     alerts_enabled INTEGER DEFAULT 1,
-    FOREIGN KEY(product_id) REFERENCES products(id),
-    FOREIGN KEY(store_id) REFERENCES stores(id)
+    FOREIGN KEY(product_id) REFERENCES products(id) ON DELETE CASCADE,
+    FOREIGN KEY(store_id) REFERENCES stores(id) ON DELETE CASCADE
+);
+
+-- Junction table for optional labels on tracked items
+CREATE TABLE IF NOT EXISTS tracked_item_labels (
+    tracked_item_id INTEGER NOT NULL,
+    label_id INTEGER NOT NULL,
+    PRIMARY KEY (tracked_item_id, label_id),
+    FOREIGN KEY(tracked_item_id) REFERENCES tracked_items(id) ON DELETE CASCADE,
+    FOREIGN KEY(label_id) REFERENCES labels(id) ON DELETE CASCADE
 );
 
 CREATE INDEX IF NOT EXISTS idx_tracked_items_url ON tracked_items(url);
@@ -150,27 +156,15 @@ CREATE TABLE IF NOT EXISTS categories (
 
 CREATE INDEX IF NOT EXISTS idx_categories_name ON categories(name);
 
--- Labels Table
+-- Labels Table (Names only, not seeded)
 CREATE TABLE IF NOT EXISTS labels (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL UNIQUE,
-    is_size_sensitive INTEGER DEFAULT 0,
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
 CREATE INDEX IF NOT EXISTS idx_labels_name ON labels(name);
 
--- Brand Sizes Table (User preferences)
-CREATE TABLE IF NOT EXISTS brand_sizes (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    brand TEXT NOT NULL,
-    category TEXT NOT NULL,
-    size TEXT NOT NULL,
-    label TEXT, -- optional label to distinguish people
-    UNIQUE(brand, category, label)
-);
-
-CREATE INDEX IF NOT EXISTS idx_brand_sizes_brand_cat ON brand_sizes(brand, category);
 """
 
 
@@ -196,7 +190,7 @@ class Database:
             )
 
         if self._conn is None:
-            self._conn = sqlite3.connect(self.db_path)
+            self._conn = sqlite3.connect(self.db_path, check_same_thread=False)
             self._conn.row_factory = sqlite3.Row
         return self._conn
 
@@ -264,16 +258,46 @@ class Database:
             ]
             conn.executemany("INSERT INTO units (name) VALUES (?)", [(u,) for u in units])
 
-        # 4. Schema evolution for other tables (keep as is for tracked_items etc)
-        # Check tracked_items for preferred_model and target_size
+        # 3. Handle tracked_items table migration
         cursor.execute("PRAGMA table_info(tracked_items)")
         columns = [row["name"] for row in cursor.fetchall()]
-        if "preferred_model" not in columns:
-            cursor.execute("ALTER TABLE tracked_items ADD COLUMN preferred_model TEXT")
-        if "target_size" not in columns:
-            cursor.execute("ALTER TABLE tracked_items ADD COLUMN target_size TEXT")
+        unwanted_ti = ["item_name_on_site", "preferred_model", "target_size_label"]
+        
+        if any(col in columns for col in unwanted_ti):
+            # Identify columns we want to KEEP
+            keep = [c for c in columns if c not in unwanted_ti]
+            keep_csv = ", ".join(keep)
             
-        # Check price_history for new columns
+            conn.execute("BEGIN TRANSACTION")
+            try:
+                conn.execute("ALTER TABLE tracked_items RENAME TO tracked_items_old")
+                conn.executescript(SCHEMA)
+                # Copy data intersection
+                conn.execute(f"INSERT INTO tracked_items ({keep_csv}) SELECT {keep_csv} FROM tracked_items_old")
+                conn.execute("DROP TABLE tracked_items_old")
+                conn.commit()
+                print("Tracked items migration successful.")
+            except Exception as e:
+                conn.rollback()
+                print(f"Migration failed (tracked_items): {e}")
+
+        # 4. Handle labels table migration (Remove is_size_sensitive)
+        cursor.execute("PRAGMA table_info(labels)")
+        columns = [row["name"] for row in cursor.fetchall()]
+        if "is_size_sensitive" in columns:
+            conn.execute("BEGIN TRANSACTION")
+            try:
+                conn.execute("ALTER TABLE labels RENAME TO labels_old")
+                conn.executescript(SCHEMA)
+                conn.execute("INSERT INTO labels (id, name, created_at) SELECT id, name, created_at FROM labels_old")
+                conn.execute("DROP TABLE labels_old")
+                conn.commit()
+                print("Labels table simplified.")
+            except Exception as e:
+                conn.rollback()
+                print(f"Migration failed (labels): {e}")
+
+        # 5. Handle other schema evolutions (if any)
         cursor.execute("PRAGMA table_info(price_history)")
         columns = [row["name"] for row in cursor.fetchall()]
         if "is_available" not in columns:

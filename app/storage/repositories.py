@@ -13,8 +13,8 @@ from app.models.schemas import (
     ExtractionLog,
     Category,
     Label,
-    BrandSize,
-    Profile,
+    Unit,
+    PurchaseType,
 )
 
 
@@ -434,21 +434,17 @@ class TrackedItemRepository:
         cursor = self.db.execute(
             """
             INSERT INTO tracked_items
-            (product_id, store_id, url, item_name_on_site, quantity_size,
-             quantity_unit, items_per_lot, preferred_model, target_size, target_size_label, is_active, alerts_enabled)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            (product_id, store_id, url, target_size, quantity_size, quantity_unit, items_per_lot, is_active, alerts_enabled)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 item.product_id,
                 item.store_id,
                 item.url,
-                item.item_name_on_site,
+                item.target_size,
                 item.quantity_size,
                 item.quantity_unit,
                 item.items_per_lot,
-                item.preferred_model,
-                item.target_size,
-                item.target_size_label,
                 1 if item.is_active else 0,
                 1 if item.alerts_enabled else 0,
             )
@@ -517,13 +513,10 @@ class TrackedItemRepository:
                 product_id = ?,
                 store_id = ?,
                 url = ?,
-                item_name_on_site = ?,
+                target_size = ?,
                 quantity_size = ?,
                 quantity_unit = ?,
                 items_per_lot = ?,
-                preferred_model = ?,
-                target_size = ?,
-                target_size_label = ?,
                 is_active = ?,
                 alerts_enabled = ?
             WHERE id = ?
@@ -532,13 +525,10 @@ class TrackedItemRepository:
                 item.product_id,
                 item.store_id,
                 item.url,
-                item.item_name_on_site,
+                item.target_size,
                 item.quantity_size,
                 item.quantity_unit,
                 item.items_per_lot,
-                item.preferred_model,
-                item.target_size,
-                item.target_size_label,
                 1 if item.is_active else 0,
                 1 if item.alerts_enabled else 0,
                 item_id,
@@ -576,24 +566,61 @@ class TrackedItemRepository:
         )
         self.db.commit()
 
+    # --- Label Management ---
+
+    def add_label(self, tracked_item_id: int, label_id: int) -> None:
+        """Associate a label with a tracked item."""
+        self.db.execute(
+            "INSERT OR IGNORE INTO tracked_item_labels (tracked_item_id, label_id) VALUES (?, ?)",
+            (tracked_item_id, label_id)
+        )
+        self.db.commit()
+
+    def remove_all_labels(self, tracked_item_id: int) -> None:
+        """Remove all label associations for a tracked item."""
+        self.db.execute(
+            "DELETE FROM tracked_item_labels WHERE tracked_item_id = ?",
+            (tracked_item_id,)
+        )
+        self.db.commit()
+
+    def set_labels(self, tracked_item_id: int, label_ids: List[int]) -> None:
+        """Set label associations for a tracked item (replaces existing)."""
+        self.remove_all_labels(tracked_item_id)
+        for label_id in label_ids:
+            self.add_label(tracked_item_id, label_id)
+
+    def get_labels(self, tracked_item_id: int) -> List[Label]:
+        """Get all labels associated with a tracked item."""
+        cursor = self.db.execute(
+            """
+            SELECT l.* FROM labels l
+            JOIN tracked_item_labels til ON l.id = til.label_id
+            WHERE til.tracked_item_id = ?
+            """,
+            (tracked_item_id,)
+        )
+        from app.models.schemas import Label
+        return [Label(id=row["id"], name=row["name"]) for row in cursor.fetchall()]
+
     def _row_to_record(self, row) -> TrackedItem:
         """Convert a database row to a TrackedItem."""
         last_checked = None
         if row["last_checked_at"]:
-            last_checked = datetime.fromisoformat(row["last_checked_at"])
+            try:
+                last_checked = datetime.fromisoformat(row["last_checked_at"])
+            except:
+                pass
 
         return TrackedItem(
             id=row["id"],
             product_id=row["product_id"],
             store_id=row["store_id"],
             url=row["url"],
-            item_name_on_site=row["item_name_on_site"],
+            target_size=row["target_size"],
             quantity_size=row["quantity_size"],
             quantity_unit=row["quantity_unit"],
             items_per_lot=row["items_per_lot"],
-            preferred_model=row["preferred_model"],
-            target_size=row["target_size"],
-            target_size_label=row["target_size_label"],
             last_checked_at=last_checked,
             is_active=bool(row["is_active"]),
             alerts_enabled=bool(row["alerts_enabled"]),
@@ -971,159 +998,6 @@ class LabelRepository:
             created_at=datetime.fromisoformat(row["created_at"]),
         )
 
-
-class ProfileRepository:
-    """Repository for user profile operations."""
-
-    def __init__(self, db: Database):
-        self.db = db
-
-    def insert(self, profile: Profile) -> int:
-        """Insert a profile and return its ID."""
-        cursor = self.db.execute(
-            "INSERT INTO profiles (name) VALUES (?)",
-            (profile.name,)
-        )
-        self.db.commit()
-        return cursor.lastrowid
-
-    def get_all(self) -> List[Profile]:
-        """Get all profiles."""
-        cursor = self.db.execute("SELECT * FROM profiles ORDER BY name")
-        return [self._row_to_record(row) for row in cursor.fetchall()]
-
-    def get_by_id(self, profile_id: int) -> Optional[Profile]:
-        """Get a profile by ID."""
-        cursor = self.db.execute("SELECT * FROM profiles WHERE id = ?", (profile_id,))
-        row = cursor.fetchone()
-        return self._row_to_record(row) if row else None
-
-    def update(self, profile_id: int, name: str) -> None:
-        """Update a profile name."""
-        self.db.execute(
-            "UPDATE profiles SET name = ? WHERE id = ?",
-            (name, profile_id)
-        )
-        self.db.commit()
-
-    def delete(self, profile_id: int) -> None:
-        """Delete a profile."""
-        self.db.execute("DELETE FROM profiles WHERE id = ?", (profile_id,))
-        self.db.commit()
-
-    def _row_to_record(self, row) -> Profile:
-        """Convert a database row to a Profile."""
-        return Profile(
-            id=row["id"],
-            name=row["name"],
-            created_at=datetime.fromisoformat(row["created_at"]),
-        )
-
-
-class BrandSizeRepository:
-    """Repository for user size preference operations."""
-
-    def __init__(self, db: Database):
-        self.db = db
-
-    def insert(self, record: BrandSize) -> int:
-        """Insert a brand size preference and return its ID."""
-        # Use getattr for optional new fields to be safe against stale definitions
-        p_id = getattr(record, 'profile_id', None)
-        i_type = getattr(record, 'item_type', None)
-        
-        cursor = self.db.execute(
-            """
-            INSERT INTO brand_sizes (brand, category, size, label, profile_id, item_type) 
-            VALUES (?, ?, ?, ?, ?, ?)
-            """,
-            (record.brand, record.category, record.size, record.label, p_id, i_type)
-        )
-        self.db.commit()
-        return cursor.lastrowid
-
-    def get_all(self) -> List[BrandSize]:
-        """Get all brand size preferences with profile names."""
-        cursor = self.db.execute("""
-            SELECT bs.*, p.name as profile_name 
-            FROM brand_sizes bs
-            LEFT JOIN profiles p ON bs.profile_id = p.id
-            ORDER BY bs.brand, bs.category
-        """)
-        return [self._row_to_record(row) for row in cursor.fetchall()]
-
-    def get_by_brand_and_category(
-        self, brand: str, category: str, label: Optional[str] = None, 
-        profile_id: Optional[int] = None, item_type: Optional[str] = None
-    ) -> Optional[BrandSize]:
-        """Get size preference with granular matching."""
-        query = "SELECT * FROM brand_sizes WHERE brand = ? AND category = ?"
-        params = [brand, category]
-        
-        # Priority 1: Profile ID (New system)
-        if profile_id:
-            query += " AND profile_id = ?"
-            params.append(profile_id)
-        # Fallback: Label (Old system)
-        elif label:
-            query += " AND label = ?"
-            params.append(label)
-        else:
-            query += " AND (profile_id IS NULL AND label IS NULL)"
-            
-        # Optional: Item Type granularity
-        if item_type:
-            query += " AND (item_type = ? OR item_type IS NULL)"
-            params.append(item_type)
-            # Logic here is tricky: we want exact match if available, or generic if not.
-            # For simplicity in this getter, we might filtering in memory or ordering by specificity.
-            # Only exact matching for now.
-        
-        cursor = self.db.execute(query, tuple(params))
-        # If multiple matches (e.g. one with item_type, one without), we should prefer specific.
-        # But for 'get' we likely want specific.
-        
-        row = cursor.fetchone()
-        if row is None:
-            return None
-        return self._row_to_record(row)
-
-    def update(self, record_id: int, record: BrandSize) -> None:
-        """Update a brand size preference."""
-        # Use getattr for optional new fields to be safe against stale definitions
-        p_id = getattr(record, 'profile_id', None)
-        i_type = getattr(record, 'item_type', None)
-
-        self.db.execute(
-            """
-            UPDATE brand_sizes 
-            SET brand = ?, category = ?, size = ?, label = ?, profile_id = ?, item_type = ?
-            WHERE id = ?
-            """,
-            (record.brand, record.category, record.size, record.label, p_id, i_type, record_id)
-        )
-        self.db.commit()
-
-    def delete(self, record_id: int) -> None:
-        """Delete a brand size preference."""
-        self.db.execute("DELETE FROM brand_sizes WHERE id = ?", (record_id,))
-        self.db.commit()
-
-    def _row_to_record(self, row) -> BrandSize:
-        """Convert a database row to a BrandSize record."""
-        # Create base record
-        bs = BrandSize(
-            id=row["id"],
-            brand=row["brand"],
-            category=row["category"],
-            size=row["size"],
-            label=row["label"],
-            profile_id=row["profile_id"] if "profile_id" in row.keys() else None,
-            profile_name=row["profile_name"] if "profile_name" in row.keys() else None,
-            item_type=row["item_type"] if "item_type" in row.keys() else None,
-        )
-        
-        return bs
 
 
 class UnitRepository:
