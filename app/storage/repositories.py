@@ -213,19 +213,15 @@ class ProductRepository:
         cursor = self.db.execute(
             """
             INSERT INTO products
-            (name, category, labels, purchase_type, target_price, target_unit, brand, preferred_unit_size, current_stock)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            (name, category, purchase_type, target_price, target_unit)
+            VALUES (?, ?, ?, ?, ?)
             """,
             (
                 product.name,
                 product.category,
-                product.labels,
                 product.purchase_type,
                 product.target_price,
                 product.target_unit,
-                product.brand,
-                product.preferred_unit_size,
-                product.current_stock,
             )
         )
         self.db.commit()
@@ -247,19 +243,69 @@ class ProductRepository:
         cursor = self.db.execute("SELECT * FROM products ORDER BY name")
         return [self._row_to_record(row) for row in cursor.fetchall()]
 
-    def get_unique_brands(self) -> List[str]:
-        """Get all unique brand names from products."""
-        cursor = self.db.execute("SELECT DISTINCT brand FROM products WHERE brand IS NOT NULL AND brand != '' ORDER BY brand")
-        return [row["brand"] for row in cursor.fetchall()]
+    def search(self, query: str) -> List[Product]:
+        """Search products by name using SQL LIKE."""
+        cursor = self.db.execute(
+            "SELECT * FROM products WHERE name LIKE ? ORDER BY name",
+            (f"%{query}%",)
+        )
+        return [self._row_to_record(row) for row in cursor.fetchall()]
 
-    def update_stock(self, product_id: int, delta: int) -> None:
-        """Update product stock by delta (positive or negative)."""
+    def get_by_category(self, category: str) -> List[Product]:
+        """Get products by category."""
+        cursor = self.db.execute(
+            "SELECT * FROM products WHERE category = ? ORDER BY name",
+            (category,)
+        )
+        return [self._row_to_record(row) for row in cursor.fetchall()]
+
+    def find_orphans(self) -> List[Product]:
+        """Find products that have no tracked items linked to them."""
+        cursor = self.db.execute(
+            """
+            SELECT p.* FROM products p
+            LEFT JOIN tracked_items ti ON p.id = ti.product_id
+            WHERE ti.id IS NULL
+            ORDER BY p.name
+            """
+        )
+        return [self._row_to_record(row) for row in cursor.fetchall()]
+
+    def bulk_delete(self, product_ids: List[int]) -> None:
+        """Delete multiple products and their tracked items."""
+        if not product_ids:
+            return
+        
+        placeholders = ",".join("?" for _ in product_ids)
+        # 1. Delete tracked items first (cascade)
         self.db.execute(
-            "UPDATE products SET current_stock = current_stock + ? WHERE id = ?",
-            (delta, product_id)
+            f"DELETE FROM tracked_items WHERE product_id IN ({placeholders})",
+            tuple(product_ids)
+        )
+        # 2. Delete products
+        self.db.execute(
+            f"DELETE FROM products WHERE id IN ({placeholders})",
+            tuple(product_ids)
         )
         self.db.commit()
 
+    def merge(self, source_id: int, target_id: int) -> None:
+        """Merge source product into target product and move all tracked items."""
+        if source_id == target_id:
+            return
+            
+        try:
+            # 1. Update all tracked items to point to the target product
+            self.db.execute(
+                "UPDATE tracked_items SET product_id = ? WHERE product_id = ?",
+                (target_id, source_id)
+            )
+            # 2. Delete the source product
+            self.db.execute("DELETE FROM products WHERE id = ?", (source_id,))
+            self.db.commit()
+        except Exception as e:
+            self.db.rollback()
+            raise e
     def update(self, product_id: int, product: Product) -> None:
         """Update a product."""
         self.db.execute(
@@ -267,25 +313,17 @@ class ProductRepository:
             UPDATE products SET
                 name = ?,
                 category = ?,
-                labels = ?,
                 purchase_type = ?,
                 target_price = ?,
-                target_unit = ?,
-                brand = ?,
-                preferred_unit_size = ?,
-                current_stock = ?
+                target_unit = ?
             WHERE id = ?
             """,
             (
                 product.name,
                 product.category,
-                product.labels,
                 product.purchase_type,
                 product.target_price,
                 product.target_unit,
-                product.brand,
-                product.preferred_unit_size,
-                product.current_stock,
                 product_id,
             )
         )
@@ -302,14 +340,9 @@ class ProductRepository:
             id=row["id"],
             name=row["name"],
             category=row["category"],
-            labels=row["labels"],
             purchase_type=row["purchase_type"],
             target_price=row["target_price"],
             target_unit=row["target_unit"],
-            brand=row["brand"],
-            preferred_unit_size=row["preferred_unit_size"],
-            target_size_label=row["target_size_label"],
-            current_stock=row["current_stock"],
             created_at=datetime.fromisoformat(row["created_at"]),
         )
 
@@ -799,6 +832,19 @@ class CategoryRepository:
     def __init__(self, db: Database):
         self.db = db
 
+    def normalize_name(self, name: str) -> str:
+        """Normalize category name: case-insensitive check against DB, else capitalize."""
+        clean_name = name.strip()
+        if not clean_name:
+            return clean_name
+            
+        cursor = self.db.execute("SELECT name FROM categories WHERE name = ? COLLATE NOCASE", (clean_name,))
+        row = cursor.fetchone()
+        if row:
+            return row["name"]
+            
+        return clean_name.capitalize()
+
     def insert(self, category: Category) -> int:
         """Insert a category and return its ID."""
         cursor = self.db.execute(
@@ -1090,3 +1136,145 @@ class BrandSizeRepository:
         )
         
         return bs
+
+
+class UnitRepository:
+    """Repository for unit operations."""
+
+    def __init__(self, db: Database):
+        self.db = db
+
+    def insert(self, unit: Unit) -> int:
+        """Insert a unit and return its ID."""
+        cursor = self.db.execute(
+            "INSERT INTO units (name) VALUES (?)",
+            (unit.name,)
+        )
+        self.db.commit()
+        return cursor.lastrowid
+
+    def get_all(self) -> List[Unit]:
+        """Get all units."""
+        cursor = self.db.execute("SELECT * FROM units ORDER BY name")
+        return [self._row_to_record(row) for row in cursor.fetchall()]
+
+    def get_by_name(self, name: str) -> Optional[Unit]:
+        """Get a unit by name."""
+        cursor = self.db.execute("SELECT * FROM units WHERE name = ?", (name,))
+        row = cursor.fetchone()
+        if row is None:
+            return None
+        return self._row_to_record(row)
+
+    def get_by_id(self, unit_id: int) -> Optional[Unit]:
+        """Get a unit by ID."""
+        cursor = self.db.execute("SELECT * FROM units WHERE id = ?", (unit_id,))
+        row = cursor.fetchone()
+        if row is None:
+            return None
+        return self._row_to_record(row)
+
+    def update(self, unit_id: int, unit: Unit) -> None:
+        """Update a unit and cascade name changes."""
+        old_unit = self.get_by_id(unit_id)
+        if not old_unit:
+            return
+
+        # Cascade changes if name changed
+        if unit.name != old_unit.name:
+            # Update products target_unit
+            self.db.execute(
+                "UPDATE products SET target_unit = ? WHERE target_unit = ?",
+                (unit.name, old_unit.name)
+            )
+            # Update tracked_items quantity_unit
+            self.db.execute(
+                "UPDATE tracked_items SET quantity_unit = ? WHERE quantity_unit = ?",
+                (unit.name, old_unit.name)
+            )
+
+        self.db.execute(
+            "UPDATE units SET name = ? WHERE id = ?",
+            (unit.name, unit_id)
+        )
+        self.db.commit()
+
+    def delete(self, unit_id: int) -> None:
+        """Delete a unit."""
+        self.db.execute("DELETE FROM units WHERE id = ?", (unit_id,))
+        self.db.commit()
+
+    def _row_to_record(self, row) -> Unit:
+        """Convert a database row to a Unit."""
+        return Unit(
+            id=row["id"],
+            name=row["name"]
+        )
+
+
+class PurchaseTypeRepository:
+    """Repository for purchase type operations."""
+
+    def __init__(self, db: Database):
+        self.db = db
+
+    def insert(self, pt: PurchaseType) -> int:
+        """Insert a purchase type and return its ID."""
+        cursor = self.db.execute(
+            "INSERT INTO purchase_types (name) VALUES (?)",
+            (pt.name,)
+        )
+        self.db.commit()
+        return cursor.lastrowid
+
+    def get_all(self) -> List[PurchaseType]:
+        """Get all purchase types."""
+        cursor = self.db.execute("SELECT * FROM purchase_types ORDER BY name")
+        return [self._row_to_record(row) for row in cursor.fetchall()]
+
+    def get_by_name(self, name: str) -> Optional[PurchaseType]:
+        """Get a purchase type by name."""
+        cursor = self.db.execute("SELECT * FROM purchase_types WHERE name = ?", (name,))
+        row = cursor.fetchone()
+        if row is None:
+            return None
+        return self._row_to_record(row)
+
+    def get_by_id(self, pt_id: int) -> Optional[PurchaseType]:
+        """Get a purchase type by ID."""
+        cursor = self.db.execute("SELECT * FROM purchase_types WHERE id = ?", (pt_id,))
+        row = cursor.fetchone()
+        if row is None:
+            return None
+        return self._row_to_record(row)
+
+    def update(self, pt_id: int, pt: PurchaseType) -> None:
+        """Update a purchase type and cascade name changes."""
+        old_pt = self.get_by_id(pt_id)
+        if not old_pt:
+            return
+
+        # Cascade changes to products if name changed
+        if pt.name != old_pt.name:
+            self.db.execute(
+                "UPDATE products SET purchase_type = ? WHERE purchase_type = ?",
+                (pt.name, old_pt.name)
+            )
+
+        self.db.execute(
+            "UPDATE purchase_types SET name = ? WHERE id = ?",
+            (pt.name, pt_id)
+        )
+        self.db.commit()
+
+    def delete(self, pt_id: int) -> None:
+        """Delete a purchase type."""
+        self.db.execute("DELETE FROM purchase_types WHERE id = ?", (pt_id,))
+        self.db.commit()
+
+    def _row_to_record(self, row) -> PurchaseType:
+        """Convert a database row to a PurchaseType."""
+        return PurchaseType(
+            id=row["id"],
+            name=row["name"]
+        )

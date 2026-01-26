@@ -221,6 +221,8 @@
                             </div>
                         </div>
                     </div>
+
+
                     <div class="mb-3" x-data="{ 
                         open: false, 
                         allLabels: [], 
@@ -321,19 +323,6 @@
                         </div>
                     </div>
 
-                    <!-- Size & Profile Row (Sensitive Categories Only) -->
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4" x-show="isSizeSensitive()">
-                        <div>
-                            <label class="block text-[11px] font-black text-jolly-dark/60 uppercase tracking-widest mb-1.5 ml-1">🎯 Target Size</label>
-                            <input type="text" x-model="formData.preferred_unit_size" placeholder="e.g. M, 42..."
-                                   class="w-full border border-jolly-dark/10 rounded-2xl px-4 py-3 sm:py-2.5 focus:outline-none focus:ring-4 focus:ring-jolly/20 text-base sm:text-sm bg-gray-50/50 font-medium text-jolly-dark">
-                        </div>
-                        <div>
-                            <label class="block text-[11px] font-black text-jolly-dark/60 uppercase tracking-widest mb-1.5 ml-1">👤 Person Profile</label>
-                            <input type="text" x-model="formData.target_size_label" placeholder="e.g. Judith, John..."
-                                   class="w-full border border-jolly-dark/10 rounded-2xl px-4 py-3 sm:py-2.5 focus:outline-none focus:ring-4 focus:ring-jolly/20 text-base sm:text-sm bg-gray-50/50 font-medium text-jolly-dark">
-                        </div>
-                    </div>
                     
                     <!-- Tracked Items Section -->
                     <div class="mb-4 pt-4 border-t border-jolly-dark/5">
@@ -434,17 +423,7 @@
                                                     </div>
                                                 </div>
                                             </div>
-                                            <div x-show="isSizeSensitive()">
-                                                <label class="block text-[9px] font-black text-jolly-dark/40 uppercase tracking-widest ml-1 mb-1">Size</label>
-                                                <input type="text" x-model="item.target_size" placeholder="M"
-                                                       class="w-full border border-jolly-dark/10 rounded-xl px-3 py-2 text-xs font-medium text-jolly-dark bg-white focus:outline-none focus:ring-2 focus:ring-jolly/20">
-                                            </div>
-                                            <div x-show="isSizeSensitive()">
-                                                <label class="block text-[9px] font-black text-jolly-dark/40 uppercase tracking-widest ml-1 mb-1">Profile</label>
-                                                <input type="text" x-model="item.target_size_label" placeholder="Kid"
-                                                       class="w-full border border-jolly-dark/10 rounded-xl px-3 py-2 text-xs font-medium text-jolly-dark bg-white focus:outline-none focus:ring-2 focus:ring-jolly/20">
-                                            </div>
-                                            <div x-show="!isSizeSensitive()" class="col-span-2">
+                                            <div class="col-span-2">
                                                 <label class="block text-[9px] font-black text-jolly-dark/40 uppercase tracking-widest ml-1 mb-1">Items/Lot</label>
                                                 <input type="number" x-model="item.items_per_lot" placeholder="1"
                                                        class="w-full border border-jolly-dark/10 rounded-xl px-3 py-2 text-xs font-medium text-jolly-dark bg-white focus:outline-none focus:ring-2 focus:ring-jolly/20">
@@ -485,7 +464,7 @@ function productsManager() {
         products: [],
         stores: [],
         allCategories: [],
-        newTrackedItems: [], // {store_id: '', url: '', is_new_store: false, new_store_name: ''}
+        newTrackedItems: [],
         showForm: false,
         editingProduct: null,
         saving: false,
@@ -505,6 +484,7 @@ function productsManager() {
             await this.loadStores();
             await this.loadCategories();
         },
+
 
         async loadCategories() {
             try {
@@ -544,9 +524,7 @@ function productsManager() {
                 labels: '',
                 target_price: '',
                 target_unit: '',
-                current_stock: 0,
-                preferred_unit_size: '',
-                target_size_label: ''
+                current_stock: 0
             };
             this.showForm = true;
         },
@@ -562,9 +540,7 @@ function productsManager() {
                 labels: product.labels || '',
                 target_price: product.target_price ?? '',
                 target_unit: product.target_unit || '',
-                current_stock: product.current_stock ?? 0,
-                preferred_unit_size: product.preferred_unit_size || '',
-                target_size_label: product.target_size_label || ''
+                current_stock: product.current_stock ?? 0
             };
             this.showForm = true;
         },
@@ -588,17 +564,9 @@ function productsManager() {
             this.newTrackedItems.splice(index, 1);
         },
 
-        isSizeSensitive() {
-            if (!this.formData.category) return true;
-            return this.checkCategorySensitivity(this.formData.category);
-        },
-        
-        // Helper to check sensitivity based on loaded categories
         checkCategorySensitivity(categoryName) {
-            if (!this.allCategories || this.allCategories.length === 0) return true; // Default to showing if categories not loaded
-            // Case-insensitive match to find the category definition
+            if (!this.allCategories || this.allCategories.length === 0) return true; 
             const cat = this.allCategories.find(c => c.name.toLowerCase() === categoryName.toLowerCase());
-            // Explicit check for 1/true to handle SQLite integer booleans safe and sound
             return cat ? (cat.is_size_sensitive === 1 || cat.is_size_sensitive === true) : true;
         },
 
@@ -630,9 +598,7 @@ function productsManager() {
                 labels: this.formData.labels || null,
                 target_price: this.formData.target_price !== '' ? parseFloat(this.formData.target_price) : null,
                 target_unit: this.formData.target_unit || null,
-                current_stock: parseInt(this.formData.current_stock) || 0,
-                preferred_unit_size: this.formData.preferred_unit_size || null,
-                target_size_label: this.formData.target_size_label || null
+                current_stock: parseInt(this.formData.current_stock) || 0
             };
 
             try {

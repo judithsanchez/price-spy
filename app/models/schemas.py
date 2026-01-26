@@ -68,20 +68,51 @@ class PriceHistoryRecord(BaseModel):
 class Product(BaseModel):
     """Master product concept - what you buy."""
 
-    model_config = ConfigDict(str_strip_whitespace=True)
+    model_config = ConfigDict(str_strip_whitespace=True, from_attributes=True)
 
     id: Optional[int] = None
     name: str = Field(..., min_length=1, max_length=200)
     category: Optional[str] = Field(default=None, max_length=100)
-    labels: Optional[str] = Field(default=None, max_length=500)
     purchase_type: Literal["recurring", "one_time"] = "recurring"
     target_price: Optional[float] = Field(default=None, gt=0)
     target_unit: Optional[str] = Field(default=None, max_length=20)
-    brand: Optional[str] = Field(default=None, max_length=100)
-    preferred_unit_size: Optional[str] = Field(default=None, max_length=50)
-    target_size_label: Optional[str] = Field(default=None, max_length=100)
-    current_stock: int = Field(default=0, ge=0)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class ProductCreate(BaseModel):
+    """Request model for creating a product."""
+
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    name: str = Field(..., min_length=1, max_length=200)
+    category: str = Field(..., min_length=1, max_length=100)
+    purchase_type: Literal["recurring", "one_time"] = "recurring"
+    target_price: Optional[float] = Field(default=None, gt=0)
+    target_unit: Optional[str] = Field(default=None, max_length=20)
+
+
+class ProductUpdate(BaseModel):
+    """Request model for partially updating a product."""
+    model_config = ConfigDict(str_strip_whitespace=True)
+    name: Optional[str] = Field(default=None, min_length=1, max_length=200)
+    category: Optional[str] = Field(default=None, max_length=100)
+    purchase_type: Optional[Literal["recurring", "one_time"]] = None
+    target_price: Optional[float] = Field(default=None, gt=0)
+    target_unit: Optional[str] = Field(default=None, max_length=20)
+
+
+class ProductResponse(BaseModel):
+    """Response model for product."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    name: str
+    category: Optional[str] = None
+    purchase_type: Optional[str] = None
+    target_price: Optional[float] = None
+    target_unit: Optional[str] = None
+    created_at: datetime
 
 
 class Store(BaseModel):
@@ -193,6 +224,29 @@ class Category(BaseModel):
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
+class CategoryCreate(BaseModel):
+    """Request model for creating/updating a category."""
+    model_config = ConfigDict(str_strip_whitespace=True)
+    name: str = Field(..., min_length=1, max_length=100)
+    is_size_sensitive: bool = False
+
+
+class CategoryUpdate(BaseModel):
+    """Request model for partially updating a category."""
+    model_config = ConfigDict(str_strip_whitespace=True)
+    name: Optional[str] = Field(default=None, min_length=1, max_length=100)
+    is_size_sensitive: Optional[bool] = None
+
+
+class CategoryResponse(BaseModel):
+    """Response model for category."""
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    name: str
+    is_size_sensitive: bool = False
+    created_at: datetime
+
+
 class Label(BaseModel):
     """Label definition for products."""
 
@@ -236,3 +290,55 @@ class Profile(ProfileBase):
     
     id: int
     created_at: datetime
+
+
+class Unit(BaseModel):
+    """Unit definition for measurements."""
+    model_config = ConfigDict(str_strip_whitespace=True)
+    id: Optional[int] = None
+    name: str = Field(..., min_length=1, max_length=20)
+
+
+class UnitCreate(BaseModel):
+    """Request model for creating a unit."""
+    model_config = ConfigDict(str_strip_whitespace=True)
+    name: str = Field(..., min_length=1, max_length=20)
+
+
+class UnitUpdate(BaseModel):
+    """Request model for partially updating a unit."""
+    model_config = ConfigDict(str_strip_whitespace=True)
+    name: Optional[str] = Field(default=None, min_length=1, max_length=20)
+
+
+class UnitResponse(BaseModel):
+    """Response model for unit."""
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    name: str
+
+
+class PurchaseType(BaseModel):
+    """Purchase type definition (recurring, etc)."""
+    model_config = ConfigDict(str_strip_whitespace=True)
+    id: Optional[int] = None
+    name: str = Field(..., min_length=1, max_length=50)
+
+
+class PurchaseTypeCreate(BaseModel):
+    """Request model for creating a purchase type."""
+    model_config = ConfigDict(str_strip_whitespace=True)
+    name: str = Field(..., min_length=1, max_length=50)
+
+
+class PurchaseTypeUpdate(BaseModel):
+    """Request model for partially updating a purchase type."""
+    model_config = ConfigDict(str_strip_whitespace=True)
+    name: Optional[str] = Field(default=None, min_length=1, max_length=50)
+
+
+class PurchaseTypeResponse(BaseModel):
+    """Response model for purchase type."""
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    name: str

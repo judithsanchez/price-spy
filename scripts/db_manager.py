@@ -68,9 +68,51 @@ def restore():
             print("Restored from backup after failure.")
         return False
 
+def query(sql):
+    """Execute a query and print results in a formatted table."""
+    if not os.path.exists(DB_PATH):
+        print("Error: Database file not found.")
+        return False
+    
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        conn.row_factory = sqlite3.Row
+        cursor = conn.execute(sql)
+        
+        rows = cursor.fetchall()
+        if not rows:
+            if cursor.description:
+                print("No results found.")
+            else:
+                print("Command executed successfully.")
+            conn.close()
+            return True
+
+        # Calculate column widths
+        headers = rows[0].keys()
+        widths = {h: len(str(h)) for h in headers}
+        for row in rows:
+            for h in headers:
+                widths[h] = max(widths[h], len(str(row[h])))
+        
+        # Print header
+        header_row = " | ".join(str(h).ljust(widths[h]) for h in headers)
+        print(header_row)
+        print("-" * len(header_row))
+        
+        # Print rows
+        for row in rows:
+            print(" | ".join(str(row[h]).ljust(widths[h]) for h in headers))
+            
+        conn.close()
+        return True
+    except Exception as e:
+        print(f"Error during query: {e}")
+        return False
+
 def main():
     if len(sys.argv) < 2:
-        print("Usage: python scripts/db_manager.py [dump|restore]")
+        print("Usage: python scripts/db_manager.py [dump|restore|query] [sql_if_query]")
         sys.exit(1)
     
     command = sys.argv[1].lower()
@@ -80,9 +122,15 @@ def main():
     elif command == "restore":
         if restore():
             sys.exit(0)
+    elif command == "query":
+        if len(sys.argv) < 3:
+            print("Usage: python scripts/db_manager.py query \"SQL_QUERY\"")
+            sys.exit(1)
+        if query(sys.argv[2]):
+            sys.exit(0)
     else:
         print(f"Unknown command: {command}")
-        print("Usage: python scripts/db_manager.py [dump|restore]")
+        print("Usage: python scripts/db_manager.py [dump|restore|query]")
         sys.exit(1)
     
     sys.exit(1)

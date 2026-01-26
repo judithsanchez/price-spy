@@ -5,18 +5,26 @@ from typing import Optional
 
 
 SCHEMA = """
+-- Purchase Types Table (Seeded)
+CREATE TABLE IF NOT EXISTS purchase_types (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL UNIQUE
+);
+
+-- Units Table (Seeded)
+CREATE TABLE IF NOT EXISTS units (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL UNIQUE
+);
+
 -- Products Table (Master product concepts)
 CREATE TABLE IF NOT EXISTS products (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
     category TEXT,
-    labels TEXT,
-    purchase_type TEXT CHECK(purchase_type IN ('recurring', 'one_time')) DEFAULT 'recurring',
+    purchase_type TEXT DEFAULT 'recurring',
     target_price REAL,
     target_unit TEXT,
-    brand TEXT,
-    preferred_unit_size TEXT,
-    current_stock INTEGER DEFAULT 0,
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
@@ -201,19 +209,58 @@ class Database:
         conn = self._connect()
         conn.executescript(SCHEMA)
         
-        # Schema evolution: add columns that might be missing from older versions
         cursor = conn.cursor()
-        
-        # Check products for labels
+
+        # 1. Handle products table migration (Removing columns in SQLite is a multi-step process)
         cursor.execute("PRAGMA table_info(products)")
         columns = [row["name"] for row in cursor.fetchall()]
-        if "labels" not in columns:
-            cursor.execute("ALTER TABLE products ADD COLUMN labels TEXT")
-        if "target_unit" not in columns:
-            cursor.execute("ALTER TABLE products ADD COLUMN target_unit TEXT")
-        if "brand" not in columns:
-            cursor.execute("ALTER TABLE products ADD COLUMN brand TEXT")
+        unwanted = ["labels", "brand", "preferred_unit_size", "current_stock"]
+        
+        if any(col in columns for col in unwanted):
+            # Identify columns we want to KEEP
+            keep = [c for c in columns if c not in unwanted]
+            keep_csv = ", ".join(keep)
+            
+            # Create a backup/rebuild table
+            conn.execute("BEGIN TRANSACTION")
+            try:
+                # 1. Create a new table with the DESIRED schema (it's already in SCHEMA var)
+                # But since it's "if not exists", it might already exist but be wrong.
+                # So we use a temp table approach.
+                conn.execute("ALTER TABLE products RENAME TO products_old")
+                
+                # Re-run the script to create the clean 'products' table
+                conn.executescript(SCHEMA)
+                
+                # 2. Copy data from old to new (only the intersection of columns)
+                # We need to find which columns exist in both.
+                # The keep_csv contains columns we know were in old and should be in new.
+                conn.execute(f"INSERT INTO products ({keep_csv}) SELECT {keep_csv} FROM products_old")
+                
+                # 3. Drop the old table
+                conn.execute("DROP TABLE products_old")
+                conn.commit()
+            except Exception as e:
+                conn.rollback()
+                print(f"Migration failed: {e}")
 
+        # 2. Seed purchase_types if empty
+        cursor.execute("SELECT COUNT(*) FROM purchase_types")
+        if cursor.fetchone()[0] == 0:
+            purchase_types = ["recurring", "one_time"]
+            conn.executemany("INSERT INTO purchase_types (name) VALUES (?)", [(p,) for p in purchase_types])
+
+        # 3. Seed units if empty
+        cursor.execute("SELECT COUNT(*) FROM units")
+        if cursor.fetchone()[0] == 0:
+            units = [
+                'ml', 'cl', 'dl', 'L', 'g', 'kg', 'lb', 'oz', 'fl oz', 
+                'piece', 'pack', 'pair', 'set', 'tube', 'bottle', 'can', 
+                'box', 'bag', 'tub', 'jar', 'unit'
+            ]
+            conn.executemany("INSERT INTO units (name) VALUES (?)", [(u,) for u in units])
+
+        # 4. Schema evolution for other tables (keep as is for tracked_items etc)
         # Check tracked_items for preferred_model and target_size
         cursor.execute("PRAGMA table_info(tracked_items)")
         columns = [row["name"] for row in cursor.fetchall()]
@@ -244,9 +291,12 @@ class Database:
         if "available_sizes" not in columns:
             cursor.execute("ALTER TABLE price_history ADD COLUMN available_sizes TEXT")
             
-        # Seed categories if table is empty
+        # 5. Seed categories if table is empty
         cursor.execute("SELECT COUNT(*) FROM categories")
         if cursor.fetchone()[0] == 0:
+            # Categories where physical size/fit is the tracking factor (Clothing, Footwear, Bedding)
+            size_sensitive = ["Clothing", "Footwear", "Bedding", "Underwear & Sleepwear", "Accessories", "Jewelry", "Luggage & Bags"]
+            
             categories = [
                 "Dairy", "Bakery", "Beverages", "Snacks", "Frozen Foods", "Canned Goods",
                 "Pasta & Grains", "Meat & Poultry", "Seafood", "Fruits", "Vegetables",
@@ -293,9 +343,17 @@ class Database:
                 "Eye Care", "Hearing Care", "Massage & Relaxation",
                 "Aromatherapy & Essential Oils"
             ]
-            conn.executemany("INSERT INTO categories (name) VALUES (?)", [(c,) for c in categories])
+            
+            # Use INSERT OR IGNORE to handle duplicates if schema exists
+            for cat in categories:
+                is_sensitive = 1 if cat in size_sensitive else 0
+                conn.execute(
+                    "INSERT OR IGNORE INTO categories (name, is_size_sensitive) VALUES (?, ?)", 
+                    (cat, is_sensitive)
+                )
+            conn.commit()
 
-        # Seed labels if table is empty
+        # 6. Seed labels if table is empty
         cursor.execute("SELECT COUNT(*) FROM labels")
         if cursor.fetchone()[0] == 0:
             labels = [

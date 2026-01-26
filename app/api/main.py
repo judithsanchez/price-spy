@@ -33,7 +33,11 @@ from app.models.schemas import (
     BrandSizeResponse,
     Profile,
     ProfileCreate,
+    ProductCreate,
+    ProductResponse,
 )
+from app.api.deps import get_db, _test_db_path
+from app.api.routers import products, categories, units, purchase_types
 
 app = FastAPI(
     title="Price Spy",
@@ -41,6 +45,12 @@ app = FastAPI(
     version="0.3.0",
     lifespan=lifespan_scheduler
 )
+
+# Include routers
+app.include_router(products.router)
+app.include_router(categories.router)
+app.include_router(units.router)
+app.include_router(purchase_types.router)
 
 # Templates directory
 templates_dir = Path(__file__).parent.parent / "templates"
@@ -62,22 +72,6 @@ async def pydantic_validation_exception_handler(request: Request, exc: Validatio
             "message": "Validation error"
         }
     )
-
-# Test database path override (used in tests)
-_test_db_path: Optional[str] = None
-
-
-def get_db() -> Database:
-    """Get database connection."""
-    global _test_db_path
-    if _test_db_path:
-        db = Database(_test_db_path)
-    else:
-        from app.core.config import settings
-        db = Database(settings.DATABASE_PATH)
-    
-    db.initialize()
-    return db
 
 
 class DashboardItem(BaseModel):
@@ -115,32 +109,6 @@ class ExtractResponse(BaseModel):
     price: Optional[float] = None
     error: Optional[str] = None
 
-
-class ProductCreate(BaseModel):
-    """Request model for creating a product."""
-    name: str
-    category: Optional[str] = None
-    labels: Optional[str] = None
-    purchase_type: Optional[str] = None
-    target_price: Optional[float] = None
-    target_unit: Optional[str] = None
-    brand: Optional[str] = None
-    preferred_unit_size: Optional[str] = None
-    current_stock: int = 0
-
-
-class ProductResponse(BaseModel):
-    """Response model for product."""
-    id: int
-    name: str
-    category: Optional[str] = None
-    labels: Optional[str] = None
-    purchase_type: Optional[str] = None
-    target_price: Optional[float] = None
-    target_unit: Optional[str] = None
-    brand: Optional[str] = None
-    preferred_unit_size: Optional[str] = None
-    current_stock: int = 0
 
 
 class StoreCreate(BaseModel):
@@ -246,20 +214,6 @@ class ApiUsageResponse(BaseModel):
     limit: int
     remaining: int
     exhausted: bool
-
-
-class CategoryCreate(BaseModel):
-    """Request model for creating/updating a category."""
-    name: str
-    is_size_sensitive: bool = False
-
-
-class CategoryResponse(BaseModel):
-    """Response model for category."""
-    id: int
-    name: str
-    is_size_sensitive: bool = False
-    created_at: str
 
 
 class LabelResponse(BaseModel):
@@ -569,129 +523,6 @@ async def get_all_price_history(days: int = 30):
         db.close()
 
 
-@app.get("/api/categories", response_model=List[CategoryResponse])
-async def get_categories():
-    """Get all categories."""
-    db = get_db()
-    try:
-        repo = CategoryRepository(db)
-        categories = repo.get_all()
-        return [
-            CategoryResponse(
-                id=c.id,
-                name=c.name,
-                is_size_sensitive=c.is_size_sensitive,
-                created_at=c.created_at.isoformat()
-            )
-            for c in categories
-        ]
-    finally:
-        db.close()
-
-
-@app.get("/api/categories/search", response_model=List[CategoryResponse])
-async def search_categories(q: str):
-    """Search categories by name."""
-    db = get_db()
-    try:
-        repo = CategoryRepository(db)
-        categories = repo.search(q)
-        return [
-            CategoryResponse(
-                id=c.id,
-                name=c.name,
-                is_size_sensitive=c.is_size_sensitive,
-                created_at=c.created_at.isoformat()
-            )
-            for c in categories
-        ]
-    finally:
-        db.close()
-
-
-@app.post("/api/categories", response_model=CategoryResponse)
-async def create_category(category: CategoryCreate):
-    """Create a new category."""
-    from app.models.schemas import Category as CategorySchema
-    db = get_db()
-    try:
-        repo = CategoryRepository(db)
-        # Check if already exists
-        existing = repo.get_by_name(category.name)
-        if existing:
-            return CategoryResponse(
-                id=existing.id,
-                name=existing.name,
-                is_size_sensitive=existing.is_size_sensitive,
-                created_at=existing.created_at.isoformat()
-            )
-            
-        new_cat = CategorySchema(name=category.name, is_size_sensitive=category.is_size_sensitive)
-        category_id = repo.insert(new_cat)
-        result = repo.get_by_name(category.name)
-        return CategoryResponse(
-            id=result.id,
-            name=result.name,
-            is_size_sensitive=result.is_size_sensitive,
-            created_at=result.created_at.isoformat()
-        )
-    finally:
-        db.close()
-
-
-@app.put("/api/categories/{category_id}", response_model=CategoryResponse)
-async def update_category(category_id: int, category: CategoryCreate):
-    """Update a category."""
-    from app.models.schemas import Category as CategorySchema
-    db = get_db()
-    try:
-        repo = CategoryRepository(db)
-        old_category = repo.get_by_id(category_id)
-        if not old_category:
-            raise HTTPException(status_code=404, detail="Category not found")
-        
-        # Update products if name changed
-        if category.name != old_category.name:
-            db.execute(
-                "UPDATE products SET category = ? WHERE category = ?",
-                (category.name, old_category.name)
-            )
-        
-        # Update category
-        updated = CategorySchema(name=category.name, is_size_sensitive=category.is_size_sensitive)
-        repo.update(category_id, updated)
-        
-        result = repo.get_by_id(category_id)
-        return CategoryResponse(
-            id=result.id,
-            name=result.name,
-            is_size_sensitive=result.is_size_sensitive,
-            created_at=result.created_at.isoformat()
-        )
-    finally:
-        db.close()
-
-
-@app.delete("/api/categories/{category_id}")
-async def delete_category(category_id: int):
-    """Delete a category and clear association from products."""
-    db = get_db()
-    try:
-        repo = CategoryRepository(db)
-        category = repo.get_by_id(category_id)
-        if not category:
-            raise HTTPException(status_code=404, detail="Category not found")
-            
-        # Clear category from products
-        db.execute(
-            "UPDATE products SET category = NULL WHERE category = ?",
-            (category.name,)
-        )
-        
-        repo.delete(category_id)
-        return {"status": "success", "message": "Category deleted"}
-    finally:
-        db.close()
 
 
 @app.get("/api/brands", response_model=List[str])
@@ -1474,201 +1305,6 @@ async def labels_page(request: Request):
 async def size_preferences_page(request: Request):
     """Render size preferences page."""
     return templates.TemplateResponse(request, "size-preferences.html", {})
-
-
-# --- Products API ---
-
-@app.get("/api/products", response_model=List[ProductResponse])
-async def get_products():
-    """Get all products."""
-    db = get_db()
-    try:
-        repo = ProductRepository(db)
-        products = repo.get_all()
-        return [
-            ProductResponse(
-                id=p.id,
-                name=p.name,
-                category=p.category,
-                purchase_type=p.purchase_type,
-                target_price=p.target_price,
-                target_unit=p.target_unit,
-                brand=p.brand,
-                preferred_unit_size=p.preferred_unit_size,
-                target_size_label=p.target_size_label,
-                current_stock=p.current_stock,
-            )
-            for p in products
-        ]
-    finally:
-        db.close()
-
-
-@app.post("/api/products", response_model=ProductResponse, status_code=201)
-async def create_product(product: ProductCreate):
-    """Create a new product."""
-    from app.models.schemas import Product
-
-    db = get_db()
-    try:
-        repo = ProductRepository(db)
-        # Build kwargs, excluding None values to use schema defaults
-        kwargs = {"name": product.name}
-        if product.category is not None:
-            kwargs["category"] = product.category
-        if product.labels is not None:
-            kwargs["labels"] = product.labels
-        if product.purchase_type is not None:
-            kwargs["purchase_type"] = product.purchase_type
-        if product.target_price is not None:
-            kwargs["target_price"] = product.target_price
-        if product.target_unit is not None:
-            kwargs["target_unit"] = product.target_unit
-        if product.brand is not None:
-            kwargs["brand"] = product.brand
-        if product.preferred_unit_size is not None:
-            kwargs["preferred_unit_size"] = product.preferred_unit_size
-        kwargs["current_stock"] = product.current_stock
-
-        # Auto-create category if it doesn't exist
-        if product.category:
-            cat_repo = CategoryRepository(db)
-            if not cat_repo.get_by_name(product.category):
-                from app.models.schemas import Category
-                cat_repo.insert(Category(name=product.category))
-        
-        # Auto-create labels if they don't exist
-        if product.labels:
-            label_repo = LabelRepository(db)
-            for label_name in [l.strip() for l in product.labels.split(",") if l.strip()]:
-                if not label_repo.get_by_name(label_name):
-                    from app.models.schemas import Label
-                    label_repo.insert(Label(name=label_name))
-
-        new_product = Product(**kwargs)
-        product_id = repo.insert(new_product)
-        created = repo.get_by_id(product_id)
-        return ProductResponse(
-            id=created.id,
-            name=created.name,
-            category=created.category,
-            labels=created.labels,
-            purchase_type=created.purchase_type,
-            target_price=created.target_price,
-            target_unit=created.target_unit,
-            brand=created.brand,
-            preferred_unit_size=created.preferred_unit_size,
-            current_stock=created.current_stock,
-        )
-    finally:
-        db.close()
-
-
-@app.get("/api/products/{product_id}", response_model=ProductResponse)
-async def get_product(product_id: int):
-    """Get a product by ID."""
-    db = get_db()
-    try:
-        repo = ProductRepository(db)
-        product = repo.get_by_id(product_id)
-        if not product:
-            raise HTTPException(status_code=404, detail="Product not found")
-        return ProductResponse(
-            id=product.id,
-            name=product.name,
-            category=product.category,
-            labels=product.labels,
-            purchase_type=product.purchase_type,
-            target_price=product.target_price,
-            target_unit=product.target_unit,
-            brand=product.brand,
-            preferred_unit_size=product.preferred_unit_size,
-            current_stock=product.current_stock,
-        )
-    finally:
-        db.close()
-
-
-@app.put("/api/products/{product_id}", response_model=ProductResponse)
-async def update_product(product_id: int, product: ProductCreate):
-    """Update a product."""
-    from app.models.schemas import Product
-
-    db = get_db()
-    try:
-        repo = ProductRepository(db)
-        existing = repo.get_by_id(product_id)
-        if not existing:
-            raise HTTPException(status_code=404, detail="Product not found")
-
-        kwargs = {"name": product.name}
-        if product.category is not None:
-            kwargs["category"] = product.category
-        if product.labels is not None:
-            kwargs["labels"] = product.labels
-        if product.purchase_type is not None:
-            kwargs["purchase_type"] = product.purchase_type
-        if product.target_price is not None:
-            kwargs["target_price"] = product.target_price
-        if product.target_unit is not None:
-            kwargs["target_unit"] = product.target_unit
-        if product.brand is not None:
-            kwargs["brand"] = product.brand
-        if product.preferred_unit_size is not None:
-            kwargs["preferred_unit_size"] = product.preferred_unit_size
-        kwargs["current_stock"] = product.current_stock
-
-        # Auto-create category if it doesn't exist
-        if product.category:
-            cat_repo = CategoryRepository(db)
-            if not cat_repo.get_by_name(product.category):
-                from app.models.schemas import Category
-                cat_repo.insert(Category(name=product.category))
-        
-        # Auto-create labels if they don't exist
-        if product.labels:
-            label_repo = LabelRepository(db)
-            for label_name in [l.strip() for l in product.labels.split(",") if l.strip()]:
-                if not label_repo.get_by_name(label_name):
-                    from app.models.schemas import Label
-                    label_repo.insert(Label(name=label_name))
-
-        updated_product = Product(**kwargs)
-        repo.update(product_id, updated_product)
-        result = repo.get_by_id(product_id)
-        return ProductResponse(
-            id=result.id,
-            name=result.name,
-            category=result.category,
-            labels=result.labels,
-            purchase_type=result.purchase_type,
-            target_price=result.target_price,
-            target_unit=result.target_unit,
-            brand=result.brand,
-            preferred_unit_size=result.preferred_unit_size,
-            current_stock=result.current_stock,
-        )
-    finally:
-        db.close()
-
-
-@app.delete("/api/products/{product_id}", status_code=204)
-async def delete_product(product_id: int):
-    """Delete a product."""
-    db = get_db()
-    try:
-        repo = ProductRepository(db)
-        existing = repo.get_by_id(product_id)
-        if not existing:
-            raise HTTPException(status_code=404, detail="Product not found")
-        
-        # Cascade delete tracked items
-        ti_repo = TrackedItemRepository(db)
-        ti_repo.delete_by_product(product_id)
-        
-        repo.delete(product_id)
-    finally:
-        db.close()
 
 
 # --- Stores API ---
