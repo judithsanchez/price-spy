@@ -37,7 +37,7 @@ from app.models.schemas import (
     ProductResponse,
 )
 from app.api.deps import get_db, _test_db_path
-from app.api.routers import products, categories, units, purchase_types
+from app.api.routers import products, categories, units, purchase_types, stores
 
 app = FastAPI(
     title="Price Spy",
@@ -51,6 +51,7 @@ app.include_router(products.router)
 app.include_router(categories.router)
 app.include_router(units.router)
 app.include_router(purchase_types.router)
+app.include_router(stores.router)
 
 # Templates directory
 templates_dir = Path(__file__).parent.parent / "templates"
@@ -111,24 +112,7 @@ class ExtractResponse(BaseModel):
 
 
 
-class StoreCreate(BaseModel):
-    """Request model for creating a store."""
-    name: str
-    shipping_cost_standard: Optional[float] = None
-    free_shipping_threshold: Optional[float] = None
-    notes: Optional[str] = None
 
-
-
-
-
-class StoreResponse(BaseModel):
-    """Response model for store."""
-    id: int
-    name: str
-    shipping_cost_standard: Optional[float] = None
-    free_shipping_threshold: Optional[float] = None
-    notes: Optional[str] = None
 
 
 class TrackedItemCreate(BaseModel):
@@ -1307,133 +1291,7 @@ async def size_preferences_page(request: Request):
     return templates.TemplateResponse(request, "size-preferences.html", {})
 
 
-# --- Stores API ---
 
-@app.get("/api/stores", response_model=List[StoreResponse])
-async def get_stores():
-    """Get all stores."""
-    db = get_db()
-    try:
-        repo = StoreRepository(db)
-        stores = repo.get_all()
-        return [
-            StoreResponse(
-                id=s.id,
-                name=s.name,
-                shipping_cost_standard=s.shipping_cost_standard,
-                free_shipping_threshold=s.free_shipping_threshold,
-                notes=s.notes,
-            )
-            for s in stores
-        ]
-    finally:
-        db.close()
-
-
-@app.post("/api/stores", response_model=StoreResponse, status_code=201)
-async def create_store(store: StoreCreate):
-    """Create a new store."""
-    from app.models.schemas import Store
-
-    db = get_db()
-    try:
-        repo = StoreRepository(db)
-        kwargs = {"name": store.name}
-        if store.shipping_cost_standard is not None:
-            kwargs["shipping_cost_standard"] = store.shipping_cost_standard
-        if store.free_shipping_threshold is not None:
-            kwargs["free_shipping_threshold"] = store.free_shipping_threshold
-        if store.notes is not None:
-            kwargs["notes"] = store.notes
-
-        new_store = Store(**kwargs)
-        store_id = repo.insert(new_store)
-        created = repo.get_by_id(store_id)
-        return StoreResponse(
-            id=created.id,
-            name=created.name,
-            shipping_cost_standard=created.shipping_cost_standard,
-            free_shipping_threshold=created.free_shipping_threshold,
-            notes=created.notes,
-        )
-    finally:
-        db.close()
-
-
-@app.get("/api/stores/{store_id}", response_model=StoreResponse)
-async def get_store(store_id: int):
-    """Get a store by ID."""
-    db = get_db()
-    try:
-        repo = StoreRepository(db)
-        store = repo.get_by_id(store_id)
-        if not store:
-            raise HTTPException(status_code=404, detail="Store not found")
-        return StoreResponse(
-            id=store.id,
-            name=store.name,
-            shipping_cost_standard=store.shipping_cost_standard,
-            free_shipping_threshold=store.free_shipping_threshold,
-            notes=store.notes,
-        )
-    finally:
-        db.close()
-
-
-@app.put("/api/stores/{store_id}", response_model=StoreResponse)
-async def update_store(store_id: int, store: StoreCreate):
-    """Update a store."""
-    from app.models.schemas import Store
-
-    db = get_db()
-    try:
-        repo = StoreRepository(db)
-        existing = repo.get_by_id(store_id)
-        if not existing:
-            raise HTTPException(status_code=404, detail="Store not found")
-
-        kwargs = {"name": store.name}
-        if store.shipping_cost_standard is not None:
-            kwargs["shipping_cost_standard"] = store.shipping_cost_standard
-        if store.free_shipping_threshold is not None:
-            kwargs["free_shipping_threshold"] = store.free_shipping_threshold
-        if store.notes is not None:
-            kwargs["notes"] = store.notes
-
-        updated_store = Store(**kwargs)
-        repo.update(store_id, updated_store)
-        result = repo.get_by_id(store_id)
-        return StoreResponse(
-            id=result.id,
-            name=result.name,
-            shipping_cost_standard=result.shipping_cost_standard,
-            free_shipping_threshold=result.free_shipping_threshold,
-            notes=result.notes,
-        )
-    finally:
-        db.close()
-
-
-@app.delete("/api/stores/{store_id}", status_code=204)
-async def delete_store(store_id: int):
-    """Delete a store."""
-    db = get_db()
-    try:
-        repo = StoreRepository(db)
-        existing = repo.get_by_id(store_id)
-        if not existing:
-            raise HTTPException(status_code=404, detail="Store not found")
-        
-        # Check for active tracked items
-        ti_repo = TrackedItemRepository(db)
-        count = ti_repo.count_by_store(store_id)
-        if count > 0:
-            raise HTTPException(
-                status_code=400, 
-                detail=f"Cannot delete store. It is used by {count} tracked items. Please remove/move them first."
-            )
-            
-        repo.delete(store_id)
     finally:
         db.close()
 

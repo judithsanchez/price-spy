@@ -832,23 +832,17 @@ INSERT INTO "scheduler_runs" VALUES(1,'2026-01-22 12:47:00','2026-01-22 12:47:37
 INSERT INTO "scheduler_runs" VALUES(2,'2026-01-23 23:00:00','2026-01-23 23:02:13','completed',20,16,4,NULL);
 INSERT INTO "scheduler_runs" VALUES(3,'2026-01-24 00:55:15','2026-01-24 00:56:56','completed',19,17,2,NULL);
 INSERT INTO "scheduler_runs" VALUES(4,'2026-01-25 23:00:00','2026-01-25 23:01:38','completed',8,3,5,NULL);
-CREATE TABLE stores (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT NOT NULL UNIQUE,
-    shipping_cost_standard REAL DEFAULT 0,
-    free_shipping_threshold REAL,
-    notes TEXT
-);
-INSERT INTO "stores" VALUES(1,'Amazon',5.0,50.0,NULL);
-INSERT INTO "stores" VALUES(2,'bol',5.0,50.0,'check shipping cost');
-INSERT INTO "stores" VALUES(3,'Ikea',50.0,0.0,NULL);
-INSERT INTO "stores" VALUES(4,'Stradivarius',5.0,0.0,NULL);
-INSERT INTO "stores" VALUES(5,'Douglas',5.0,NULL,NULL);
-INSERT INTO "stores" VALUES(6,'Etos',0.0,20.0,NULL);
-INSERT INTO "stores" VALUES(7,'Kruidvat',2.99,20.0,NULL);
-INSERT INTO "stores" VALUES(8,'Albert Heijn',0.0,NULL,NULL);
-INSERT INTO "stores" VALUES(9,'Intertoys',0.0,NULL,NULL);
-INSERT INTO "stores" VALUES(10,'Levis',0.0,NULL,NULL);
+CREATE TABLE stores (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL UNIQUE);
+INSERT INTO "stores" VALUES(1,'Amazon');
+INSERT INTO "stores" VALUES(2,'bol');
+INSERT INTO "stores" VALUES(3,'Ikea');
+INSERT INTO "stores" VALUES(4,'Stradivarius');
+INSERT INTO "stores" VALUES(5,'Douglas');
+INSERT INTO "stores" VALUES(6,'Etos');
+INSERT INTO "stores" VALUES(7,'Kruidvat');
+INSERT INTO "stores" VALUES(8,'Albert Heijn');
+INSERT INTO "stores" VALUES(9,'Intertoys');
+INSERT INTO "stores" VALUES(10,'Levis');
 CREATE TABLE tracked_items (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     product_id INTEGER NOT NULL,
@@ -862,7 +856,7 @@ CREATE TABLE tracked_items (
     is_active INTEGER DEFAULT 1,
     alerts_enabled INTEGER DEFAULT 1, preferred_model TEXT, target_size TEXT, target_size_label TEXT,
     FOREIGN KEY(product_id) REFERENCES "products_old"(id),
-    FOREIGN KEY(store_id) REFERENCES stores(id)
+    FOREIGN KEY(store_id) REFERENCES "stores_old"(id)
 );
 INSERT INTO "tracked_items" VALUES(1,1,1,'https://www.amazon.nl/-/en/LEGO-Botanicals-Daisies-Artificial-Decoration/dp/B0FPXDY3X2/?_encoding=UTF8&pd_rd_w=1TaUy&content-id=amzn1.sym.0bd8095e-79f9-45c2-8e70-ee4034022f47:amzn1.symc.752cde0b-d2ce-4cce-9121-769ea438869e&pf_rd_p=0bd8095e-79f9-45c2-8e70-ee4034022f47&pf_rd_r=PA1HNHX1S7PQ1T7VHZPT&pd_rd_wg=6nYVk&pd_rd_r=471d265b-c2e8-49a4-a760-b6fb589b9605&ref_=pd_hp_d_atf_ci_mcx_mr_ca_hp_atf_d','LEGO Botanicals Daisies',1.0,'1',1,'2026-01-24 00:55:54',0,0,NULL,NULL,NULL);
 INSERT INTO "tracked_items" VALUES(2,2,1,'https://www.amazon.nl/-/en/BTF-LIGHTING-Flexible-Waterproof-Multicolor-Decoration/dp/B0C3VMV5BP/ref=sr_1_2?crid=4G3PBKIR5ZSJ&dib=eyJ2IjoiMSJ9.40v-SQ54YW-SRJAeIw05m-Hg85YqppMxyUpL1b7Iwsj1H3TtE3Onti_S72Q9luoJ0fNQ4RaiRDbMS28tVM2Kz23BxtxX23SxDRlEa9wK0fARqowRI1lSanbPvHpg2ZsHwx0DFQojXS0BKNRWmkHjk4kCWeCW4mXKwCDPDrAt-KPncb04JogkbA1drNYSYOV4OBL2Z05zTtUOqq-xgF-7LENH50XkBcNq-VYcgbeNWC96ipNmsW0yidnQqCe-mZ5MCTXuPmyTFbdjp-DFNla1_1GS-2tFEf5O4nt9poCYuB8.W9jULAY2bcROfjUbMnwy9YcMvc8Xh9Vtnj_NuAbMHX0&dib_tag=se&keywords=BTF-LIGHTING%2BFCOB%2BRGBCCT%2B(24V%2C%2B960LED%2Fm)&qid=1769001366&sprefix=btf-lighting%2Bfcob%2Brgbcct%2B24v%2B960led%2Fm%2B%2Caps%2C229&sr=8-2&th=1','BTF-LIGHTING FCOB COB RGBCCT Flexible High Density LED Strip 5M 960LED/M 4800LEDs DC24V ]',1.0,'1',1,'2026-01-24 00:55:59',0,0,NULL,NULL,NULL);
@@ -940,7 +934,6 @@ CREATE INDEX idx_categories_name ON categories(name);
 CREATE INDEX idx_labels_name ON labels(name);
 CREATE INDEX idx_brand_sizes_brand_cat ON brand_sizes(brand, category);
 DELETE FROM "sqlite_sequence";
-INSERT INTO "sqlite_sequence" VALUES('stores',10);
 INSERT INTO "sqlite_sequence" VALUES('tracked_items',40);
 INSERT INTO "sqlite_sequence" VALUES('api_usage',86);
 INSERT INTO "sqlite_sequence" VALUES('price_history',93);
@@ -954,4 +947,5 @@ INSERT INTO "sqlite_sequence" VALUES('brand_sizes',1);
 INSERT INTO "sqlite_sequence" VALUES('purchase_types',2);
 INSERT INTO "sqlite_sequence" VALUES('units',21);
 INSERT INTO "sqlite_sequence" VALUES('products',33);
+INSERT INTO "sqlite_sequence" VALUES('stores',10);
 COMMIT;

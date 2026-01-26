@@ -28,14 +28,10 @@ CREATE TABLE IF NOT EXISTS products (
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
--- Stores Table (Shipping rules)
+-- Stores Table (Names only)
 CREATE TABLE IF NOT EXISTS stores (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT NOT NULL UNIQUE,
-    is_size_sensitive INTEGER DEFAULT 0,
-    shipping_cost_standard REAL DEFAULT 0,
-    free_shipping_threshold REAL,
-    notes TEXT
+    name TEXT NOT NULL UNIQUE
 );
 
 -- Tracked Items Table (URLs linked to products and stores)
@@ -224,25 +220,33 @@ class Database:
             # Create a backup/rebuild table
             conn.execute("BEGIN TRANSACTION")
             try:
-                # 1. Create a new table with the DESIRED schema (it's already in SCHEMA var)
-                # But since it's "if not exists", it might already exist but be wrong.
-                # So we use a temp table approach.
                 conn.execute("ALTER TABLE products RENAME TO products_old")
-                
-                # Re-run the script to create the clean 'products' table
                 conn.executescript(SCHEMA)
-                
-                # 2. Copy data from old to new (only the intersection of columns)
-                # We need to find which columns exist in both.
-                # The keep_csv contains columns we know were in old and should be in new.
                 conn.execute(f"INSERT INTO products ({keep_csv}) SELECT {keep_csv} FROM products_old")
-                
-                # 3. Drop the old table
                 conn.execute("DROP TABLE products_old")
                 conn.commit()
             except Exception as e:
                 conn.rollback()
-                print(f"Migration failed: {e}")
+                print(f"Migration failed (products): {e}")
+
+        # 2. Handle stores table migration
+        cursor.execute("PRAGMA table_info(stores)")
+        columns = [row["name"] for row in cursor.fetchall()]
+        unwanted_stores = ["is_size_sensitive", "shipping_cost_standard", "free_shipping_threshold", "notes"]
+        
+        if any(col in columns for col in unwanted_stores):
+            conn.execute("BEGIN TRANSACTION")
+            try:
+                conn.execute("ALTER TABLE stores RENAME TO stores_old")
+                conn.executescript(SCHEMA)
+                # Only copy id and name
+                conn.execute("INSERT INTO stores (id, name) SELECT id, name FROM stores_old")
+                conn.execute("DROP TABLE stores_old")
+                conn.commit()
+                print("Stores migration successful.")
+            except Exception as e:
+                conn.rollback()
+                print(f"Migration failed (stores): {e}")
 
         # 2. Seed purchase_types if empty
         cursor.execute("SELECT COUNT(*) FROM purchase_types")

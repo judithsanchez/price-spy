@@ -353,20 +353,24 @@ class StoreRepository:
     def __init__(self, db: Database):
         self.db = db
 
+    def normalize_name(self, name: str) -> str:
+        """Normalize store name: case-insensitive check against DB, else capitalize."""
+        clean_name = name.strip()
+        if not clean_name:
+            return clean_name
+            
+        cursor = self.db.execute("SELECT name FROM stores WHERE name = ? COLLATE NOCASE", (clean_name,))
+        row = cursor.fetchone()
+        if row:
+            return row["name"]
+            
+        return clean_name.capitalize()
+
     def insert(self, store: Store) -> int:
         """Insert a store and return its ID."""
         cursor = self.db.execute(
-            """
-            INSERT INTO stores
-            (name, shipping_cost_standard, free_shipping_threshold, notes)
-            VALUES (?, ?, ?, ?)
-            """,
-            (
-                store.name,
-                store.shipping_cost_standard,
-                store.free_shipping_threshold,
-                store.notes,
-            )
+            "INSERT INTO stores (name) VALUES (?)",
+            (store.name,)
         )
         self.db.commit()
         return cursor.lastrowid
@@ -401,21 +405,8 @@ class StoreRepository:
     def update(self, store_id: int, store: Store) -> None:
         """Update a store."""
         self.db.execute(
-            """
-            UPDATE stores SET
-                name = ?,
-                shipping_cost_standard = ?,
-                free_shipping_threshold = ?,
-                notes = ?
-            WHERE id = ?
-            """,
-            (
-                store.name,
-                store.shipping_cost_standard,
-                store.free_shipping_threshold,
-                store.notes,
-                store_id,
-            )
+            "UPDATE stores SET name = ? WHERE id = ?",
+            (store.name, store_id)
         )
         self.db.commit()
 
@@ -428,10 +419,7 @@ class StoreRepository:
         """Convert a database row to a Store."""
         return Store(
             id=row["id"],
-            name=row["name"],
-            shipping_cost_standard=row["shipping_cost_standard"],
-            free_shipping_threshold=row["free_shipping_threshold"],
-            notes=row["notes"],
+            name=row["name"]
         )
 
 
