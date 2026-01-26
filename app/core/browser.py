@@ -5,14 +5,6 @@ from playwright.async_api import async_playwright, BrowserContext
 
 logger = logging.getLogger(__name__)
 
-# Pool of realistic User-Agents
-USER_AGENTS = [
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36",
-    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36",
-]
 
 # Stealth configuration as per SPECS_EXTRACTION_ENGINE.md
 STEALTH_CONFIG = {
@@ -38,6 +30,21 @@ STEALTH_SCRIPTS = """
     // Mask Chrome-specific properties
     window.chrome = {
         runtime: {},
+        app: {
+            isInstalled: false,
+            InstallState: {
+                DISABLED: 'disabled',
+                INSTALLED: 'installed',
+                NOT_INSTALLED: 'not_installed',
+            },
+            RunningState: {
+                CANNOT_RUN: 'cannot_run',
+                READY_TO_RUN: 'ready_to_run',
+                RUNNING: 'running',
+            },
+        },
+        csi: function() {},
+        loadTimes: function() {},
     };
 
     // Aggressive Modal Bypass via MutationObserver
@@ -73,27 +80,60 @@ STEALTH_SCRIPTS = """
 
 async def create_stealth_context(playwright) -> BrowserContext:
     """Create a browser context with stealth settings."""
-    # Randomized viewport (±10px)
-    width = STEALTH_CONFIG["viewport"]["width"] + random.randint(-10, 10)
-    height = STEALTH_CONFIG["viewport"]["height"] + random.randint(-10, 10)
+    # Standard 1080p viewport is safer than randomized weird dimensions
+    width = 1920
+    height = 1080
     
-    # Random User-Agent
-    user_agent = random.choice(USER_AGENTS)
+    # Pick a random UA profile
+    profile = random.choice([
+        {
+            "ua": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            "platform": '"Windows"',
+            "sec_ch_ua_platform": "Windows"
+        },
+        {
+            "ua": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            "platform": '"macOS"',
+            "sec_ch_ua_platform": "macOS"
+        },
+        {
+            "ua": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            "platform": '"Linux"',
+            "sec_ch_ua_platform": "Linux"
+        }
+    ])
     
-    browser = await playwright.chromium.launch(headless=True)
+    # args to disable automation flags
+    launch_args = [
+        "--disable-blink-features=AutomationControlled",
+        "--no-sandbox",
+        "--disable-setuid-sandbox",
+        "--disable-infobars",
+        "--window-position=0,0",
+        "--ignore-certificate-errors",
+        "--disable-extensions",
+        f"--user-agent={profile['ua']}"
+    ]
+
+    browser = await playwright.chromium.launch(
+        headless=True,
+        args=launch_args
+    )
+    
     context = await browser.new_context(
         viewport={"width": width, "height": height},
-        user_agent=user_agent,
+        user_agent=profile["ua"],
         locale=STEALTH_CONFIG["locale"],
         timezone_id=STEALTH_CONFIG["timezone_id"],
         geolocation=STEALTH_CONFIG["geolocation"],
         permissions=STEALTH_CONFIG["permissions"],
         # Add extra headers for better stealth
         extra_http_headers={
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
             "Accept-Language": "nl-NL,nl;q=0.9,en-US;q=0.8,en;q=0.7",
             "Sec-Ch-Ua": '"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"',
             "Sec-Ch-Ua-Mobile": "?0",
-            "Sec-Ch-Ua-Platform": '"Windows"',
+            "Sec-Ch-Ua-Platform": profile["platform"],
             "Sec-Fetch-Dest": "document",
             "Sec-Fetch-Mode": "navigate",
             "Sec-Fetch-Site": "none",

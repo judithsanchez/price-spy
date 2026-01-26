@@ -3,7 +3,7 @@
 {% block title %}Dashboard - Price Spy{% endblock %}
 
 {% block content %}
-<div x-data="{ ...priceHistoryMixin(), ...priceTrendChart() }">
+<div x-data="{ ...priceHistoryMixin(), ...priceTrendChart(), globalSpying: false }">
     <div class="mb-6"></div>
 
 {% if has_any_items %}
@@ -273,21 +273,32 @@
                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"/></svg>
                             </button>
                             <button
-                                @click="loading = true; error = null; success = null;
+                                @click="
+                                    if (globalSpying) return;
+                                    loading = true; 
+                                    globalSpying = true;
+                                    error = null; 
+                                    success = null;
                                     fetch('/api/extract/{{ item.id }}', {method: 'POST'})
                                     .then(r => r.json())
                                     .then(data => {
                                         loading = false;
+                                        // Keep globalSpying true if success to prevent clicks during reload delay
                                         if (data.status === 'error') {
+                                            globalSpying = false;
                                             error = data.error;
                                         } else {
                                             success = 'Goal!';
                                             setTimeout(() => location.reload(), 1500);
                                         }
                                     })
-                                    .catch(e => { loading = false; error = e.message; })"
-                                :disabled="loading"
-                                :class="loading ? 'bg-jolly-lime/50 text-jolly-dark/30' : 'bg-jolly text-jolly-dark hover:bg-jolly-lime hover:shadow-lg hover:shadow-jolly/20'"
+                                    .catch(e => { 
+                                        loading = false; 
+                                        globalSpying = false; 
+                                        error = e.message; 
+                                    })"
+                                :disabled="loading || (globalSpying && !loading)"
+                                :class="(loading || (globalSpying && !loading)) ? 'bg-jolly-lime/50 text-jolly-dark/30 cursor-not-allowed' : 'bg-jolly text-jolly-dark hover:bg-jolly-lime hover:shadow-lg hover:shadow-jolly/20'"
                                 class="px-4 py-2 text-[10px] font-black rounded-xl shadow-sm transition-all focus:ring-2 focus:ring-jolly/30 uppercase tracking-widest border border-jolly-dark/5">
                                 <span x-show="!loading">Spy</span>
                                 <span x-show="loading">
