@@ -11,8 +11,10 @@ from app.storage.repositories import (
     TrackedItemRepository,
     PriceHistoryRepository,
     ExtractionLogRepository,
+    ProductRepository,
+    CategoryRepository
 )
-from app.models.schemas import PriceHistoryRecord, ExtractionLog, TrackedItem
+from app.models.schemas import PriceHistoryRecord, ExtractionLog, TrackedItem, ExtractionContext
 from app.core.rate_limiter import RateLimitTracker
 
 # Maximum concurrent extractions (respects Gemini's 15 RPM limit)
@@ -50,15 +52,30 @@ async def extract_single_item(
     tracked_repo = TrackedItemRepository(db)
     price_repo = PriceHistoryRepository(db)
     log_repo = ExtractionLogRepository(db)
+    product_repo = ProductRepository(db)
+    category_repo = CategoryRepository(db)
     tracker = RateLimitTracker(db)
 
     start_time = time.time()
     model_used = None
 
     try:
-        # Fetch item to get model preference
         item = tracked_repo.get_by_id(item_id)
-        preferred_model = item.preferred_model if item else None
+        if not item:
+            raise Exception("Item not found")
+
+        product = product_repo.get_by_id(item.product_id)
+        category = category_repo.get_by_name(product.category) if product and product.category else None
+
+        # Build context
+        context = ExtractionContext(
+            product_name=product.name if product else "Unknown",
+            category=category.name if category else None,
+            is_size_sensitive=category.is_size_sensitive if category else False,
+            target_size=item.target_size,
+            quantity_size=item.quantity_size,
+            quantity_unit=item.quantity_unit
+        )
 
         # Capture screenshot
         screenshot_bytes = await capture_screenshot(url)
@@ -70,7 +87,7 @@ async def extract_single_item(
 
         # Extract price with rate limiting
         result, model_used = await extract_with_structured_output(
-            screenshot_bytes, api_key, tracker, preferred_model=preferred_model
+            screenshot_bytes, api_key, tracker, context=context
         )
 
         duration_ms = int((time.time() - start_time) * 1000)

@@ -154,27 +154,14 @@ CREATE TABLE api_usage (
     UNIQUE(model, date)
 );
 
-3. AI Extraction Prompt (The Interface)
+(For more details, see the [Logging System Guide](LOGGING.md))
 
-System Prompt:
+3. AI Extraction (The "Brain")
 
-"You are a data extraction assistant for a price tracking system.
-Analyze the provided screenshot of a product page.
-Extract the pricing and product details into a strict JSON format.
+Price Spy uses Gemini 2.5 Vision to extract data. This process is highly nuanced, using context-aware prompts to handle specific sizes (clothing) and volumes (bottles).
 
-Rules:
-
-price: The current selling price as a number (total price shown on page).
-
-volume_price: The price per unit (e.g., per Liter/Kg) often found in small print. IF NOT FOUND, return null.
-
-product_name: The full name of the product as shown.
-
-on_sale: Boolean true if a discount/bonus tag is visible.
-
-currency: Assume EUR (€) if ambiguous.
-
-Output ONLY raw JSON."
+For full details on how the AI identifies products, handles out-of-stock sizes, and fallback models, see:
+**[AI Extraction Guide](AI_EXTRACTION.md)**
 
 4. System Logic & Workflows
 

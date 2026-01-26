@@ -5,7 +5,7 @@ import json
 import aiohttp
 from typing import Union, Optional, Tuple
 
-from app.models.schemas import ProductInfo, ExtractionResult
+from app.models.schemas import ProductInfo, ExtractionResult, ExtractionContext
 from app.utils.logging import get_logger
 from app.core.gemini import GeminiModels
 
@@ -157,25 +157,53 @@ async def extract_product_info(image_bytes: bytes, api_key: str) -> Union[Produc
         return text
 
 
-STRUCTURED_OUTPUT_PROMPT = """Extract product and price information from this webpage screenshot as a price extraction expert.
+def get_extraction_prompt(context: Optional[ExtractionContext] = None) -> str:
+    """Generate a refined extraction prompt based on context."""
+    
+    target_info = ""
+    size_guidance = ""
+    
+    if context:
+        target_info = f"\nTARGET PRODUCT: {context.product_name} | CATEGORY: {context.category or 'General'}\n"
+        
+        if context.is_size_sensitive and context.target_size:
+            target_info += f"TARGET SIZE: {context.target_size} (This is a CLOTHING/SHOE item)\n"
+            size_guidance = (
+                f"- This item is SIZE-SENSITIVE. You are looking for size '{context.target_size}'.\n"
+                f"- If size '{context.target_size}' is NOT selectable, is greyed out, or explicitly marked as 'Out of Stock', "
+                "set is_available to false.\n"
+                f"- if you see the size '{context.target_size}' but it is not available, then is_available MUST be false.\n"
+            )
+        elif context.quantity_size and context.quantity_unit:
+            target_info += f"TARGET VOLUME/SIZE: {context.quantity_size} {context.quantity_unit}\n"
+            size_guidance = (
+                f"- Verify the product matches the volume/size '{context.quantity_size} {context.quantity_unit}'.\n"
+                "- If the page shows a different size (e.g., in a list of results), prioritize finding the exact match.\n"
+            )
+        elif context.target_size:
+            target_info += f"TARGET SIZE: {context.target_size}\n"
+            size_guidance = f"- Look specifically for the version/size '{context.target_size}'.\n"
 
-Analyze the image and extract:
-- THE CURRENT PRICE (numeric value only)
-- Currency code (EUR, USD, GBP, etc.)
-- Whether the product is in stock (available to buy)
-- The product name
-- The store/retailer name (if visible)
-- Whether the page is blocked by a cookie consent modal (is_blocked: boolean)
-- Original price (ONLY if there is a CLEAR previous price with a strikethrough or 'Van' label, otherwise leave null)
-- Deal type: Choose from 'bogo', 'multibuy', 'percentage_off', 'fixed_amount_off', 'second_unit_discount', 'value_pack', 'clearance', or 'none'. Note: 'Value Pack' or 'Voordeelpak' often indicates a 'value_pack' deal type if accompanied by a lower unit price or discount.
-- Discount percentage: Extract if deal_type is 'percentage_off' (e.g., 20).
-- Discount fixed amount: Extract if deal_type is 'fixed_amount_off' (e.g., 5.00).
-- Brief description of any promotional offer (deal_description: string, e.g., '1+1 gratis')
-- Additional notes: Include any conditions like 'Only for members' or 'Member only' here. Do NOT use 'member_only' as a deal_type.
+    base_prompt = f"""Act as a professional Personal Shopping Assistant. {target_info}
+Analyze this webpage screenshot to extract pricing and availability information.
 
-Return the data as JSON. If is_blocked is true, provide the best guess for other fields.
-If fields are missing or unreadable, use 0.0 for price and "N/A" for currency.
+RULES:
+- THE CURRENT PRICE: numeric value only.
+- Currency code: 3-letter ISO (EUR, USD, etc.).
+- is_available: Boolean.
+{size_guidance}
+- product_name: The name as shown on the site.
+- store_name: The retailer name.
+- is_blocked: Boolean (true if a cookie/consent modal blocks the view).
+- Original price: Only if a clear previous price is shown (strikethrough).
+- Deal type: Choose from 'bogo', 'multibuy', 'percentage_off', 'fixed_amount_off', 'second_unit_discount', 'value_pack', 'clearance', or 'none'.
+- Discount: Extract percentage or fixed amount if applicable.
+- deal_description: E.g., '1+1 gratis'.
+
+Return ONLY valid JSON. If is_blocked is true, provide your best guess.
+If fields are missing, use 0.0 for price and "N/A" for currency.
 """
+    return base_prompt
 
 
 from app.core.gemini import ModelConfig, is_rate_limit_error
@@ -194,7 +222,8 @@ def _extract_json(text: str) -> str:
 async def _call_gemini_api(
     image_bytes: bytes,
     api_key: str,
-    config: ModelConfig
+    config: ModelConfig,
+    context: Optional[ExtractionContext] = None
 ) -> ExtractionResult:
     """Make a single API call to Gemini with the given model config."""
     url = GeminiModels.get_api_url(config, api_key)
@@ -204,7 +233,7 @@ async def _call_gemini_api(
         "contents": [
             {
                 "parts": [
-                    {"text": STRUCTURED_OUTPUT_PROMPT},
+                    {"text": get_extraction_prompt(context)},
                     {
                         "inline_data": {
                             "mime_type": "image/png",
@@ -259,20 +288,18 @@ async def extract_with_structured_output(
     image_bytes: bytes,
     api_key: str,
     tracker=None,
-    preferred_model: Optional[str] = None
+    context: Optional[ExtractionContext] = None
 ) -> Tuple[ExtractionResult, str]:
     """
     Extract price using Gemini's structured output mode with automatic fallback.
 
     Tries models in priority order, falling back on rate limit errors.
     If a tracker is provided, records usage and marks exhausted models.
-    If preferred_model is provided, it is tried first.
 
     Args:
         image_bytes: Screenshot image data
         api_key: Gemini API key
         tracker: Optional RateLimitTracker for usage tracking
-        preferred_model: Optional model name to try first
 
     Returns:
         Tuple of (ExtractionResult, model_name) with price info and model used
@@ -281,15 +308,6 @@ async def extract_with_structured_output(
         Exception: If all models fail or are exhausted
     """
     models_to_try = list(GeminiModels.VISION_MODELS)
-
-    # If preferred_model provided, move it to the front
-    if preferred_model:
-        config = GeminiModels.get_config_by_model(preferred_model)
-        if config:
-            # Remove if already in list to avoid duplicates
-            models_to_try = [config] + [m for m in models_to_try if m.model.value != preferred_model]
-        else:
-            logger.warning(f"Preferred model '{preferred_model}' not found, using defaults")
 
     # If tracker provided, filter to available models
     if tracker:
@@ -304,7 +322,7 @@ async def extract_with_structured_output(
 
     for config in models_to_try:
         try:
-            result = await _call_gemini_api(image_bytes, api_key, config)
+            result = await _call_gemini_api(image_bytes, api_key, config, context)
 
             # Record successful usage
             if tracker:

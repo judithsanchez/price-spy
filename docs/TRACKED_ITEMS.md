@@ -12,6 +12,7 @@ CREATE TABLE tracked_items (
     product_id INTEGER NOT NULL,
     store_id INTEGER NOT NULL,
     url TEXT NOT NULL,
+    target_size TEXT,            -- e.g. "M", "42". Required for Clothing/Footwear.
     quantity_size REAL NOT NULL, -- e.g. 500
     quantity_unit TEXT NOT NULL, -- e.g. 'g'
     items_per_lot INTEGER DEFAULT 1,
@@ -45,13 +46,18 @@ Modularized in `app/api/routers/tracked_items.py`.
 You must provide `product_id`, `store_id`, `url`, and presentation details (`quantity_size`, `quantity_unit`).
 Optionally, provide `label_ids` to auto-associate labels.
 
+**Conditional Logic (Size Sensitivity):**
+- If the Product's Category is **Size Sensitive** (e.g., "Clothing"), `target_size` is **MANDATORY**.
+- If the Category is **Not Sensitive** (e.g., "Food"), `target_size` must be **NULL**.
+
 ```json
 {
   "product_id": 1,
   "store_id": 5,
   "url": "https://example.com/product",
-  "quantity_size": 500,
-  "quantity_unit": "ml",
+  "target_size": "M",  // Only for Clothing/Footwear
+  "quantity_size": 1,
+  "quantity_unit": "piece",
   "label_ids": [2, 4]
 }
 ```

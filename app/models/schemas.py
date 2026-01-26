@@ -26,6 +26,16 @@ class ProductInfo(BaseModel):
         return round(v, 2)
 
 
+class ExtractionContext(BaseModel):
+    """Context information passed to the AI to improve extraction accuracy."""
+    product_name: str
+    category: Optional[str] = None
+    is_size_sensitive: bool = False
+    target_size: Optional[str] = None
+    quantity_size: Optional[float] = None
+    quantity_unit: Optional[str] = None
+
+
 class ErrorRecord(BaseModel):
     """Record for error logging."""
 

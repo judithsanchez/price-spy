@@ -30,6 +30,20 @@ class JSONFormatter(logging.Formatter):
         if record.exc_info:
             log_entry["exception"] = self.formatException(record.exc_info)
 
+        # Persist to database if requested
+        if getattr(record, "persist_to_db", False) or record.levelno >= logging.ERROR:
+            try:
+                from app.core.error_logger import log_error_to_db
+                log_error_to_db(
+                    error_type=getattr(record, "db_error_type", "application_error"),
+                    message=record.getMessage(),
+                    url=getattr(record, "url", None),
+                    include_stack=bool(record.exc_info)
+                )
+            except Exception:
+                # Prevent recursion or crash if error logger fails
+                pass
+
         return json.dumps(log_entry, default=str)
 
 

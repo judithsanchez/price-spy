@@ -440,7 +440,9 @@ pytest tests/ -v -s
 
 ### Technical
 - [Data Structure](docs/DATA_STRUCTURE.md) - Database schema and design
+- [AI Extraction](docs/AI_EXTRACTION.md) - How the AI vision system works
 - [Roadmap](docs/ROADMAP.md) - Project milestones and progress
+- [Logging System](docs/LOGGING.md) - Operational history and error capture
 - [Product Vision](docs/PRODUCT_VISION.md) - High-level goals
 
 ## Test Coverage
