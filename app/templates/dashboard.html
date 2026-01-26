@@ -307,54 +307,31 @@
     {% endfor %}
 </div>
 {% endif %}
-<!-- API Usage & Extraction Logs Section -->
-<div class="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-6">
-    <!-- API Usage -->
-    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6" x-data="apiUsage()">
-        <h3 class="text-sm font-black text-jolly-dark uppercase tracking-wider mb-4">📊 API Usage (Today)</h3>
-        <div x-show="loading" class="text-jolly-dark/40 text-sm italic font-medium">Loading...</div>
-        <div x-show="!loading && usage.length === 0" class="text-jolly-dark/40 text-sm italic font-medium">No usage data yet</div>
-        <div x-show="!loading && usage.length > 0" class="space-y-4">
-            <template x-for="model in usage" :key="model.model">
-                <div class="p-3 bg-gray-50 rounded-xl">
-                    <div class="flex justify-between items-center mb-2">
-                        <span class="text-xs font-bold text-gray-700 truncate" x-text="model.model"></span>
-                        <span class="text-[10px] font-black tracking-tighter" :class="model.exhausted ? 'text-red-600' : 'text-gray-500'">
-                            <span x-text="model.used"></span> / <span x-text="model.limit"></span>
-                        </span>
-                    </div>
-                    <div class="w-full bg-jolly-lime/20 rounded-full h-2">
-                        <div class="h-2 rounded-full transition-all duration-500 shadow-sm"
-                             :class="model.exhausted ? 'bg-jolly-vivid' : (model.used / model.limit > 0.8 ? 'bg-jolly-rose' : 'bg-jolly')"
-                             :style="'width: ' + Math.min(100, (model.used / model.limit) * 100) + '%'"></div>
-                    </div>
-                </div>
-            </template>
-        </div>
-    </div>
-
-    <!-- Extraction Logs -->
-    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6" x-data="extractionLogs()">
-        <div class="flex justify-between items-center mb-4">
-            <h3 class="text-sm font-black text-jolly-dark uppercase tracking-wider">📜 Recent Extractions</h3>
-            <div x-show="stats" class="text-[10px] font-black text-jolly-dark/40 uppercase">
+<!-- Recent Extractions Section -->
+<div class="mt-8">
+    <div class="bg-white rounded-3xl shadow-sm border border-gray-100 p-8" x-data="extractionLogs()">
+        <div class="flex justify-between items-center mb-6">
+            <h3 class="text-sm font-black text-jolly-dark uppercase tracking-wider flex items-center gap-2">
+                <span>📜</span> Recent Extractions
+            </h3>
+            <div x-show="stats" class="text-[10px] font-black text-jolly-dark/40 uppercase bg-gray-50 px-3 py-1 rounded-full border border-gray-100">
                 SUCCESS: <span class="text-jolly" x-text="stats?.success_count || 0"></span>
             </div>
         </div>
-        <div x-show="loading" class="text-gray-400 text-sm">Loading...</div>
-        <div x-show="!loading && logs.length === 0" class="text-gray-400 text-sm">No recent activity</div>
-        <div x-show="!loading && logs.length > 0" class="space-y-2 max-h-64 overflow-y-auto pr-2 custom-scrollbar">
+        <div x-show="loading" class="text-gray-400 text-sm italic font-medium py-4 text-center">Refreshing tracker history...</div>
+        <div x-show="!loading && logs.length === 0" class="text-gray-400 text-sm italic font-medium py-4 text-center">No recent activity detected.</div>
+        <div x-show="!loading && logs.length > 0" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
             <template x-for="log in logs" :key="log.id">
-                <div class="p-2 text-[11px] rounded-xl border transition-all" :class="log.status === 'error' ? 'border-jolly-rose/20 bg-jolly-rose/5' : 'border-jolly/20 bg-jolly/5'">
-                    <div class="flex justify-between items-center px-1">
-                        <span class="font-bold flex items-center gap-1.5" :class="log.status === 'error' ? 'text-jolly-vivid' : 'text-jolly-dark'">
+                <div class="p-3 text-[11px] rounded-2xl border transition-all" :class="log.status === 'error' ? 'border-jolly-rose/20 bg-jolly-rose/5' : 'border-jolly/20 bg-jolly/5'">
+                    <div class="flex justify-between items-center px-1 mb-2">
+                        <span class="font-black flex items-center gap-1.5" :class="log.status === 'error' ? 'text-jolly-vivid' : 'text-jolly-dark'">
                             <span x-text="log.status === 'success' ? '⚡' : '⚠️'"></span>
                             Item #<span x-text="log.tracked_item_id"></span>
                         </span>
                         <span class="text-jolly-dark/30 text-[9px] font-bold" x-text="formatTime(log.created_at)"></span>
                     </div>
-                    <div class="mt-1 flex items-center gap-2 px-1">
-                        <span x-show="log.status === 'success'" class="text-jolly-dark/60 font-medium">
+                    <div class="flex items-center gap-2 px-1">
+                        <span x-show="log.status === 'success'" class="text-jolly-dark/60 font-medium truncate">
                             <span class="font-black text-jolly-dark" x-text="log.currency + ' ' + (log.price?.toFixed(2) || '0.00')"></span> 
                             via <span class="font-bold uppercase text-[9px] tracking-tight" x-text="log.model_used"></span>
                         </span>
@@ -539,25 +516,6 @@ function priceTrendChart() {
     }
 }
 
-function apiUsage() {
-    return {
-        usage: [],
-        loading: true,
-        init() {
-            this.loadUsage();
-        },
-        async loadUsage() {
-            try {
-                const res = await fetch('/api/usage');
-                this.usage = await res.json();
-            } catch (e) {
-                console.error('Failed to load usage:', e);
-            } finally {
-                this.loading = false;
-            }
-        }
-    }
-}
 
 function extractionLogs() {
     return {

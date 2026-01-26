@@ -1,0 +1,57 @@
+{% macro form_field(label, x_model, type="text", placeholder="", required=false, step="any", min=none, max=none) %}
+<div class="mb-4">
+    <label class="block text-[11px] font-black text-jolly-dark/60 uppercase tracking-widest mb-1.5 ml-1">{{ label }}{% if required %} *{% endif %}</label>
+    <input type="{{ type }}" 
+           x-model="{{ x_model }}" 
+           {% if required %}required{% endif %}
+           {% if step %}step="{{ step }}"{% endif %}
+           {% if min is not none %}min="{{ min }}"{% endif %}
+           {% if max is not none %}max="{{ max }}"{% endif %}
+           placeholder="{{ placeholder }}"
+           class="w-full border border-jolly-dark/10 rounded-2xl px-4 py-3 sm:py-2.5 focus:outline-none focus:ring-4 focus:ring-jolly/20 text-base sm:text-sm bg-gray-50/50 font-medium text-jolly-dark">
+</div>
+{% endmacro %}
+
+{% macro modal_wrapper(show_var, title, on_close, is_editing_var="editingItem", max_width="max-w-md") %}
+<div x-show="{{ show_var }}" x-cloak style="display: none;" class="fixed inset-0 bg-jolly-dark/40 backdrop-blur-sm flex items-end sm:items-center justify-center z-50">
+    <div class="bg-white w-full sm:rounded-3xl shadow-2xl sm:w-full {{ max_width }} max-h-[90vh] overflow-y-auto rounded-t-3xl border border-jolly-dark/5"
+         @click.away="{{ on_close }}"
+         x-transition:enter="transition ease-out duration-300"
+         x-transition:enter-start="opacity-0 translate-y-full sm:translate-y-0 sm:scale-95"
+         x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100"
+         x-transition:leave="transition ease-in duration-200"
+         x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100"
+         x-transition:leave-end="opacity-0 translate-y-full sm:translate-y-0 sm:scale-95">
+        
+        <div class="sm:hidden flex justify-center py-3">
+            <div class="w-12 h-1.5 bg-jolly-lime/30 rounded-full"></div>
+        </div>
+        
+        <div class="p-6 sm:p-8">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-xl font-black text-jolly-dark flex items-center gap-2">
+                    <span x-text="{{ is_editing_var }} ? '✏️' : '✨'"></span>
+                    <span x-text="{{ is_editing_var }} ? 'Edit {{ title }}' : 'Add {{ title }}'"></span>
+                </h3>
+                <button @click="{{ on_close }}" class="text-jolly-dark/20 hover:text-jolly-rose transition-colors">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+            </div>
+            
+            <div x-show="error" class="mb-6 p-4 bg-jolly-rose/10 border border-jolly-rose/20 text-jolly-vivid rounded-2xl text-[11px] font-bold" x-text="error"></div>
+            
+            {{ caller() }}
+        </div>
+    </div>
+</div>
+{% endmacro %}
+
+{% macro admin_tab_button(id, name, icon) %}
+<button @click="activeTab = '{{ id }}'"
+        class="flex items-center gap-2 px-6 py-3 rounded-2xl font-black uppercase tracking-widest text-[10px] transition-all whitespace-nowrap"
+        :class="activeTab === '{{ id }}' 
+            ? 'bg-jolly text-jolly-dark shadow-md border border-jolly-dark/5' 
+            : 'text-jolly-dark/40 hover:text-jolly-dark hover:bg-white border border-transparent'">
+    <span>{{ icon }}</span> {{ name }}
+</button>
+{% endmacro %}

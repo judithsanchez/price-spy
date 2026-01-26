@@ -47,12 +47,6 @@
                                     </div>
                                     <div class="text-[11px] text-jolly-dark/60 font-medium mb-1 flex items-center gap-3">
                                         <span class="font-black text-jolly-dark" x-text="item.quantity_size + ' ' + item.quantity_unit"></span>
-                                        <template x-if="item.item_name_on_site">
-                                            <span class="text-jolly-dark/30" x-text="' · ' + item.item_name_on_site"></span>
-                                        </template>
-                                        <template x-if="item.target_size">
-                                            <span class="px-1.5 py-0.5 rounded-md bg-gray-100 text-gray-500 text-[9px] font-black border border-gray-200" x-text="'🎯 Size: ' + item.target_size + (item.target_size_label ? ' (' + item.target_size_label + ')' : '')"></span>
-                                        </template>
                                         
                                         <!-- Price info -->
                                         <div class="flex items-center gap-2 ml-auto" x-show="item.latest_price">
@@ -152,9 +146,6 @@
                         <span x-text="editingItem ? 'Edit Tracked Item' : 'Add Tracked Item'"></span>
                     </h3>
                     <div class="flex items-center gap-4">
-                        <div class="text-[8px] font-black text-jolly-dark/20 uppercase tracking-widest bg-gray-50 px-2 py-1 rounded-lg border border-jolly-dark/5">
-                            Reg: <span x-text="brandSizes.length">0</span>
-                        </div>
                         <button @click="showForm = false" class="text-jolly-dark/20 hover:text-jolly-rose transition-colors">
                             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                         </button>
@@ -186,57 +177,10 @@
                     </div>
 
 
-                    <!-- Registered Preferences Section -->
-                    <template x-if="registryMatches.length > 0">
-                        <div class="mb-4">
-                            <label class="block text-[10px] font-black text-indigo-600 uppercase tracking-widest mb-2 ml-1">💡 Registered Preferences</label>
-                            <div class="flex flex-wrap gap-2">
-                                <template x-for="match in registryMatches" :key="match.id">
-                                    <button type="button" @click="applyRegistryMatch(match)"
-                                            class="bg-indigo-50 hover:bg-indigo-100 border border-indigo-100 text-indigo-700 px-3 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-2 active:scale-95">
-                                        <span>👤</span>
-                                        <span x-text="match.profile_name || match.label"></span>
-                                        <span class="opacity-50">(<span x-text="match.size"></span>)</span>
-                                    </button>
-                                </template>
-                            </div>
-                        </div>
-                    </template>
                     <div class="mb-4">
                         <label class="block text-[11px] font-black text-jolly-dark/60 uppercase tracking-widest mb-1.5 ml-1">🔗 URL *</label>
                         <input type="url" x-model="formData.url" required
                                class="w-full border border-jolly-dark/10 rounded-2xl px-4 py-3 sm:py-2.5 focus:outline-none focus:ring-4 focus:ring-jolly/20 text-base sm:text-sm bg-gray-50/50 font-medium text-jolly-dark">
-                    </div>
-                    <div class="mb-4">
-                        <label class="block text-[11px] font-black text-jolly-dark/60 uppercase tracking-widest mb-1.5 ml-1">🏷️ Item Name on Site</label>
-                        <input type="text" x-model="formData.item_name_on_site"
-                               class="w-full border border-jolly-dark/10 rounded-2xl px-4 py-3 sm:py-2.5 focus:outline-none focus:ring-4 focus:ring-jolly/20 text-base sm:text-sm bg-gray-50/50 font-medium text-jolly-dark">
-                    </div>
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4" x-show="isSizeSensitive()">
-                        <div>
-                            <label class="block text-[11px] font-black text-jolly-dark/60 uppercase tracking-widest mb-1.5 ml-1">🎯 Target Size</label>
-                            <input type="text" x-model="formData.target_size"
-                                   class="w-full border border-jolly-dark/10 rounded-2xl px-4 py-3 sm:py-2.5 focus:outline-none focus:ring-4 focus:ring-jolly/20 text-base sm:text-sm bg-gray-50/50 font-medium text-jolly-dark"
-                                   placeholder="e.g. M, 42, 32/34...">
-                        </div>
-                        <div>
-                            <label class="block text-[11px] font-black text-jolly-dark/60 uppercase tracking-widest mb-1.5 ml-1">👤 Person Profile (Optional)</label>
-                            <select x-model="formData.target_size_label"
-                                    class="w-full border border-jolly-dark/10 rounded-2xl px-4 py-3 sm:py-2.5 focus:outline-none focus:ring-4 focus:ring-jolly/20 text-base sm:text-sm bg-gray-50/50 font-medium text-jolly-dark">
-                                <option value="">Select Profile...</option>
-                                <template x-for="p in profiles" :key="p.id">
-                                    <option :value="p.name" x-text="p.name" :selected="formData.target_size_label === p.name"></option>
-                                </template>
-                            </select>
-
-                            <!-- Associated Brands Info -->
-                            <div class="mt-2 ml-1" x-show="formData.target_size_label">
-                                <label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Associated Brands</label>
-                                <input type="text" :value="associatedBrands.length > 0 ? associatedBrands.join(', ') : 'None registered'" readonly
-                                       class="w-full border border-gray-100 rounded-xl px-3 py-2 text-[10px] font-mono bg-gray-50 font-bold outline-none cursor-default"
-                                       :class="associatedBrands.length > 0 ? 'text-indigo-600' : 'text-gray-400'">
-                            </div>
-                        </div>
                     </div>
                     <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4 mb-6">
                         <div>
@@ -322,8 +266,17 @@ function trackedItemsManager() {
         products: [],
         stores: [],
         categories: [],
-        brandSizes: [],
-        profiles: [],
+
+        formData: {
+            product_id: '',
+            store_id: '',
+            url: '',
+            quantity_size: '',
+            quantity_unit: '',
+            items_per_lot: 1,
+            is_active: true,
+            alerts_enabled: true
+        },
         showForm: false,
         editingItem: null,
         saving: false,
@@ -335,122 +288,13 @@ function trackedItemsManager() {
                     this.loadItems(),
                     this.loadProducts(),
                     this.loadStores(),
-                    this.loadCategories(),
-                    this.loadRegistry()
+                    this.loadCategories()
                 ]);
             } catch (e) {
                 console.error('Failed to initialize:', e);
             }
         },
 
-        async loadRegistry() {
-            try {
-                const [bsResp, profResp] = await Promise.all([
-                    fetch('/api/brand-sizes'),
-                    fetch('/api/profiles')
-                ]);
-                this.brandSizes = await bsResp.json();
-                this.profiles = await profResp.json();
-            } catch (e) {
-                console.error('Failed to load registry:', e);
-            }
-        },
-
-        get registryMatches() {
-            const pid = this.formData.product_id;
-            if (!pid) return [];
-            const product = this.products.find(p => p.id == pid);
-            if (!product) {
-                console.debug(`[Registry] Product ID ${pid} not found in products list of length ${this.products.length}`);
-                return [];
-            }
-
-            const raw = [...this.brandSizes];
-            const matches = raw.filter(bs => {
-                const result = this.isMatch(bs, product);
-                return result;
-            });
-            
-            console.log(`[Registry] Matches for ${product.name}: ${matches.length}/${raw.length}`);
-            return matches;
-        },
-
-        isMatch(bs, product = null) {
-            if (!bs) return false;
-            const p = product || this.products.find(x => x.id == this.formData.product_id);
-            if (!p) return false;
-
-            const pB = String(p.brand || '').toLowerCase().trim();
-            const pC = String(p.category || '').toLowerCase().trim();
-            const pN = String(p.name || '').toLowerCase().trim();
-
-            const b = String(bs.brand || '').toLowerCase().trim();
-            const c = String(bs.category || '').toLowerCase().trim();
-            const t = String(bs.item_type || '').toLowerCase().trim();
-            
-            const bM = !b || (pB === b);
-            const cM = !c || (pC === c);
-            const tM = !t || pN.includes(t);
-            
-            return bM && cM && tM;
-        },
-
-        getMatchTrace(bs) {
-            const product = this.products.find(x => x.id == this.formData.product_id);
-            if (!product) return "No Selection";
-
-            const pB = String(product.brand || '').toLowerCase().trim();
-            const pC = String(product.category || '').toLowerCase().trim();
-            const pN = String(product.name || '').toLowerCase().trim();
-            const b = String(bs.brand || '').toLowerCase().trim();
-            const c = String(bs.category || '').toLowerCase().trim();
-            const t = String(bs.item_type || '').toLowerCase().trim();
-            
-            const bM = !b || (pB === b);
-            const cM = !c || (pC === c);
-            const tM = !t || pN.includes(t);
-            
-            return `B:${bM ? '✅' : '❌'}|C:${cM ? '✅' : '❌'}|T:${tM ? '✅' : '❌'}`;
-        },
-
-        applyRegistryMatch(match) {
-            this.formData.target_size = match.size;
-            this.formData.target_size_label = match.profile_name || match.label || 'Standard';
-        },
-
-        get associatedBrands() {
-            const prof = String(this.formData.target_size_label || '').toLowerCase().trim();
-            if (!prof) return [];
-            
-            const rawRules = [...this.brandSizes];
-            const matches = rawRules.filter(bs => {
-                const ruleProf = String(bs.profile_name || bs.label || '').toLowerCase().trim();
-                const matched = ruleProf === prof;
-                return matched;
-            });
-
-            console.log(`[Registry] Brands for "${prof}": matching against ${rawRules.length} rules. Found ${matches.length}`, matches);
-
-            const brands = matches
-                .map(bs => bs.brand)
-                .filter((v, i, a) => v && a.indexOf(v) === i);
-                
-            return brands.sort();
-        },
-
-        formData: {
-            product_id: '',
-            store_id: '',
-            url: '',
-            item_name_on_site: '',
-            quantity_size: '',
-            quantity_unit: '',
-            items_per_lot: 1,
-            target_size: '',
-            target_size_label: '',
-            is_active: true,
-            alerts_enabled: true
-        },
         async loadItems() {
             const response = await fetch('/api/tracked-items');
             this.items = await response.json();
@@ -508,12 +352,9 @@ function trackedItemsManager() {
                 product_id: '',
                 store_id: '',
                 url: '',
-                item_name_on_site: '',
                 quantity_size: '',
                 quantity_unit: '',
                 items_per_lot: 1,
-                target_size: '',
-                target_size_label: '',
                 is_active: true,
                 alerts_enabled: true
             };
@@ -529,12 +370,9 @@ function trackedItemsManager() {
                 product_id: item.product_id,
                 store_id: item.store_id,
                 url: item.url,
-                item_name_on_site: item.item_name_on_site || '',
                 quantity_size: item.quantity_size,
                 quantity_unit: item.quantity_unit,
                 items_per_lot: item.items_per_lot || 1,
-                target_size: item.target_size || '',
-                target_size_label: item.target_size_label || '',
                 is_active: item.is_active,
                 alerts_enabled: item.alerts_enabled
             };
@@ -549,12 +387,9 @@ function trackedItemsManager() {
                 product_id: parseInt(this.formData.product_id),
                 store_id: parseInt(this.formData.store_id),
                 url: this.formData.url,
-                item_name_on_site: this.formData.item_name_on_site || null,
                 quantity_size: parseFloat(this.formData.quantity_size),
                 quantity_unit: this.formData.quantity_unit,
                 items_per_lot: parseInt(this.formData.items_per_lot) || 1,
-                target_size: this.formData.target_size || null,
-                target_size_label: this.formData.target_size_label || null,
                 is_active: this.formData.is_active,
                 alerts_enabled: this.formData.alerts_enabled
             };
@@ -595,23 +430,6 @@ function trackedItemsManager() {
             }
         },
 
-        isSizeSensitive() {
-            // "Fail Closed" strategy: Default to FALSE (Hidden) to avoid clutter.
-            // Only show if we are 100% sure it is a sensitive category.
-
-            if (!this.formData.product_id) return false;
-            if (!this.categories || this.categories.length === 0) return false; 
-
-            const product = this.products.find(p => p.id === parseInt(this.formData.product_id));
-            if (!product || !product.category) return false;
-            
-            // Trim and lowercase for robust matching
-            const productCat = product.category.trim().toLowerCase();
-            const category = this.categories.find(c => c.name.trim().toLowerCase() === productCat);
-            
-            // Default to FALSE (hidden) if category is not found. 
-            return category ? (category.is_size_sensitive === 1 || category.is_size_sensitive === true) : false;
-        },
 
         async toggleActive(item) {
             try {

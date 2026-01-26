@@ -1,0 +1,96 @@
+<div x-data="labelsManager()" x-init="loadLabels()">
+    <div class="flex justify-end mb-4">
+        <button @click="resetForm()"
+                class="bg-jolly text-jolly-dark px-6 py-2.5 rounded-2xl hover:bg-jolly-lime transition-all font-black uppercase tracking-widest text-[10px] shadow-sm border border-jolly-dark/5">
+            Add New Label
+        </button>
+    </div>
+
+    <!-- Desktop Table View -->
+    <div class="bg-white rounded-3xl shadow-sm overflow-hidden border border-jolly-dark/5">
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-jolly-dark/5">
+                <thead class="bg-gray-50/50 text-[10px] font-black text-jolly-dark/40 uppercase tracking-widest">
+                    <tr>
+                        <th class="px-6 py-4 text-left">Name</th>
+                        <th class="px-6 py-4 text-left">Created At</th>
+                        <th class="px-6 py-4 text-left">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-jolly-dark/5">
+                    <template x-for="label in labels" :key="label.id">
+                        <tr class="hover:bg-jolly/5 transition-colors group">
+                            <td class="px-6 py-5 font-black text-jolly-dark" x-text="label.name"></td>
+                            <td class="px-6 py-5 whitespace-nowrap text-jolly-dark/40 text-xs font-bold" x-text="formatDate(label.created_at)"></td>
+                            <td class="px-6 py-5 whitespace-nowrap">
+                                <div class="flex gap-4">
+                                    <button @click="editLabel(label)" class="text-lg hover:scale-125 transition-transform" title="Edit">✏️</button>
+                                    <button @click="deleteLabel(label.id)" class="text-lg hover:scale-125 transition-transform" title="Delete">🗑️</button>
+                                </div>
+                            </td>
+                        </tr>
+                    </template>
+                    <tr x-show="labels.length === 0">
+                        <td colspan="3" class="px-6 py-4 text-center text-gray-400 font-medium italic">No labels found</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Modal Form -->
+    {% call modal_wrapper('showForm', 'Label', 'showForm = false', is_editing_var='editingLabel') %}
+        <form @submit.prevent="saveLabel()">
+            {{ form_field('Label Name', 'formData.name', required=true) }}
+
+            <div class="flex flex-col-reverse sm:flex-row justify-end gap-3 px-6 py-5 bg-gray-50/30 border-t border-jolly-dark/5 rounded-b-3xl mt-6 -mx-6 -mb-6 sm:-mx-8 sm:-mb-8">
+                <button type="button" @click="showForm = false" class="px-6 py-3 bg-white text-jolly-dark/60 font-black rounded-2xl hover:bg-gray-100 transition-all uppercase tracking-widest text-[10px]">Cancel</button>
+                <button type="submit" class="px-8 py-3 bg-jolly text-jolly-dark font-black rounded-2xl hover:bg-jolly-lime transition-all uppercase tracking-widest text-[10px]">
+                    <span x-text="editingLabel ? 'Save Changes' : 'Add Label'"></span>
+                </button>
+            </div>
+        </form>
+    {% endcall %}
+</div>
+
+<script>
+function labelsManager() {
+    return {
+        labels: [],
+        showForm: false,
+        editingLabel: null,
+        error: null,
+        formData: { name: '' },
+        async loadLabels() {
+            const r = await fetch('/api/labels');
+            this.labels = await r.json();
+        },
+        resetForm() {
+            this.editingLabel = null;
+            this.error = null;
+            this.formData = { name: '' };
+            this.showForm = true;
+        },
+        editLabel(label) {
+            this.editingLabel = label;
+            this.error = null;
+            this.formData = { ...label };
+            this.showForm = true;
+        },
+        async saveLabel() {
+            const method = this.editingLabel ? 'PUT' : 'POST';
+            const url = this.editingLabel ? `/api/labels/${this.editingLabel.id}?name=${encodeURIComponent(this.formData.name)}` : `/api/labels?name=${encodeURIComponent(this.formData.name)}`;
+            const res = await fetch(url, { method });
+            if (res.ok) { this.showForm = false; this.loadLabels(); }
+            else { const e = await res.json(); this.error = e.detail; }
+        },
+        async deleteLabel(id) {
+            if (confirm('Delete label?')) {
+                await fetch(`/api/labels/${id}`, {method: 'DELETE'});
+                this.loadLabels();
+            }
+        },
+        formatDate(v) { return new Date(v).toLocaleDateString(); }
+    }
+}
+</script>

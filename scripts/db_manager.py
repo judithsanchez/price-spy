@@ -85,6 +85,7 @@ def query(sql):
                 print("No results found.")
             else:
                 print("Command executed successfully.")
+            conn.commit()
             conn.close()
             return True
 
@@ -104,6 +105,8 @@ def query(sql):
         for row in rows:
             print(" | ".join(str(row[h]).ljust(widths[h]) for h in headers))
             
+        # Commit changes in case of INSERT/UPDATE/DELETE
+        conn.commit()
         conn.close()
         return True
     except Exception as e:

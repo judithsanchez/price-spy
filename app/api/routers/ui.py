@@ -100,7 +100,6 @@ async def dashboard(request: Request, db=Depends(get_db)):
                     "category": product.category,
                     "target_price": product.target_price,
                     "target_unit": product.target_unit,
-                    "current_stock": product.current_stock,
                     "tracked_items": []
                 }
             
@@ -262,6 +261,11 @@ async def dashboard(request: Request, db=Depends(get_db)):
         )
     finally:
         db.close()
+
+@router.get("/admin")
+async def admin_page(request: Request):
+    """Render admin hub page."""
+    return templates.TemplateResponse(request, "admin.html", {})
 
 @router.get("/products")
 async def products_page(request: Request):

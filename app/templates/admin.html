@@ -1,0 +1,221 @@
+{% extends "base.html" %}
+{% from "partials/macros.html" import form_field, modal_wrapper %}
+
+{% block title %}Admin Hub - Price Spy{% endblock %}
+
+{% block content %}
+<div x-data="{ 
+    expanded: JSON.parse(localStorage.getItem('pricespy_admin_expanded') || '[]'),
+    toggle(id) {
+        if (this.expanded.includes(id)) {
+            this.expanded = this.expanded.filter(i => i !== id);
+        } else {
+            this.expanded.push(id);
+        }
+        localStorage.setItem('pricespy_admin_expanded', JSON.stringify(this.expanded));
+    },
+    isExpanded(id) { return this.expanded.includes(id); }
+}">
+
+    <!-- Management Sections -->
+    <div class="space-y-6">
+        
+        <!-- Stores Card -->
+        <div class="bg-white rounded-3xl shadow-sm border border-jolly-dark/5 overflow-hidden transition-all duration-300"
+             :class="isExpanded('stores') ? 'ring-2 ring-jolly/20 shadow-lg' : ''">
+            <div @click="toggle('stores')" 
+                 class="px-8 py-5 flex justify-between items-center cursor-pointer hover:bg-gray-50/50 transition-colors">
+                <div class="flex items-center gap-4">
+                    <span class="text-2xl">🏪</span>
+                    <div>
+                        <h3 class="text-base font-black text-jolly-dark uppercase tracking-wider">Managed Stores</h3>
+                        <p class="text-[10px] font-bold text-jolly-dark/30 uppercase tracking-widest">Connect and manage retailers</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-4">
+                    <span class="text-jolly-dark/20 text-xs transition-transform duration-300" :class="isExpanded('stores') ? 'rotate-180' : ''">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M19 9l-7 7-7-7"/></svg>
+                    </span>
+                </div>
+            </div>
+            <div x-show="isExpanded('stores')" x-collapse>
+                <div class="p-8 border-t border-jolly-dark/5 bg-gray-50/30">
+                    {% include "partials/admin/stores_tab.html" %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Categories Card -->
+        <div class="bg-white rounded-3xl shadow-sm border border-jolly-dark/5 overflow-hidden transition-all duration-300"
+             :class="isExpanded('categories') ? 'ring-2 ring-jolly/20 shadow-lg' : ''">
+            <div @click="toggle('categories')" 
+                 class="px-8 py-5 flex justify-between items-center cursor-pointer hover:bg-gray-50/50 transition-colors">
+                <div class="flex items-center gap-4">
+                    <span class="text-2xl">🏷️</span>
+                    <div>
+                        <h3 class="text-base font-black text-jolly-dark uppercase tracking-wider">Product Categories</h3>
+                        <p class="text-[10px] font-bold text-jolly-dark/30 uppercase tracking-widest">Organize items by type</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-4">
+                    <span class="text-jolly-dark/20 text-xs transition-transform duration-300" :class="isExpanded('categories') ? 'rotate-180' : ''">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M19 9l-7 7-7-7"/></svg>
+                    </span>
+                </div>
+            </div>
+            <div x-show="isExpanded('categories')" x-collapse>
+                <div class="p-8 border-t border-jolly-dark/5 bg-gray-50/30">
+                    {% include "partials/admin/categories_tab.html" %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Labels Card -->
+        <div class="bg-white rounded-3xl shadow-sm border border-jolly-dark/5 overflow-hidden transition-all duration-300"
+             :class="isExpanded('labels') ? 'ring-2 ring-jolly/20 shadow-lg' : ''">
+            <div @click="toggle('labels')" 
+                 class="px-8 py-5 flex justify-between items-center cursor-pointer hover:bg-gray-50/50 transition-colors">
+                <div class="flex items-center gap-4">
+                    <span class="text-2xl">🔖</span>
+                    <div>
+                        <h3 class="text-base font-black text-jolly-dark uppercase tracking-wider">Managed Labels</h3>
+                        <p class="text-[10px] font-bold text-jolly-dark/30 uppercase tracking-widest">System-wide tagging system</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-4">
+                    <span class="text-jolly-dark/20 text-xs transition-transform duration-300" :class="isExpanded('labels') ? 'rotate-180' : ''">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M19 9l-7 7-7-7"/></svg>
+                    </span>
+                </div>
+            </div>
+            <div x-show="isExpanded('labels')" x-collapse>
+                <div class="p-8 border-t border-jolly-dark/5 bg-gray-50/30">
+                    {% include "partials/admin/labels_tab.html" %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Extraction Logs Card -->
+        <div class="bg-white rounded-3xl shadow-sm border border-jolly-dark/5 overflow-hidden transition-all duration-300"
+             :class="isExpanded('extractions') ? 'ring-2 ring-jolly/20 shadow-lg' : ''">
+            <div @click="toggle('extractions')" 
+                 class="px-8 py-5 flex justify-between items-center cursor-pointer hover:bg-gray-50/50 transition-colors">
+                <div class="flex items-center gap-4">
+                    <span class="text-2xl">⚡</span>
+                    <div>
+                        <h3 class="text-base font-black text-jolly-dark uppercase tracking-wider">Extraction History</h3>
+                        <p class="text-[10px] font-bold text-jolly-dark/30 uppercase tracking-widest">Chronological log of price checks</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-4">
+                    <span class="text-jolly-dark/20 text-xs transition-transform duration-300" :class="isExpanded('extractions') ? 'rotate-180' : ''">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M19 9l-7 7-7-7"/></svg>
+                    </span>
+                </div>
+            </div>
+            <div x-show="isExpanded('extractions')" x-collapse>
+                <div class="p-8 border-t border-jolly-dark/5">
+                    {% include "partials/admin/extraction_logs.html" %}
+                </div>
+            </div>
+        </div>
+
+        <!-- System Errors Card -->
+        <div class="bg-white rounded-3xl shadow-sm border border-jolly-dark/5 overflow-hidden transition-all duration-300"
+             :class="isExpanded('errors') ? 'ring-2 ring-jolly-rose/20 shadow-lg border-jolly-rose/10' : ''">
+            <div @click="toggle('errors')" 
+                 class="px-8 py-5 flex justify-between items-center cursor-pointer hover:bg-jolly-rose/5 transition-colors">
+                <div class="flex items-center gap-4">
+                    <span class="text-2xl">⚠️</span>
+                    <div>
+                        <h3 class="text-base font-black text-jolly-dark uppercase tracking-wider">System Errors</h3>
+                        <p class="text-[10px] font-bold text-jolly-rose/40 uppercase tracking-widest font-black">Failure monitoring and debugging</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-4">
+                    <span class="text-jolly-dark/20 text-xs transition-transform duration-300" :class="isExpanded('errors') ? 'rotate-180' : ''">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M19 9l-7 7-7-7"/></svg>
+                    </span>
+                </div>
+            </div>
+            <div x-show="isExpanded('errors')" x-collapse>
+                <div class="p-8 border-t border-jolly-dark/5">
+                    {% include "partials/admin/error_logs.html" %}
+                </div>
+            </div>
+        </div>
+
+        <!-- API Usage Card -->
+        <div class="bg-white rounded-3xl shadow-sm border border-jolly-dark/5 overflow-hidden transition-all duration-300"
+             :class="isExpanded('usage') ? 'ring-2 ring-jolly/20 shadow-lg' : ''">
+            <div @click="toggle('usage')" 
+                 class="px-8 py-5 flex justify-between items-center cursor-pointer hover:bg-gray-50/50 transition-colors">
+                <div class="flex items-center gap-4">
+                    <span class="text-2xl">📊</span>
+                    <div>
+                        <h3 class="text-base font-black text-jolly-dark uppercase tracking-wider">API Usage</h3>
+                        <p class="text-[10px] font-bold text-jolly-dark/30 uppercase tracking-widest">Real-time performance and quota metrics</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-4">
+                    <span class="text-jolly-dark/20 text-xs transition-transform duration-300" :class="isExpanded('usage') ? 'rotate-180' : ''">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M19 9l-7 7-7-7"/></svg>
+                    </span>
+                </div>
+            </div>
+            <div x-show="isExpanded('usage')" x-collapse>
+                <div class="p-8 border-t border-jolly-dark/5 bg-gray-50/30">
+                    <div class="max-w-2xl mx-auto" x-data="apiUsage()">
+                        <div x-show="loading" class="text-jolly-dark/40 text-sm italic font-medium py-8 text-center">Loading performance data...</div>
+                        <div x-show="!loading && usage.length === 0" class="text-jolly-dark/40 text-sm italic font-medium py-8 text-center">No usage data yet</div>
+                        <div x-show="!loading && usage.length > 0" class="space-y-6">
+                            <template x-for="model in usage" :key="model.model">
+                                <div class="p-5 bg-white rounded-2xl border border-jolly-dark/5 shadow-sm">
+                                    <div class="flex justify-between items-center mb-3">
+                                        <span class="text-sm font-black text-jolly-dark uppercase tracking-tight" x-text="model.model"></span>
+                                        <span class="text-xs font-black tracking-tighter px-3 py-1 rounded-full bg-gray-50 border border-jolly-dark/5" :class="model.exhausted ? 'text-red-600' : 'text-jolly-dark/60'">
+                                            <span x-text="model.used"></span> / <span x-text="model.limit"></span>
+                                        </span>
+                                    </div>
+                                    <div class="w-full bg-gray-200 rounded-full h-3 shadow-inner overflow-hidden">
+                                        <div class="h-full transition-all duration-1000 ease-out"
+                                             :class="model.exhausted ? 'bg-jolly-vivid' : (model.used / model.limit > 0.8 ? 'bg-jolly-rose' : 'bg-jolly')"
+                                             :style="'width: ' + Math.min(100, (model.used / model.limit) * 100) + '%'"></div>
+                                    </div>
+                                    <div class="mt-3 flex justify-between text-[10px] font-black uppercase tracking-widest" :class="model.exhausted ? 'text-jolly-vivid' : 'text-jolly-dark/30'">
+                                        <span x-text="Math.round((model.used / model.limit) * 100) + '% Consumption'"></span>
+                                        <span x-text="model.exhausted ? 'Rate Limit Reached' : 'Quota Healthy'"></span>
+                                    </div>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<script>
+function apiUsage() {
+    return {
+        usage: [],
+        loading: true,
+        init() {
+            this.loadUsage();
+        },
+        async loadUsage() {
+            try {
+                const res = await fetch('/api/usage');
+                this.usage = await res.json();
+            } catch (e) {
+                console.error('Failed to load usage:', e);
+            } finally {
+                this.loading = false;
+            }
+        }
+    }
+}
+</script>
+{% endblock %}

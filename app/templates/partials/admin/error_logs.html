@@ -1,0 +1,83 @@
+<div x-data="errorLogs()" x-init="init()">
+    {% include 'partials/error-log-filters.html' %}
+    
+    <div x-show="loading" class="text-center py-12 text-jolly-dark/40 italic font-medium">Loading history...</div>
+    <div x-show="!loading && logs.length === 0" class="text-center py-12 text-jolly-dark/40 italic font-medium">No errors detected. System healthy!</div>
+
+    <div x-show="!loading && logs.length > 0" class="overflow-hidden rounded-2xl border border-jolly-dark/5">
+        <table class="w-full text-left border-collapse">
+            <thead class="bg-gray-50/50 text-[10px] font-black text-jolly-dark/40 uppercase tracking-widest border-b border-jolly-dark/5">
+                <tr>
+                    <th class="px-6 py-4">Time</th>
+                    <th class="px-6 py-4">Type</th>
+                    <th class="px-6 py-4">Message</th>
+                    <th class="px-6 py-4 text-center">Links</th>
+                </tr>
+            </thead>
+            <tbody class="bg-white divide-y divide-jolly-dark/5">
+                <template x-for="log in logs" :key="log.id">
+                    <tr class="hover:bg-jolly-rose/5 transition-colors group">
+                        <td class="px-6 py-4 whitespace-nowrap text-[11px] font-bold text-jolly-dark/60" x-text="formatTime(log.created_at)"></td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <span class="px-2 py-1 text-[9px] font-black uppercase tracking-widest rounded-lg bg-jolly-rose/20 text-jolly-vivid border border-jolly-rose/30" x-text="log.error_type"></span>
+                        </td>
+                        <td class="px-6 py-4 text-[11px] font-bold text-jolly-dark/60 max-w-sm truncate" x-text="log.message" :title="log.message"></td>
+                        <td class="px-6 py-4 text-center">
+                            <div class="flex justify-center gap-2">
+                                <template x-if="log.url">
+                                    <a :href="log.url" target="_blank" class="p-1.5 hover:bg-white rounded-lg transition-transform hover:scale-110" title="Source URL">🔗</a>
+                                </template>
+                                <template x-if="log.screenshot_path">
+                                    <a :href="log.screenshot_path" target="_blank" class="p-1.5 hover:bg-white rounded-lg transition-transform hover:scale-110" title="View Screenshot">🖼️</a>
+                                </template>
+                            </div>
+                        </td>
+                    </tr>
+                </template>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Pagination -->
+    <div x-show="!loading && logs.length > 0" class="flex justify-between items-center mt-6 p-4 bg-gray-50/50 rounded-2xl border border-jolly-dark/5">
+        <button @click="prevPage()" :disabled="page <= 1" class="px-4 py-2 bg-white rounded-xl font-black text-[10px] uppercase tracking-widest border border-jolly-dark/10 shadow-sm disabled:opacity-30">Prev</button>
+        <span class="text-[10px] font-black text-jolly-dark/30 uppercase tracking-widest tracking-tighter">Page <span x-text="page"></span></span>
+        <button @click="nextPage()" :disabled="!hasMore" class="px-4 py-2 bg-white rounded-xl font-black text-[10px] uppercase tracking-widest border border-jolly-dark/10 shadow-sm disabled:opacity-30">Next</button>
+    </div>
+</div>
+
+<script>
+if (typeof errorLogs !== 'function') {
+    function errorLogs() {
+        return {
+            logs: [], loading: true, page: 1, limit: 100, hasMore: false,
+            filters: { errorType: '', startDate: '', endDate: '' },
+            init() { 
+                this.loadLogs(); 
+                const handler = e => { this.filters = e.detail; this.page = 1; this.loadLogs(); };
+                window.addEventListener('error-log-filter-changed', handler);
+            },
+            buildQuery() {
+                let q = `?limit=${this.limit}&offset=${(this.page - 1) * this.limit}`;
+                if (this.filters.errorType) q += `&error_type=${this.filters.errorType}`;
+                if (this.filters.startDate) q += `&start_date=${this.filters.startDate}`;
+                if (this.filters.endDate) q += `&end_date=${this.filters.endDate}`;
+                return q;
+            },
+            async loadLogs() {
+                this.loading = true;
+                try {
+                    const res = await fetch(`/api/errors${this.buildQuery()}`);
+                    const data = await res.json();
+                    this.logs = data;
+                    this.hasMore = data.length === this.limit;
+                } catch (e) { console.error('Failed to load error logs:', e); }
+                finally { this.loading = false; }
+            },
+            nextPage() { if (this.hasMore) { this.page++; this.loadLogs(); } },
+            prevPage() { if (this.page > 1) { this.page--; this.loadLogs(); } },
+            formatTime(iso) { return iso ? new Date(iso).toLocaleString('en-US', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false }) : '-'; }
+        }
+    }
+}
+</script>
