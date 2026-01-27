@@ -53,11 +53,11 @@
                 </div>
             </div>
             <div class="flex gap-2">
-                <button @click="runNow()" :disabled="running" class="flex-1 px-3 py-2 bg-jolly text-jolly-dark text-[10px] font-black rounded-lg hover:bg-jolly-lime transition-all uppercase tracking-tighter shadow-sm disabled:opacity-50 border border-jolly-dark/10">
-                    Run Now
+                <button x-show="!status.paused" @click="pauseScheduler()" class="flex-1 px-3 py-2 bg-jolly-sandy text-jolly-dark text-[10px] font-black rounded-lg hover:bg-jolly-sandy/80 transition-all uppercase tracking-tighter border border-jolly-dark/10 shadow-sm">
+                    Pause Spying
                 </button>
-                <button x-show="status.running" @click="pauseScheduler()" class="px-3 py-2 bg-jolly-sandy text-jolly-dark text-[10px] font-black rounded-lg hover:bg-jolly-sandy/80 transition-all uppercase tracking-tighter border border-jolly-dark/10">
-                    Pause
+                <button x-show="status.paused" @click="resumeScheduler()" class="flex-1 px-3 py-2 bg-jolly text-jolly-dark text-[10px] font-black rounded-lg hover:bg-jolly-lime transition-all uppercase tracking-tighter shadow-sm border border-jolly-dark/10">
+                    Resume Spying
                 </button>
             </div>
         </div>
@@ -591,7 +591,7 @@ function extractionLogs() {
 
 function schedulerPanel() {
     return {
-        status: { running: false, enabled: false, next_run: null, last_run: null, items_count: 0 },
+        status: { running: false, enabled: false, paused: false, next_run: null, last_run: null, items_count: 0 },
         running: false,
         message: null,
         messageType: 'success',
@@ -607,6 +607,7 @@ function schedulerPanel() {
             }
         },
         formatNextRun(isoString) {
+            if (this.status.paused) return 'Paused';
             if (!isoString) return 'Not scheduled';
             const date = new Date(isoString);
             const now = new Date();

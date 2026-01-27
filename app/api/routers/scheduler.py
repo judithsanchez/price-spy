@@ -18,6 +18,7 @@ class SchedulerStatusResponse(BaseModel):
     """Response model for scheduler status."""
     running: bool
     enabled: bool
+    paused: bool
     next_run: Optional[str] = None
     last_run: Optional[dict] = None
     items_count: int
