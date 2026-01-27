@@ -40,38 +40,44 @@
 
         <!-- Content -->
         <div class="content" style="padding: 24px;">
-            <!-- Price Drops Section -->
-            {% if report.price_drops %}
+            <!-- 1) Hot Deals Section -->
+            {% if report.deals %}
             <div style="margin-bottom: 24px;">
-                <h2 style="color: #166534; font-size: 18px; margin-bottom: 12px;">📉 PRICE DROPS</h2>
-                {% for item in report.price_drops %}
-                <div style="background: #dcfce7; border-radius: 8px; padding: 12px; margin-bottom: 8px;">
+                <h2 style="color: #166534; font-size: 18px; margin-bottom: 12px;">🔥 HOT DEALS</h2>
+                {% for item in report.deals %}
+                <div style="background: #edf7ed; border-radius: 8px; padding: 12px; margin-bottom: 8px; border-left: 4px solid #16a34a;">
                     <div style="font-weight: bold; color: #166534;">{{ item.product_name }}</div>
                     <div style="color: #15803d; font-size: 14px; margin-top: 4px;">
                         {{ item.store_name }} &bull; 
+                        {% if item.prev_price %}
                         <span style="text-decoration: line-through; opacity: 0.6;">{{ item.currency }} {{ "%.2f"|format(item.prev_price) }}</span>
+                        {% endif %}
                         <strong>{{ item.currency }} {{ "%.2f"|format(item.price) }}</strong>
-                        <span class="price-change-pill" style="background: #16a34a; color: white; padding: 1px 6px; border-radius: 4px; font-size: 11px; margin-left: 4px;">
+                        {% if item.is_target_hit %}
+                        <span style="background: #16a34a; color: white; padding: 1px 6px; border-radius: 4px; font-size: 11px; margin-left: 4px; font-weight: bold;">TARGET HIT</span>
+                        {% elif item.price_change_pct < -0.01 %}
+                        <span style="background: #16a34a; color: white; padding: 1px 6px; border-radius: 4px; font-size: 11px; margin-left: 4px;">
                             {{ "%.1f"|format(item.price_change_pct) }}%
                         </span>
+                        {% endif %}
                     </div>
                 </div>
                 {% endfor %}
             </div>
             {% endif %}
 
-            <!-- Price Increases Section -->
+            <!-- 2) Warnings / Price Increases Section -->
             {% if report.price_increases %}
             <div style="margin-bottom: 24px;">
-                <h2 style="color: #991b1b; font-size: 18px; margin-bottom: 12px;">📈 PRICE INCREASES</h2>
+                <h2 style="color: #991b1b; font-size: 18px; margin-bottom: 12px;">⚠️ WARNINGS: PRICE INCREASES</h2>
                 {% for item in report.price_increases %}
-                <div style="background: #fef2f2; border-radius: 8px; padding: 12px; margin-bottom: 8px;">
+                <div style="background: #fef2f2; border-radius: 8px; padding: 12px; margin-bottom: 8px; border-left: 4px solid #dc2626;">
                     <div style="font-weight: bold; color: #991b1b;">{{ item.product_name }}</div>
                     <div style="color: #dc2626; font-size: 14px; margin-top: 4px;">
                         {{ item.store_name }} &bull; 
-                        <span style="opacity: 0.6;">{{ item.currency }} {{ "%.2f"|format(item.prev_price) }}</span> →
-                        <strong>{{ item.currency }} {{ "%.2f"|format(item.price) }}</strong>
-                        <span class="price-change-pill" style="background: #dc2626; color: white; padding: 1px 6px; border-radius: 4px; font-size: 11px; margin-left: 4px;">
+                        <span style="opacity: 0.6;">Was {{ item.currency }} {{ "%.2f"|format(item.prev_price) }}</span> →
+                        <strong>Now {{ item.currency }} {{ "%.2f"|format(item.price) }}</strong>
+                        <span style="background: #dc2626; color: white; padding: 1px 6px; border-radius: 4px; font-size: 11px; margin-left: 4px; font-weight: bold;">
                             +{{ "%.1f"|format(item.price_change_pct) }}%
                         </span>
                     </div>
@@ -80,44 +86,51 @@
             </div>
             {% endif %}
 
-            <!-- All Items -->
+            <!-- 3) Spying Required Section -->
+            {% if report.untracked_planned %}
             <div style="margin-bottom: 24px;">
-                <h2 style="color: #374151; font-size: 18px; margin-bottom: 12px;">📋 ALL ITEMS</h2>
-                <table style="width: 100%; border-collapse: collapse;">
+                <h2 style="color: #374151; font-size: 18px; margin-bottom: 12px;">🕒 SPYING REQUIRED</h2>
+                {% for item in report.untracked_planned %}
+                <div style="background: #fffbeb; border-radius: 8px; padding: 12px; margin-bottom: 8px; border-left: 4px solid #d97706;">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span style="font-weight: bold; color: #92400e;">{{ item.name }}</span>
+                        <span style="background: #fef3c7; color: #92400e; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; border: 1px solid #fde68a;">
+                            WEEK {{ item.planned_date.split('-W')[1] }}
+                        </span>
+                    </div>
+                </div>
+                {% endfor %}
+                <p style="font-size: 12px; color: #6b7280; margin-top: 8px;">These products are planned for capture soon but have no active trackers yet.</p>
+            </div>
+            {% endif %}
+
+            <!-- All Items Table (Details) -->
+            <div style="margin-bottom: 24px; opacity: 0.8;">
+                <h2 style="color: #374151; font-size: 14px; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.05em;">🔍 Full Check Details</h2>
+                <table style="width: 100%; border-collapse: collapse; border: 1px solid #f3f4f6;">
                     <thead>
                         <tr style="background: #f9fafb;">
-                            <th style="padding: 8px; text-align: left; font-size: 12px; color: #6b7280;">Product</th>
-                            <th style="padding: 8px; text-align: left; font-size: 12px; color: #6b7280;">Price</th>
-                            <th class="mobile-hide" style="padding: 8px; text-align: left; font-size: 12px; color: #6b7280;">Change</th>
-                            <th class="mobile-hide" style="padding: 8px; text-align: left; font-size: 12px; color: #6b7280;">Status</th>
+                            <th style="padding: 8px; text-align: left; font-size: 12px; color: #6b7280; border-bottom: 1px solid #e5e7eb;">Product</th>
+                            <th style="padding: 8px; text-align: left; font-size: 12px; color: #6b7280; border-bottom: 1px solid #e5e7eb;">Price</th>
+                            <th class="mobile-hide" style="padding: 8px; text-align: left; font-size: 12px; color: #6b7280; border-bottom: 1px solid #e5e7eb;">Status</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for item in report.all_items %}
                         <tr>
-                            <td style="padding: 8px; border-bottom: 1px solid #e5e7eb; font-size: 13px;">
+                            <td style="padding: 8px; border-bottom: 1px solid #f3f4f6; font-size: 12px;">
                                 <div style="font-weight: 500;">{{ item.product_name }}</div>
-                                <div style="font-size: 11px; color: #6b7280;">{{ item.store_name }}</div>
                             </td>
-                            <td style="padding: 8px; border-bottom: 1px solid #e5e7eb; font-size: 13px;">
+                            <td style="padding: 8px; border-bottom: 1px solid #f3f4f6; font-size: 12px;">
                                 {{ item.currency }} {{ "%.2f"|format(item.price) }}
                             </td>
-                            <td class="mobile-hide" style="padding: 8px; border-bottom: 1px solid #e5e7eb; font-size: 12px;">
-                                {% if item.price_change_pct < -0.01 %}
-                                <span style="color: #16a34a;">{{ "%.1f"|format(item.price_change_pct) }}%</span>
-                                {% elif item.price_change_pct > 0.01 %}
-                                <span style="color: #dc2626;">+{{ "%.1f"|format(item.price_change_pct) }}%</span>
+                            <td class="mobile-hide" style="padding: 8px; border-bottom: 1px solid #f3f4f6; font-size: 11px;">
+                                {% if item.is_target_hit %}
+                                <span style="color: #16a34a; font-weight: bold;">HIT 🎯</span>
+                                {% elif item.is_deal %}
+                                <span style="color: #16a34a;">DEAL ✨</span>
                                 {% else %}
-                                <span style="color: #9ca3af;">-</span>
-                                {% endif %}
-                            </td>
-                            <td class="mobile-hide" style="padding: 8px; border-bottom: 1px solid #e5e7eb; font-size: 12px;">
-                                {% if item.is_deal %}
-                                <span style="background: #16a34a; color: white; padding: 2px 6px; border-radius: 4px;">DEAL</span>
-                                {% elif item.target_price %}
-                                <span style="color: #6b7280;">Target: {{ "%.2f"|format(item.target_price) }}</span>
-                                {% else %}
-                                <span style="color: #9ca3af;">No target</span>
+                                <span style="color: #9ca3af;">OK</span>
                                 {% endif %}
                             </td>
                         </tr>
@@ -129,11 +142,11 @@
             <!-- Errors Section -->
             {% if report.errors %}
             <div style="margin-bottom: 24px;">
-                <h2 style="color: #991b1b; font-size: 18px; margin-bottom: 12px;">⚠️ ERRORS ({{ report.error_count }})</h2>
+                <h2 style="color: #991b1b; font-size: 16px; margin-bottom: 12px;">⚠️ EXTRACTION ERRORS</h2>
                 {% for err in report.errors %}
-                <div style="background: #fef2f2; border-radius: 8px; padding: 12px; margin-bottom: 8px;">
+                <div style="background: #fef2f2; border-radius: 8px; padding: 10px; margin-bottom: 8px; font-size: 12px;">
                     <div style="font-weight: bold; color: #991b1b;">{{ err.product_name }} ({{ err.store_name }})</div>
-                    <div style="color: #dc2626; font-size: 14px;">Error: {{ err.error }}</div>
+                    <div style="color: #dc2626; margin-top: 2px;">{{ err.error }}</div>
                 </div>
                 {% endfor %}
             </div>
