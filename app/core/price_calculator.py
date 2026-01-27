@@ -172,5 +172,5 @@ def determine_effective_availability(
         if not isinstance(extracted_sizes, list):
             return raw_is_available
         return is_size_available(target_size, extracted_sizes)
-    except:
+    except Exception:
         return raw_is_available

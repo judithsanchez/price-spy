@@ -1,10 +1,11 @@
 """Batch extraction for all tracked items."""
 
-import os
 import time
 import asyncio
 from pathlib import Path
 from typing import List, Dict, Any, Optional
+
+from app.core.config import settings
 
 from app.storage.database import Database
 from app.storage.repositories import (
@@ -154,7 +155,6 @@ async def extract_single_item(
         }
 
 
-from app.core.config import settings
 
 # ...
 

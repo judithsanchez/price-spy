@@ -4,7 +4,6 @@ from app.api.deps import get_db
 from app.storage.repositories import (
     ProductRepository, 
     CategoryRepository, 
-    LabelRepository, 
     TrackedItemRepository
 )
 from app.models.schemas import (
@@ -12,8 +11,7 @@ from app.models.schemas import (
     ProductCreate, 
     ProductUpdate,
     ProductResponse, 
-    Category, 
-    Label
+    Category
 )
 from pydantic import BaseModel
 

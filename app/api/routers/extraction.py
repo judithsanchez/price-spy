@@ -1,8 +1,8 @@
 import os
 import time
 from pathlib import Path
-from typing import Optional, List
-from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
+from typing import Optional
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
 from app.api.deps import get_db
@@ -50,6 +50,7 @@ async def run_extraction(item_id: int, db_path: str):
         tracked_repo = TrackedItemRepository(db)
         product_repo = ProductRepository(db)
         category_repo = CategoryRepository(db)
+        price_repo = PriceHistoryRepository(db)
 
         item = tracked_repo.get_by_id(item_id)
         if not item:

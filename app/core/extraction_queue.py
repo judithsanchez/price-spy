@@ -1,9 +1,9 @@
 """Extraction queue with concurrency management."""
 
-import os
 import asyncio
 import time
-from typing import List, Dict, Any, Optional
+from typing import Optional, List, Dict, Any
+from app.core.config import settings
 from pathlib import Path
 
 from app.storage.database import Database
@@ -21,7 +21,6 @@ from app.core.rate_limiter import RateLimitTracker
 MAX_CONCURRENT = 10
 
 
-from app.core.config import settings
 
 def get_api_key() -> Optional[str]:
     """Get Gemini API key from environment."""

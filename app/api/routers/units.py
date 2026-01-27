@@ -1,7 +1,7 @@
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException
 from app.api.deps import get_db
-from app.storage.repositories import UnitRepository, ProductRepository, TrackedItemRepository
+from app.storage.repositories import UnitRepository
 from app.models.schemas import Unit, UnitCreate, UnitUpdate, UnitResponse
 
 router = APIRouter(
@@ -78,7 +78,7 @@ async def delete_unit(unit_id: int, db=Depends(get_db)):
             raise HTTPException(status_code=404, detail="Unit not found")
             
         # Check usage in Products
-        prod_repo = ProductRepository(db)
+        # Check usage in Products
         # We need a get_by_unit search or similar, or just manual query
         products = db.execute("SELECT id FROM products WHERE target_unit = ?", (unit.name,)).fetchall()
         

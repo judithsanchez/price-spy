@@ -10,7 +10,6 @@ from app.storage.repositories import (
     StoreRepository,
     TrackedItemRepository,
     PriceHistoryRepository,
-    CategoryRepository,
 )
 
 router = APIRouter(
@@ -315,7 +314,6 @@ async def stores_page(request: Request):
 async def timeline_page(request: Request, db=Depends(get_db)):
     """Render the vertical wishlist timeline."""
     from collections import defaultdict
-    from datetime import datetime
     
     product_repo = ProductRepository(db)
     price_repo = PriceHistoryRepository(db)

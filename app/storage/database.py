@@ -432,7 +432,7 @@ class Database:
                 "Exclusive", "Member-only", "Early-access", "Bulk-buy", "Stock-clearance",
                 "Back-in-stock", "Seasonal", "Holiday-special", "Limited-stock", "Fan-favorite"
             ]
-            conn.executemany("INSERT INTO labels (name) VALUES (?)", [(l,) for l in labels])
+            conn.executemany("INSERT INTO labels (name) VALUES (?)", [(label,) for label in labels])
 
         conn.commit()
 

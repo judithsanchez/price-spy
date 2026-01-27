@@ -1,11 +1,11 @@
 """Rate limit tracking and provider fallback for AI APIs."""
 
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone
 from typing import Optional, List
 from dataclasses import dataclass
 import pytz
 
-from app.core.gemini import GeminiModel, GeminiModels, ModelConfig, is_rate_limit_error
+from app.core.gemini import GeminiModel, GeminiModels, ModelConfig
 from app.utils.logging import get_logger
 
 logger = get_logger(__name__)

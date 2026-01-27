@@ -5,8 +5,8 @@ Handles SQL dumps and restores for production data environment.
 """
 
 import os
-import subprocess
 import sys
+import sqlite3
 from datetime import datetime
 
 # Configure paths
@@ -14,7 +14,6 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DB_PATH = os.path.join(BASE_DIR, "data", "pricespy.db")
 DUMP_PATH = os.path.join(BASE_DIR, "data", "pricespy_dump.sql")
 
-import sqlite3
 
 def dump():
     """Create a SQL dump of the current database using python's sqlite3 module."""

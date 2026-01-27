@@ -1,9 +1,7 @@
 
 import asyncio
 import os
-import sys
 from app.core.browser import capture_screenshot
-from app.core.config import settings
 
 async def diagnose_sites():
     sites = {

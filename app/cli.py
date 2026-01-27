@@ -42,7 +42,7 @@ def extract_all_command(db_path: str = "data/pricespy.db", delay: float = 5.0):
         results = asyncio.run(extract_all_items(db, delay_seconds=delay))
         summary = get_batch_summary(results)
 
-        print(f"\nBatch extraction complete:")
+        print("\nBatch extraction complete:")
         print(f"  - Total items: {summary['total']}")
         print(f"  - Successful: {summary['success_count']}")
         print(f"  - Errors: {summary['error_count']}")

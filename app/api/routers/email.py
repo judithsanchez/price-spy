@@ -75,7 +75,7 @@ If you received this, your daily reports will work!
     if success:
         return EmailTestResponse(
             success=True,
-            message=f"Test email sent successfully!",
+            message="Test email sent successfully!",
             recipient=config["recipient"],
         )
     else:

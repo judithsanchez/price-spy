@@ -30,7 +30,7 @@ def test_email():
         print("  SMTP_PASSWORD - Gmail App Password (16 chars)")
         return False
 
-    print(f"Configuration:")
+    print("Configuration:")
     print(f"  SMTP Host: {config['smtp_host']}:{config['smtp_port']}")
     print(f"  From: {config['sender']}")
     print(f"  To: {config['recipient']}")
