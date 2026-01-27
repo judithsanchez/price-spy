@@ -41,6 +41,10 @@ EXTRACTION_SCHEMA = {
             "items": {"type": "string"},
             "description": "List of sizes currently in stock and selectable (e.g. ['28', '30', 'XS', 'M'])"
         },
+        "is_size_matched": {
+            "type": "boolean",
+            "description": "True if the price is confirmed to be for the target size, False if unknown but a price/discount exists."
+        },
         "notes": {"type": "string"}
     },
     "required": ["price", "currency", "is_available", "product_name"]
@@ -51,7 +55,7 @@ STRUCTURED_PROMPT = """Act as a price extraction expert. Analyze this screenshot
 
 Your task:
 1. Identify if this is a Single Product Page or a Search Result List
-2. Extract the price information
+2. Extract the price information, including original prices and any discounts or deals.
 
 Return ONLY a valid JSON object with these exact fields:
 {
@@ -62,23 +66,25 @@ Return ONLY a valid JSON object with these exact fields:
     "page_type": "single_product" or "search_results",
     "is_available": boolean,
     "available_sizes": ["size1", "size2", ...],
+    "original_price": number or null,
+    "deal_type": "string or null",
+    "deal_description": "string or null",
     "confidence_score": number (your confidence from 0.0 to 1.0),
-    "is_blocked": boolean (true if a modal/consent banner blocks major content)
+    "is_blocked": boolean (true if a modal/consent banner blocks major content),
+    "is_size_matched": boolean (true if you are CERTAIN the price is for the requested size)
 }
 
 Important for Clothing:
 - Look for size selectors (labeled as 'Maat', 'Size', 'Mate', etc.).
 - List only the sizes that appear to be IN STOCK (not greyed out or struck through).
-- If it's not a clothing item, return an empty array for available_sizes.
+- If multiple prices exist for different sizes, use the most prominent or 'starting at' price.
 
 Important:
 - If is_blocked is true, still try to extract what you can, but set is_blocked: true.
 - If you CANNOT find the price or currency, use 0.0 for price and "N/A" for currency.
+- ALWAYS extract the original price and strikethrough prices to detect discounts.
 
-Important:
-- Return ONLY the JSON, no markdown, no explanation
-- Price must be a number, not a string
-- Use "EUR" for euros, "USD" for dollars, etc.
+Return ONLY the JSON, no markdown, no explanation.
 """
 
 
@@ -172,7 +178,9 @@ def get_extraction_prompt(context: Optional[ExtractionContext] = None) -> str:
                 f"- This item is SIZE-SENSITIVE. You are looking for size '{context.target_size}'.\n"
                 f"- If size '{context.target_size}' is NOT selectable, is greyed out, or explicitly marked as 'Out of Stock', "
                 "set is_available to false.\n"
-                f"- if you see the size '{context.target_size}' but it is not available, then is_available MUST be false.\n"
+                f"- If you see the price but cannot confirm it is for size '{context.target_size}' (e.g. no size is highlighted), "
+                "set is_size_matched to false but still report the price and is_available=true if it looks like a general sale.\n"
+                f"- ALWAYS favor reporting a price with is_size_matched=false over reporting 'Out of Stock' if a discount is visible.\n"
             )
         elif context.quantity_size and context.quantity_unit:
             target_info += f"TARGET VOLUME/SIZE: {context.quantity_size} {context.quantity_unit}\n"
@@ -188,17 +196,18 @@ def get_extraction_prompt(context: Optional[ExtractionContext] = None) -> str:
 Analyze this webpage screenshot to extract pricing and availability information.
 
 RULES:
-- THE CURRENT PRICE: numeric value only.
+- THE CURRENT PRICE: numeric value only. If multiple prices exist for different sizes and yours isn't selected, use the 'starting at' price or the most prominent price.
 - Currency code: 3-letter ISO (EUR, USD, etc.).
 - is_available: Boolean.
 {size_guidance}
 - product_name: The name as shown on the site.
 - store_name: The retailer name.
 - is_blocked: Boolean (true if a cookie/consent modal blocks the view).
-- Original price: Only if a clear previous price is shown (strikethrough).
+- Original price: Only if a clear previous price is shown (strikethrough). ALWAYS look for this to detect discounts.
 - Deal type: Choose from 'bogo', 'multibuy', 'percentage_off', 'fixed_amount_off', 'second_unit_discount', 'value_pack', 'clearance', or 'none'.
 - Discount: Extract percentage or fixed amount if applicable.
-- deal_description: E.g., '1+1 gratis'.
+- deal_description: E.g., '1+1 gratis' or '20% off with code'.
+- General Notes: Mention if the price is a general discount but you couldn't confirm the target size price.
 
 Return ONLY valid JSON. If is_blocked is true, provide your best guess.
 If fields are missing, use 0.0 for price and "N/A" for currency.

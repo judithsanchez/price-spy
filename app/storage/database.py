@@ -72,6 +72,7 @@ CREATE TABLE IF NOT EXISTS price_history (
     price REAL NOT NULL,
     currency TEXT NOT NULL DEFAULT 'EUR',
     is_available INTEGER DEFAULT 1,
+    is_size_matched INTEGER DEFAULT 1,
     confidence REAL NOT NULL,
     url TEXT NOT NULL,
     store_name TEXT,
@@ -318,6 +319,8 @@ class Database:
             cursor.execute("ALTER TABLE price_history ADD COLUMN deal_description TEXT")
         if "available_sizes" not in columns:
             cursor.execute("ALTER TABLE price_history ADD COLUMN available_sizes TEXT")
+        if "is_size_matched" not in columns:
+            cursor.execute("ALTER TABLE price_history ADD COLUMN is_size_matched INTEGER DEFAULT 1")
             
         # 5. Seed categories if table is empty
         cursor.execute("SELECT COUNT(*) FROM categories")

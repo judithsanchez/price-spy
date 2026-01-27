@@ -4,10 +4,18 @@
 
 {% block content %}
 <div x-data="{ ...trackedItemsManager(), ...priceHistoryMixin() }" x-init="init()">
-    <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-8">
-        <h2 class="text-2xl font-black text-jolly-dark">🎯 Tracked Items</h2>
+    <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-8">
+        <div class="flex items-center gap-4 flex-1">
+            <h2 class="text-2xl font-black text-jolly-dark">🎯 Tracked Items</h2>
+            <div class="hidden sm:block">
+                {% include "partials/search-filter.html" %}
+            </div>
+        </div>
+        <div class="sm:hidden w-full">
+            {% include "partials/search-filter.html" %}
+        </div>
         <button @click="openAddForm()"
-                class="bg-jolly text-jolly-dark px-6 py-3 sm:py-2 rounded-2xl hover:bg-jolly-lime transition-all font-black uppercase tracking-widest text-[10px] shadow-sm border border-jolly-dark/5">
+                class="bg-jolly text-jolly-dark px-6 py-3 sm:py-2 rounded-2xl hover:bg-jolly-lime transition-all font-black uppercase tracking-widest text-[10px] shadow-sm border border-jolly-dark/5 whitespace-nowrap">
             Add New Item
         </button>
     </div>
@@ -114,14 +122,15 @@
             </div>
         </template>
         
-        <div x-show="items.length === 0" class="bg-white rounded-3xl shadow-sm border border-dashed border-jolly/30 p-16 text-center">
+        <div x-show="getGroupedItems().length === 0" class="bg-white rounded-3xl shadow-sm border border-dashed border-jolly/30 p-16 text-center">
             <div class="w-20 h-20 bg-jolly-lime/10 rounded-full flex items-center justify-center mx-auto mb-6 text-jolly-dark/20 border border-jolly-lime/20 shadow-inner">
-                <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg x-show="!searchQuery" class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
                 </svg>
+                <div x-show="searchQuery" class="text-3xl">🔍</div>
             </div>
-            <p class="text-xl font-black text-jolly-dark mb-2">🕵️‍♂️ Nothing to see here... yet</p>
-            <p class="text-jolly-dark/40 max-w-xs mx-auto font-medium">Add items to start monitoring prices across different stores.</p>
+            <p class="text-xl font-black text-jolly-dark mb-2" x-text="searchQuery ? 'No matches found' : '🕵️‍♂️ Nothing to see here... yet'"></p>
+            <p class="text-jolly-dark/40 max-w-xs mx-auto font-medium" x-text="searchQuery ? 'Try adjusting your search terms.' : 'Add items to start monitoring prices across different stores.'"></p>
         </div>
     </div>
 
@@ -283,6 +292,7 @@ function trackedItemsManager() {
             is_active: true,
             alerts_enabled: true
         },
+        searchQuery: '',
         showForm: false,
         editingItem: null,
         saving: false,
@@ -346,13 +356,29 @@ function trackedItemsManager() {
 
         getGroupedItems() {
             const groups = {};
+            const q = this.searchQuery ? this.searchQuery.toLowerCase() : null;
+
             this.items.forEach(item => {
+                const product = this.products.find(p => p.id === item.product_id);
+                const store = this.stores.find(s => s.id === item.store_id);
+                
+                const productName = product ? product.name : 'Unknown';
+                const categoryName = product ? (product.category || '') : '';
+                const storeName = store ? store.name : 'Unknown';
+
+                // Filtering logic
+                if (q) {
+                    const matches = productName.toLowerCase().includes(q) || 
+                                    categoryName.toLowerCase().includes(q) || 
+                                    storeName.toLowerCase().includes(q);
+                    if (!matches) return;
+                }
+
                 const pid = item.product_id;
                 if (!groups[pid]) {
-                    const product = this.products.find(p => p.id === pid);
                     groups[pid] = {
                         product_id: pid,
-                        product_name: product ? product.name : 'Unknown',
+                        product_name: productName,
                         category: product ? product.category : null,
                         labels: product ? product.labels : null,
                         items: []

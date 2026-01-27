@@ -78,7 +78,7 @@ async def extract_single_item(
         )
 
         # Capture screenshot
-        screenshot_bytes = await capture_screenshot(url)
+        screenshot_bytes = await capture_screenshot(url, target_size=item.target_size if item else None)
 
         # Save screenshot
         screenshot_path = Path(f"screenshots/{item_id}.png")

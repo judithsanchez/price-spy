@@ -72,6 +72,7 @@ class PriceHistoryRecord(BaseModel):
     discount_fixed_amount: Optional[float] = None
     deal_description: Optional[str] = None
     available_sizes: Optional[str] = Field(default=None, description="JSON string of available sizes")
+    is_size_matched: bool = True
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
@@ -252,6 +253,7 @@ class ExtractionResult(BaseModel):
     discount_fixed_amount: Optional[float] = Field(default=None, description="The absolute currency value off")
     deal_description: Optional[str] = Field(default=None, description="Brief description of the deal")
     available_sizes: list[str] = Field(default_factory=list, description="List of sizes currently in stock")
+    is_size_matched: bool = Field(default=True, description="Whether the extracted price is confirmed for the target size")
     detected_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
     @field_validator("price")

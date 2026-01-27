@@ -1,6 +1,7 @@
 import random
 import asyncio
 import logging
+from typing import Optional
 from playwright.async_api import async_playwright, BrowserContext
 
 logger = logging.getLogger(__name__)
@@ -76,6 +77,7 @@ async def create_stealth_context(playwright) -> BrowserContext:
         "--window-position=0,0",
         "--ignore-certificate-errors",
         "--disable-extensions",
+        "--disable-gpu",  # Often helps on ARM/Raspberry Pi
         f"--user-agent={profile['ua']}"
     ]
 
@@ -84,8 +86,9 @@ async def create_stealth_context(playwright) -> BrowserContext:
         args=launch_args
     )
     
+    # Use a taller viewport by default to avoid clipping issues
     context = await browser.new_context(
-        viewport={"width": width, "height": height},
+        viewport={"width": width, "height": 1200},
         user_agent=profile["ua"],
         locale=STEALTH_CONFIG["locale"],
         timezone_id=STEALTH_CONFIG["timezone_id"],
@@ -108,7 +111,73 @@ async def create_stealth_context(playwright) -> BrowserContext:
     return context
 
 
-async def capture_screenshot(url: str) -> bytes:
+async def handle_zalando_interaction(page, target_size: Optional[str] = None):
+    """Specilized interaction for Zalando to handle size selection."""
+    if "zalando" not in page.url:
+        return
+
+    logger.info(f"Handling Zalando interaction (target_size: {target_size})")
+    try:
+        # 1. Look for the "Maat kiezen" button
+        # Try both role-based and testid-based selectors
+        selectors = [
+            'button[data-testid="pdp-size-picker-trigger"]',
+            'button[data-testid="pdp-size-selector-trigger"]',
+            'button:has-text("Maat kiezen")',
+            'button:has-text("Select size")',
+            'button:has-text("Maat selecteren")'
+        ]
+        
+        size_button = None
+        for selector in selectors:
+            try:
+                btn = page.locator(selector).first
+                if await btn.is_visible(timeout=3000):
+                    size_button = btn
+                    break
+            except:
+                continue
+
+        if size_button:
+            await size_button.scroll_into_view_if_needed()
+            await size_button.click()
+            logger.info("Clicked Zalando size dropdown")
+            await page.wait_for_timeout(1000)
+            
+            # 2. If target_size provided, try to click it
+            if target_size:
+                # Zalando sizes are often in a list or grid
+                # Try specific data-testid first, then generic buttons
+                size_selectors = [
+                    f'button[data-testid="pdp-size-selector-item"]:has-text("{target_size}")',
+                    f'button[data-testid="pdp-size-picker-item"]:has-text("{target_size}")',
+                    f'li[data-testid="pdp-size-selector-item"] button:has-text("{target_size}")',
+                    f'button:has-text("{target_size}")'
+                ]
+                
+                size_option = None
+                for selector in size_selectors:
+                    try:
+                        opt = page.locator(selector).first
+                        if await opt.is_visible(timeout=2000):
+                            size_option = opt
+                            break
+                    except:
+                        continue
+
+                if size_option:
+                    await size_option.click()
+                    logger.info(f"Clicked Zalando size option: {target_size}")
+                    await page.wait_for_timeout(2000) # Wait for price update
+                else:
+                    logger.warning(f"Zalando size option '{target_size}' not found or not visible")
+        else:
+            logger.warning("Zalando size button not found")
+    except Exception as e:
+        logger.error(f"Error during Zalando interaction: {e}")
+
+
+async def capture_screenshot(url: str, target_size: Optional[str] = None) -> bytes:
     """Navigate to URL and capture screenshot as PNG bytes."""
     async with async_playwright() as p:
         context = await create_stealth_context(p)
@@ -118,16 +187,28 @@ async def capture_screenshot(url: str) -> bytes:
         await page.add_init_script(STEALTH_SCRIPTS)
 
         # Random delay to simulate human timing (1-3 seconds)
-        await asyncio.sleep(random.uniform(1, 3))
+        await asyncio.sleep(random.uniform(1, 4))
 
-        await page.goto(url, wait_until="domcontentloaded", timeout=60000)
+        try:
+            # Use 'networkidle' to ensure images/styles are loaded
+            await page.goto(url, wait_until="networkidle", timeout=60000)
+        except Exception as e:
+            logger.warning(f"Networkidle failed for {url}, falling back to domcontentloaded: {e}")
+            try:
+                await page.goto(url, wait_until="domcontentloaded", timeout=30000)
+            except Exception as e2:
+                logger.error(f"Failed to navigate to {url}: {e2}")
+                await context.browser.close()
+                raise
 
         # Try to dismiss cookie consent popups
         try:
             selectors = [
                 '#sp-cc-accept', '#js-first-screen-accept-all-button', 
                 '[data-test="consent-modal-ofc-confirm-btn"]', 'button:has-text("Alles accepteren")',
-                '#onetrust-accept-btn-handler', '#onetrust-banner-sdk'
+                '#onetrust-accept-btn-handler', '#onetrust-banner-sdk',
+                'button:has-text("Accepteren")', 'button:has-text("Accept All")',
+                '.uc-btn-accept'
             ]
             
             for _ in range(3):
@@ -137,7 +218,7 @@ async def capture_screenshot(url: str) -> bytes:
                         btn = page.locator(selector).first
                         if await btn.is_visible(timeout=500):
                             await btn.click()
-                            await page.wait_for_timeout(500)
+                            await page.wait_for_timeout(1000) # Give it time to disappear
                             clicked_any = True
                     except:
                         continue
@@ -146,13 +227,34 @@ async def capture_screenshot(url: str) -> bytes:
         except Exception:
             pass
 
+        # Handle Zalando specifically if needed
+        if "zalando" in url:
+            await handle_zalando_interaction(page, target_size)
+
+        # Try to find a product image or main title to scroll to
+        try:
+            product_selectors = [
+                'h1', 'img[data-testid="pdp-main-image"]', 
+                '.product-title', '.pdp-info', '#productTitle',
+                '.pdp__name', '.pdp__price'
+            ]
+            for selector in product_selectors:
+                el = page.locator(selector).first
+                if await el.is_visible(timeout=2000):
+                    await el.scroll_into_view_if_needed()
+                    # Scroll a bit more up to show context
+                    await page.mouse.wheel(0, -150)
+                    break
+        except:
+            pass
+
         # Wait for page to stabilize
         await page.wait_for_timeout(3000)
 
-        # Capture screenshot
+        # Capture screenshot - using 1280x960 to get a better thumbnail aspect ratio
         screenshot_bytes = await page.screenshot(
             type="png",
-            clip={"x": 0, "y": 0, "width": 1920, "height": 1200}
+            clip={"x": 0, "y": 0, "width": 1280, "height": 960}
         )
 
         await context.browser.close()

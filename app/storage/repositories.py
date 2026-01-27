@@ -29,15 +29,16 @@ class PriceHistoryRepository:
         cursor = self.db.execute(
             """
             INSERT INTO price_history
-            (product_name, price, currency, is_available, confidence, url, store_name, page_type, notes,
+            (product_name, price, currency, is_available, is_size_matched, confidence, url, store_name, page_type, notes,
              original_price, deal_type, discount_percentage, discount_fixed_amount, deal_description, available_sizes)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 record.product_name,
                 record.price,
                 record.currency,
                 1 if record.is_available else 0,
+                1 if record.is_size_matched else 0,
                 record.confidence,
                 record.url,
                 record.store_name,
@@ -109,6 +110,7 @@ class PriceHistoryRepository:
             price=row["price"],
             currency=row["currency"],
             is_available=bool(row["is_available"]),
+            is_size_matched=bool(row["is_size_matched"]),
             confidence=row["confidence"],
             url=row["url"],
             store_name=row["store_name"],

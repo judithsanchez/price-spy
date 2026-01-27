@@ -203,10 +203,17 @@
                                     {% endif %}
                                 </span>
                                 {% if item.is_available is not none %}
-                                    <span class="px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-tighter {{ 'bg-jolly/20 text-jolly-dark border border-jolly/30' if item.is_available else 'bg-jolly-rose/20 text-jolly-rose border border-jolly-rose/30' }}" 
-                                          title="{{ 'Your size is in stock!' if item.is_available else 'Your size is out of stock' }}">
-                                        {{ 'In Stock' if item.is_available else 'Out of Stock' }}
-                                    </span>
+                                    {% if item.is_available and not item.is_size_matched %}
+                                        <span class="px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-tighter bg-amber-100 text-amber-700 border border-amber-200" 
+                                              title="A price was found, but we couldn't confirm it's for your target size.">
+                                            Size Unconfirmed
+                                        </span>
+                                    {% else %}
+                                        <span class="px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-tighter {{ 'bg-jolly/20 text-jolly-dark border border-jolly/30' if item.is_available else 'bg-jolly-rose/20 text-jolly-rose border border-jolly-rose/30' }}" 
+                                              title="{{ 'Your size is in stock!' if item.is_available else 'Your size is out of stock' }}">
+                                            {{ 'In Stock' if item.is_available else 'Out of Stock' }}
+                                        </span>
+                                    {% endif %}
                                 {% endif %}
                                 {% if item.target_size %}
                                     <span class="text-[9px] font-bold text-gray-400 uppercase">Size: {{ item.target_size }}</span>

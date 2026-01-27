@@ -73,7 +73,7 @@ async def run_extraction(item_id: int, db_path: str):
             return
 
         # Capture screenshot
-        screenshot_bytes = await capture_screenshot(item.url)
+        screenshot_bytes = await capture_screenshot(item.url, target_size=item.target_size if item else None)
 
         # Save screenshot
         screenshot_path = Path(f"screenshots/{item_id}.png")
@@ -172,7 +172,7 @@ async def trigger_extraction(item_id: int, db=Depends(get_db)):
 
         try:
             # Capture screenshot
-            screenshot_bytes = await capture_screenshot(item.url)
+            screenshot_bytes = await capture_screenshot(item.url, target_size=item.target_size if item else None)
 
             # Save screenshot
             screenshot_path = Path(f"screenshots/{item_id}.png")

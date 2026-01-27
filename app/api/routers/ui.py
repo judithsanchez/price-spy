@@ -181,6 +181,7 @@ async def dashboard(request: Request, db=Depends(get_db)):
                 "is_target_hit": is_target_hit,
                 "is_best_deal": False,
                 "is_available": latest_price_rec.is_available if latest_price_rec else None,
+                "is_size_matched": latest_price_rec.is_size_matched if latest_price_rec else True,
                 "notes": latest_price_rec.notes if latest_price_rec else None,
                 "screenshot_path": screenshot_path if has_screenshot else None,
                 "original_price": original_price,
