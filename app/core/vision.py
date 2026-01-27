@@ -208,6 +208,7 @@ RULES:
 - Discount: Extract percentage or fixed amount if applicable.
 - deal_description: E.g., '1+1 gratis' or '20% off with code'.
 - General Notes: Mention if the price is a general discount but you couldn't confirm the target size price.
+- IMPORTANT: If price is not immediately top-center, look for a STICKY BOTTOM BAR or "Add to Cart" button area. Fashion mobile sites often place the price there.
 
 Return ONLY valid JSON. If is_blocked is true, provide your best guess.
 If fields are missing, use 0.0 for price and "N/A" for currency.

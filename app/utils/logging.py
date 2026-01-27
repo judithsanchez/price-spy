@@ -18,13 +18,19 @@ class JSONFormatter(logging.Formatter):
             "message": record.getMessage(),
         }
 
-        # Add extra fields if present
-        if hasattr(record, "url"):
-            log_entry["url"] = record.url
-        if hasattr(record, "price"):
-            log_entry["price"] = record.price
-        if hasattr(record, "error_type"):
-            log_entry["error_type"] = record.error_type
+        # Standard LogRecord attributes to ignore
+        standard_attrs = {
+            "name", "msg", "args", "levelname", "levelno", "pathname", 
+            "filename", "module", "exc_info", "exc_text", "stack_info", 
+            "lineno", "funcName", "created", "msecs", "relativeCreated", 
+            "thread", "threadName", "processName", "process", "message",
+            "persist_to_db", "db_error_type"
+        }
+
+        # Add all extra fields dynamically
+        for key, value in record.__dict__.items():
+            if key not in standard_attrs and not key.startswith("_"):
+                log_entry[key] = value
 
         # Add exception info if present
         if record.exc_info:
