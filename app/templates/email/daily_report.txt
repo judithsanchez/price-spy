@@ -1,50 +1,50 @@
 PRICE SPY DAILY REPORT
 {{ report.date }}
 
-{% if report.price_drops %}
-📉 PRICE DROPS
+{% if report.deals %}
+🔥 HOT DEALS
 ----------------------------------------
-{% for item in report.price_drops %}
-* {{ item.product_name }}: {{ item.currency }} {{ "%.2f"|format(item.price) }} ({{ "%.1f"|format(item.price_change_pct) }}%)
+{% for item in report.deals %}
+* {{ item.product_name }} ({{ item.store_name }}): {{ item.currency }} {{ "%.2f"|format(item.price) }}{% if item.is_target_hit %} [TARGET HIT 🎯]{% elif item.price_change_pct < -0.01 %} ({{ "%.1f"|format(item.price_change_pct) }}% OFF){% endif %}
 {% endfor %}
 {% endif %}
 
 {% if report.price_increases %}
-📈 PRICE INCREASES
+⚠️ WARNINGS: PRICE INCREASES
 ----------------------------------------
 {% for item in report.price_increases %}
-* {{ item.product_name }}: {{ item.currency }} {{ "%.2f"|format(item.price) }} (+{{ "%.1f"|format(item.price_change_pct) }}%)
+* {{ item.product_name }} ({{ item.store_name }}): Was {{ item.currency }} {{ "%.2f"|format(item.prev_price) }} -> Now {{ item.currency }} {{ "%.2f"|format(item.price) }} (+{{ "%.1f"|format(item.price_change_pct) }}%)
 {% endfor %}
 {% endif %}
 
-📋 ALL ITEMS
+{% if report.untracked_planned %}
+🕒 SPYING REQUIRED
+----------------------------------------
+{% for item in report.untracked_planned %}
+* {{ item.name }} (Planned: WEEK {{ item.planned_date.split('-W')[1] }})
+{% endfor %}
+{% endif %}
+
+🔍 FULL CHECK DETAILS
 ----------------------------------------
 {% for item in report.all_items %}
-{% if item.is_deal %}
-{% set status = "DEAL" %}
-{% elif item.target_price %}
-{% set status = "Above target" %}
-{% else %}
-{% set status = "No target" %}
-{% endif %}
-✓ {{ item.product_name }} ({{ item.store_name }}): {{ item.currency }} {{ "%.2f"|format(item.price) }} [{{ "%.1f"|format(item.price_change_pct) }}%] - {{ status }}
-{% endfor %}
-
-{% for err in report.errors %}
-✗ {{ err.product_name }} ({{ err.store_name }}): Error - {{ err.error }}
+✓ {{ item.product_name }}: {{ item.currency }} {{ "%.2f"|format(item.price) }} [{% if item.is_target_hit %}TARGET HIT{% elif item.is_deal %}DEAL{% else %}OK{% endif %}]
 {% endfor %}
 
 {% if report.errors %}
-ERRORS
+⚠️ EXTRACTION ERRORS
 ----------------------------------------
 {% for err in report.errors %}
-* {{ err.product_name }}: {{ err.error }}
+✗ {{ err.product_name }} ({{ err.store_name }}): {{ err.error }}
 {% endfor %}
 {% endif %}
 
 SUMMARY
 ----------------------------------------
-Items checked: {{ report.total }} | Successful: {{ report.success_count }} | Errors: {{ report.error_count }} | Deals: {{ report.deals_count }}
+Items checked: {{ report.total }}
+Successful: {{ report.success_count }}
+Errors: {{ report.error_count }}
+Deals: {{ report.deals_count }}
 Next check: {{ report.next_run }}
 
 Open dashboard: {{ dashboard_url }}

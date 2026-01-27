@@ -87,6 +87,7 @@ class Product(BaseModel):
     purchase_type: Literal["recurring", "one_time"] = "recurring"
     target_price: Optional[float] = Field(default=None, gt=0)
     target_unit: Optional[str] = Field(default=None, max_length=20)
+    planned_date: Optional[str] = Field(default=None, max_length=20, description="Target purchase date (e.g. 2026-W05)")
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
@@ -100,6 +101,7 @@ class ProductCreate(BaseModel):
     purchase_type: Literal["recurring", "one_time"] = "recurring"
     target_price: Optional[float] = Field(default=None, gt=0)
     target_unit: Optional[str] = Field(default=None, max_length=20)
+    planned_date: Optional[str] = Field(default=None, max_length=20)
 
 
 class ProductUpdate(BaseModel):
@@ -110,6 +112,7 @@ class ProductUpdate(BaseModel):
     purchase_type: Optional[Literal["recurring", "one_time"]] = None
     target_price: Optional[float] = Field(default=None, gt=0)
     target_unit: Optional[str] = Field(default=None, max_length=20)
+    planned_date: Optional[str] = Field(default=None, max_length=20)
 
 
 class ProductResponse(BaseModel):
@@ -123,6 +126,7 @@ class ProductResponse(BaseModel):
     purchase_type: Optional[str] = None
     target_price: Optional[float] = None
     target_unit: Optional[str] = None
+    planned_date: Optional[str] = None
     created_at: datetime
 
 

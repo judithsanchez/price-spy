@@ -25,6 +25,7 @@ CREATE TABLE IF NOT EXISTS products (
     purchase_type TEXT DEFAULT 'recurring',
     target_price REAL,
     target_unit TEXT,
+    planned_date TEXT,
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
@@ -223,6 +224,12 @@ class Database:
             except Exception as e:
                 conn.rollback()
                 print(f"Migration failed (products): {e}")
+
+        # 1.1. Ensure planned_date exists (for cases where other migrations already ran)
+        cursor.execute("PRAGMA table_info(products)")
+        columns = [row["name"] for row in cursor.fetchall()]
+        if "planned_date" not in columns:
+            cursor.execute("ALTER TABLE products ADD COLUMN planned_date TEXT")
 
         # 2. Handle stores table migration
         cursor.execute("PRAGMA table_info(stores)")

@@ -12,6 +12,7 @@ from app.storage.repositories import (
     TrackedItemRepository,
     ProductRepository,
     StoreRepository,
+    PriceHistoryRepository,
 )
 
 
@@ -58,6 +59,10 @@ def get_item_details(item_id: int, db: Database) -> Optional[Dict[str, Any]]:
         "product_name": product.name if product else "Unknown",
         "store_name": store.name if store else "Unknown",
         "target_price": product.target_price if product else None,
+        "target_unit": product.target_unit if product else None,
+        "items_per_lot": item.items_per_lot,
+        "quantity_size": item.quantity_size,
+        "quantity_unit": item.quantity_unit,
         "url": item.url,
     }
 
@@ -67,7 +72,6 @@ def generate_report_data(
     db: Database
 ) -> Dict[str, Any]:
     """Generate report data from extraction results."""
-    from app.storage.repositories import PriceHistoryRepository
 
     if not results:
         return {
@@ -133,12 +137,32 @@ def generate_report_data(
         deal_type = result.get("deal_type")
         deal_description = result.get("deal_description")
 
-        is_target_hit = (
-            status == "success"
-            and price is not None
-            and target_price is not None
-            and price <= target_price
-        )
+        # Calculate if it's a target hit (unit-price aware)
+        from app.core.price_calculator import calculate_volume_price, normalize_unit
+        
+        is_target_hit = False
+        unit_price = None
+        current_unit = None
+
+        if status == "success" and price is not None:
+            unit_price, current_unit = calculate_volume_price(
+                price,
+                details["items_per_lot"] if details else 1,
+                details["quantity_size"] if details else 1,
+                details["quantity_unit"] if details else None
+            )
+            
+            t_price = details["target_price"] if details else None
+            t_unit = details["target_unit"] if details else None
+            
+            if t_price is not None:
+                if t_unit:
+                    norm_target_unit = normalize_unit(t_unit)
+                    norm_curr_unit = normalize_unit(current_unit) if current_unit else None
+                    if norm_target_unit == norm_curr_unit:
+                        is_target_hit = unit_price <= t_price
+                else:
+                    is_target_hit = price <= t_price
 
         is_promo_deal = False
         if status == "success" and price is not None:
@@ -188,6 +212,34 @@ def generate_report_data(
     success_count = len([r for r in results if r.get("status") == "success"])
     error_count = len([r for r in results if r.get("status") == "error"])
 
+    # Identify planned but untracked products within 4 weeks (Spying Required)
+    from datetime import datetime as dt, timedelta
+    now_dt = dt.now()
+    four_weeks_later = now_dt + timedelta(days=28)
+    
+    product_repo = ProductRepository(db)
+    tracked_repo = TrackedItemRepository(db)
+    all_products = product_repo.get_all()
+    untracked_planned = []
+    for product in all_products:
+        if product.planned_date:
+            try:
+                planned_dt = dt.strptime(product.planned_date + '-1', "%G-W%V-%u")
+                if planned_dt > four_weeks_later:
+                    continue
+            except (ValueError, TypeError):
+                continue
+
+            active_items = [ti for ti in tracked_repo.get_by_product(product.id) if ti.is_active]
+            if not active_items:
+                untracked_planned.append({
+                    "id": product.id,
+                    "name": product.name,
+                    "planned_date": product.planned_date
+                })
+    
+    untracked_planned.sort(key=lambda p: p["planned_date"])
+
     return {
         "date": datetime.now().strftime("%B %d, %Y"),
         "total": len(results),
@@ -197,6 +249,7 @@ def generate_report_data(
         "deals": deals,
         "price_drops": price_drops,
         "price_increases": price_increases,
+        "untracked_planned": untracked_planned,
         "all_items": items,
         "errors": errors,
         "next_run": "Tomorrow 23:00",

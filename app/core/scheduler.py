@@ -127,8 +127,12 @@ def get_scheduler_status() -> Dict[str, Any]:
     # Get next run time
     job = _scheduler.get_job("daily_extraction")
     next_run = None
-    if job and job.next_run_time:
-        next_run = job.next_run_time.isoformat()
+    is_paused = False
+    if job:
+        if job.next_run_time:
+            next_run = job.next_run_time.isoformat()
+        else:
+            is_paused = True
 
     # Get items count
     items_count = 0
@@ -150,6 +154,7 @@ def get_scheduler_status() -> Dict[str, Any]:
     return {
         "running": _scheduler.running,
         "enabled": config["enabled"],
+        "paused": is_paused,
         "next_run": next_run,
         "last_run": _last_run_result,
         "items_count": items_count,
@@ -190,19 +195,17 @@ def stop_scheduler():
 
 
 def pause_scheduler():
-    """Pause the scheduler (don't run jobs but keep state)."""
+    """Pause the daily extraction job."""
     global _scheduler
-
     if _scheduler:
-        _scheduler.pause()
+        _scheduler.pause_job("daily_extraction")
 
 
 def resume_scheduler():
-    """Resume a paused scheduler."""
+    """Resume the daily extraction job."""
     global _scheduler
-
     if _scheduler:
-        _scheduler.resume()
+        _scheduler.resume_job("daily_extraction")
 
 
 async def trigger_run_now():
