@@ -16,65 +16,29 @@ STEALTH_CONFIG = {
 }
 
 # JavaScript to mask automation detection
+# Advanced JavaScript to mask automation detection (Akamai/EdgeSuite bypass)
 STEALTH_SCRIPTS = """
-    // Mask webdriver property
-    Object.defineProperty(navigator, 'webdriver', {
-        get: () => false,
-    });
+(lambda) => {
+    // Pass the Webdriver Test
+    Object.defineProperty(navigator, 'webdriver', { get: () => false });
 
-    // Mask automation-related properties
-    Object.defineProperty(navigator, 'plugins', {
-        get: () => [1, 2, 3, 4, 5],
-    });
+    // Pass the Plugins Length Test
+    Object.defineProperty(navigator, 'plugins', { get: () => [1, 2, 3, 4, 5] });
 
-    // Mask Chrome-specific properties
-    window.chrome = {
-        runtime: {},
-        app: {
-            isInstalled: false,
-            InstallState: {
-                DISABLED: 'disabled',
-                INSTALLED: 'installed',
-                NOT_INSTALLED: 'not_installed',
-            },
-            RunningState: {
-                CANNOT_RUN: 'cannot_run',
-                READY_TO_RUN: 'ready_to_run',
-                RUNNING: 'running',
-            },
-        },
-        csi: function() {},
-        loadTimes: function() {},
-    };
+    // Pass the Languages Test
+    Object.defineProperty(navigator, 'languages', { get: () => ['nl-NL', 'nl', 'en-US', 'en'] });
 
-    // Aggressive Modal Bypass via MutationObserver
-    (function() {
-        const hideTags = ['#modalWindow', '.modal', '.cookie-modal', '[data-test="modal-window"]', 'wsp-modal-window', '.consent-modal', '#consent-layer', '[data-type="cookie-modal"]', '[data-type="country-language-modal"]'];
-        const hide = () => {
-            hideTags.forEach(tag => {
-                document.querySelectorAll(tag).forEach(el => {
-                    el.style.setProperty('display', 'none', 'important');
-                    el.style.setProperty('visibility', 'hidden', 'important');
-                    el.style.setProperty('opacity', '0', 'important');
-                    el.style.setProperty('pointer-events', 'none', 'important');
-                });
-            });
-            if (document.body) {
-                document.body.style.setProperty('overflow', 'auto', 'important');
-                document.body.style.setProperty('position', 'static', 'important');
-            }
-        };
-        
-        // Initial run
-        hide();
-        
-        // Continuous observer
-        const observer = new MutationObserver(hide);
-        observer.observe(document.documentElement, { childList: true, subtree: true });
-        
-        // Final fallback on load
-        window.addEventListener('load', hide);
-    })();
+    // Mock Chrome runtime
+    window.chrome = { runtime: {} };
+
+    // Overwrite the 'notification' permission
+    const originalQuery = window.navigator.permissions.query;
+    window.navigator.permissions.query = (parameters) => (
+        parameters.name === 'notifications' ?
+            Promise.resolve({ state: Notification.permission }) :
+            originalQuery(parameters)
+    );
+};
 """
 
 
@@ -150,7 +114,7 @@ async def capture_screenshot(url: str) -> bytes:
         context = await create_stealth_context(p)
         page = await context.new_page()
 
-        # Inject stealth scripts before navigation
+        # Inject manual stealth scripts
         await page.add_init_script(STEALTH_SCRIPTS)
 
         # Random delay to simulate human timing (1-3 seconds)
@@ -160,60 +124,36 @@ async def capture_screenshot(url: str) -> bytes:
 
         # Try to dismiss cookie consent popups
         try:
-            # Common selectors for Amazon, Bol.com, and others
-            # Some sites like Bol.com have stacked modals (Cookie + Language)
-            # We use a loop and multiple passes to clear them.
             selectors = [
-                '#sp-cc-accept',  # Amazon NL
-                '#js-first-screen-accept-all-button',  # Bol.com cookie
-                '[data-test="consent-modal-ofc-confirm-btn"]',  # Bol.com alt
-                'button:has-text("Alles accepteren")',  # Generic Dutch
-                '#js-second-screen-accept-all-button',  # Bol.com 2nd screen
-                '[data-test="continue-button"]',  # Bol.com language modal
-                'button:has-text("Doorgaan")',  # Bol.com language manual
-                'button:has-text("Accept all")',  # Generic English
-                'button:has-text("Accepteren")',  # Generic Dutch
-                '[data-action="a-cookie-instruction-close"]',  # Amazon close
+                '#sp-cc-accept', '#js-first-screen-accept-all-button', 
+                '[data-test="consent-modal-ofc-confirm-btn"]', 'button:has-text("Alles accepteren")',
+                '#onetrust-accept-btn-handler', '#onetrust-banner-sdk'
             ]
             
-            # Run up to 3 passes to clear stacked modals
             for _ in range(3):
                 clicked_any = False
                 for selector in selectors:
                     try:
                         btn = page.locator(selector).first
-                        if await btn.is_visible(timeout=2000):
+                        if await btn.is_visible(timeout=500):
                             await btn.click()
-                            await page.wait_for_timeout(1000)
+                            await page.wait_for_timeout(500)
                             clicked_any = True
                     except:
                         continue
                 if not clicked_any:
                     break
-            
-            # Additional surgical bypass: inject CSS again just in case (as a fallback)
-            await page.add_style_tag(content="""
-                #modalWindow, .modal, .cookie-modal, [data-test="modal-window"], wsp-modal-window {
-                    display: none !important;
-                }
-                body, html {
-                    overflow: auto !important;
-                    position: static !important;
-                }
-            """)
-        except Exception as e:
-            logger.warning(f"Error dismissing modals: {str(e)}")
+        except Exception:
             pass
 
         # Wait for page to stabilize
-        await page.wait_for_timeout(2000)
+        await page.wait_for_timeout(3000)
 
-        # Capture above-the-fold area (top 1200px as per spec)
+        # Capture screenshot
         screenshot_bytes = await page.screenshot(
             type="png",
             clip={"x": 0, "y": 0, "width": 1920, "height": 1200}
         )
 
         await context.browser.close()
-
         return screenshot_bytes
