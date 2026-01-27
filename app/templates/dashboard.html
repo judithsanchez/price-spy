@@ -7,35 +7,274 @@
     <div class="mb-6"></div>
 
 {% if has_any_items %}
-<!-- Dashboard Header: Quick Stats & Graph -->
-<div class="mb-8 grid grid-cols-1 lg:grid-cols-12 gap-6">
-    <!-- Trend Graph -->
-    <div class="lg:col-span-8 bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-        <div class="flex items-center justify-between mb-6">
-            <h3 class="text-lg font-black text-jolly-dark">📈 Price Trends</h3>
-            <div class="flex gap-2 text-[10px] font-black text-jolly-dark/40 uppercase tracking-widest">
-                <span>Last 7 Days</span>
+<!-- Dashboard Main Layout -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+    
+    <!-- Left Column: Main Product Grid (Main Vertical Space) -->
+    <div class="lg:col-span-8 flex flex-col gap-8">
+        {% if products %}
+        <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
+            {% for product in products %}
+            <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden flex flex-col transition-all hover:shadow-md h-full">
+                <!-- Card Header -->
+                <div class="px-6 py-4 bg-gradient-to-r from-gray-50/50 to-white border-b border-jolly-dark/5 flex flex-col sm:flex-row justify-between items-start gap-4">
+                    <div class="min-w-0 flex-1">
+                        <h3 class="text-lg font-black text-jolly-dark truncate mb-1" title="{{ product.name }}">📦 {{ product.name }}</h3>
+                        <div class="flex items-center gap-2 flex-wrap">
+                            {% if product.target_price %}
+                                <span class="text-[10px] font-bold text-jolly-dark/40 uppercase tracking-tighter">🎯 Target:</span>
+                                <span class="text-sm font-black text-jolly-dark">
+                                    EUR {{ "%.2f"|format(product.target_price) }}{% if product.target_unit %}/{{ product.target_unit }}{% endif %}
+                                </span>
+                            {% endif %}
+                            {% if product.brand %}
+                                <span class="px-2 py-0.5 rounded-full text-[8px] font-black bg-blue-100 text-blue-700 uppercase tracking-widest border border-blue-200 whitespace-nowrap">{{ product.brand }}</span>
+                            {% endif %}
+                            {% if product.category %}
+                                <span class="px-2 py-0.5 rounded-full text-[8px] font-black bg-jolly-lime/30 text-jolly-dark/60 uppercase tracking-widest border border-jolly-dark/5 whitespace-nowrap {{ 'ml-2' if product.target_price else '' }}">{{ product.category }}</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    {% set has_target_hit = product.tracked_items | selectattr('is_target_hit') | list | length > 0 %}
+                    {% set has_promo_deal = product.tracked_items | selectattr('is_deal') | list | length > 0 %}
+                    {% set has_price_drop = product.tracked_items | selectattr('is_price_drop') | list | length > 0 %}
+
+                    <div class="flex gap-2">
+                        {% if has_target_hit %}
+                            <span class="flex-shrink-0 inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-black bg-jolly-lime text-jolly-dark shadow-sm animate-bounce border border-white">
+                                🎯 TARGET HIT!
+                            </span>
+                        {% endif %}
+
+                        {% if has_promo_deal %}
+                            <span class="flex-shrink-0 inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-black bg-emerald-500 text-white shadow-sm animate-bounce border border-white/20">
+                                 ✨ PROMO!
+                            </span>
+                        {% elif has_price_drop and not has_target_hit %}
+                            <span class="flex-shrink-0 inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-black bg-blue-500 text-white shadow-sm border border-white/20">
+                                📉 DROP
+                            </span>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Card Content: Items List -->
+                <div class="flex-1 divide-y divide-gray-50">
+                    {% for item in product.tracked_items %}
+                    <div x-data="{ loading: false, error: null, success: null }" class="group px-6 py-4 hover:bg-gray-50/50 transition-colors">
+                        <div class="flex flex-col sm:flex-row sm:items-center gap-4">
+                            <!-- Store & Screenshot Info -->
+                            <div class="flex-1 min-w-0 flex items-center gap-4">
+                                {% if item.screenshot_path %}
+                                    <div class="relative flex-shrink-0">
+                                        <img src="/screenshots/{{ item.id }}.png"
+                                             alt="Latest screenshot"
+                                             class="w-14 h-12 object-cover rounded-lg border border-gray-100 shadow-sm cursor-zoom-in transition-transform group-hover:scale-105"
+                                             @click="window.open('/screenshots/{{ item.id }}.png', '_blank')">
+                                    </div>
+                                {% else %}
+                                    <div class="w-14 h-12 flex-shrink-0 bg-gray-50 rounded-lg flex items-center justify-center text-gray-300 border border-dashed border-gray-100">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                                    </div>
+                                {% endif %}
+                                
+                                <div class="min-w-0 flex-1">
+                                    <div class="flex items-center gap-2 mb-0.5">
+                                        <span class="font-black text-jolly-dark uppercase tracking-tight text-[11px] flex items-center gap-1.5">
+                                            {{ item.store_name }}
+                                            {% if item.is_best_deal %}
+                                                <span class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-amber-400 text-amber-900 text-[8px] font-black shadow-sm animate-bounce border border-white" title="Best Unit Price!">
+                                                    <span>⭐</span> BEST VALUE
+                                                </span>
+                                            {% endif %}
+                                        </span>
+                                        {% if item.is_available is not none %}
+                                            {% if item.is_available and not item.is_size_matched %}
+                                                <span class="px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-tighter bg-amber-100 text-amber-700 border border-amber-200" 
+                                                      title="A price was found, but we couldn't confirm it's for your target size.">
+                                                    Size Unconfirmed
+                                                </span>
+                                            {% else %}
+                                                <span class="px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-tighter {{ 'bg-jolly/20 text-jolly-dark border border-jolly/30' if item.is_available else 'bg-jolly-rose/20 text-jolly-rose border border-jolly-rose/30' }}" 
+                                                      title="{{ 'Your size is in stock!' if item.is_available else 'Your size is out of stock' }}">
+                                                    {{ 'In Stock' if item.is_available else 'Out of Stock' }}
+                                                </span>
+                                            {% endif %}
+                                        {% endif %}
+                                        {% if item.target_size %}
+                                            <span class="text-[9px] font-bold text-gray-400 uppercase">Size: {{ item.target_size }}</span>
+                                        {% endif %}
+                                    </div>
+                                    <a href="{{ item.url }}" target="_blank" class="text-[10px] text-jolly-dark/40 hover:text-jolly transition-colors truncate block underline decoration-jolly/20 hover:decoration-jolly" title="{{ item.url }}">{{ item.url }}</a>
+                                    {% if item.notes %}
+                                        <p class="text-[10px] text-jolly-dark/60 mt-1 italic font-medium line-clamp-1 flex items-center gap-1" title="{{ item.notes }}">
+                                            <span>📝</span> "{{ item.notes }}"
+                                        </p>
+                                    {% endif %}
+                                </div>
+                            </div>
+
+                            <!-- Price & Actions -->
+                            <div class="flex items-center justify-between sm:justify-end gap-6">
+                                <div class="text-right">
+                                    <div class="flex flex-col items-end">
+                                        {% if item.original_price and item.original_price > item.price %}
+                                            <span class="text-[10px] text-jolly-rose line-through font-bold leading-none mb-1 opacity-60">{{ item.currency }} {{ "%.2f"|format(item.original_price) }}</span>
+                                        {% endif %}
+                                         <div class="flex items-center justify-end gap-2">
+                                             <div class="text-xl font-black {% if item.is_target_hit %}text-jolly-lime{% elif item.is_deal %}text-emerald-500{% elif item.is_price_drop %}text-blue-500{% else %}text-jolly-dark{% endif %} tabular-nums">
+                                                 {% if item.price %}
+                                                     {{ item.currency }} {{ "%.2f"|format(item.price) }}
+                                                 {% else %}
+                                                     <span class="text-jolly-dark/20 italic text-sm">---</span>
+                                                 {% endif %}
+                                             </div>
+                                         </div>
+                                     </div>
+                                     
+                                     <div class="mt-1 flex flex-col items-end gap-1">
+                                         {% if item.is_deal %}
+                                             <div class="flex flex-col items-end">
+                                                 <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-black bg-emerald-500 text-white uppercase tracking-tighter shadow-sm border border-white/10" title="{{ item.deal_description or '' }}">
+                                                     ✨ {% if item.deal_type and item.deal_type != 'none' %}
+                                                           {{ item.deal_type | replace('_', ' ') }}
+                                                        {% elif item.deal_description %}
+                                                           {{ item.deal_description }}
+                                                        {% else %}
+                                                           DEAL
+                                                        {% endif %}
+                                                 </span>
+                                             </div>
+                                         {% elif item.is_price_drop and not item.is_target_hit %}
+                                             <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-black bg-blue-500 text-white uppercase tracking-tighter shadow-sm border border-white/10">
+                                                 📉 Drop
+                                             </span>
+                                         {% endif %}
+                                         
+                                         {% if item.unit_price and item.unit %}
+                                            <div class="text-[9px] text-jolly-dark/40 font-bold uppercase tracking-wider">
+                                                {{ item.currency }} {{ "%.2f"|format(item.unit_price) }}/{{ item.unit }}
+                                            </div>
+                                         {% endif %}
+                                     </div>
+                                </div>
+
+                                <div class="flex gap-1.5">
+                                    <button @click="openPriceHistory({{ item.id }})"
+                                            class="p-2 text-jolly-dark/40 hover:text-jolly hover:bg-jolly/5 rounded-xl transition-all border border-transparent hover:border-jolly/20"
+                                            title="History">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"/></svg>
+                                    </button>
+                                    <button
+                                        @click="
+                                            if (globalSpying) return;
+                                            loading = true; 
+                                            globalSpying = true;
+                                            error = null; 
+                                            success = null;
+                                            fetch('/api/extract/{{ item.id }}', {method: 'POST'})
+                                            .then(r => r.json())
+                                            .then(data => {
+                                                loading = false;
+                                                // Keep globalSpying true if success to prevent clicks during reload delay
+                                                if (data.status === 'error') {
+                                                    globalSpying = false;
+                                                    error = data.error;
+                                                } else {
+                                                    success = 'Goal!';
+                                                    setTimeout(() => location.reload(), 1500);
+                                                }
+                                            })
+                                            .catch(e => { 
+                                                loading = false; 
+                                                globalSpying = false; 
+                                                error = e.message; 
+                                            })"
+                                        :disabled="loading || (globalSpying && !loading)"
+                                        :class="(loading || (globalSpying && !loading)) ? 'bg-jolly-lime/50 text-jolly-dark/30 cursor-not-allowed' : 'bg-jolly text-jolly-dark hover:bg-jolly-lime hover:shadow-lg hover:shadow-jolly/20'"
+                                        class="px-4 py-2 text-[10px] font-black rounded-xl shadow-sm transition-all focus:ring-2 focus:ring-jolly/30 uppercase tracking-widest border border-jolly-dark/5">
+                                        <span x-show="!loading">Spy</span>
+                                        <span x-show="loading">
+                                            <svg class="animate-spin h-3 w-3 text-jolly-dark" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                        </span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <div x-show="error" x-cloak class="mt-2 text-[10px] text-red-500 bg-red-50 p-1.5 rounded border border-red-100" x-text="error"></div>
+                        <div x-show="success" x-cloak class="mt-2 text-[10px] text-green-600 font-bold" x-text="success"></div>
+                    </div>
+                    {% endfor %}
+                </div>
             </div>
+            {% endfor %}
         </div>
-        <div class="h-64 sm:h-72">
-            <canvas id="mainTrendChart"></canvas>
-        </div>
-        <!-- Compact Toggles -->
-        <div class="mt-4 flex flex-wrap gap-2 overflow-x-auto pb-2">
-            <template x-for="(ds, index) in chartDatasets" :key="index">
-                <button @click="toggleDataset(index)"
-                        class="flex-shrink-0 inline-flex items-center gap-2 px-2.5 py-1 rounded-full text-[10px] font-bold transition-all border hover:opacity-80"
-                        :class="datasetVisibility[index] ? 'text-white' : 'bg-gray-50 border-gray-200 text-gray-400'"
-                        :style="datasetVisibility[index] ? `background-color: ${ds.borderColor}; border-color: ${ds.borderColor}` : ''">
-                    <span class="w-1.5 h-1.5 rounded-full" :style="`background-color: ${datasetVisibility[index] ? 'white' : ds.borderColor}`"></span>
-                    <span x-text="ds.label"></span>
-                </button>
-            </template>
+        {% endif %}
+
+        <!-- Recent Extractions Section (Bottm of left column) -->
+        <div class="bg-white rounded-3xl shadow-sm border border-gray-100 p-8" x-data="extractionLogs()">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-sm font-black text-jolly-dark uppercase tracking-wider flex items-center gap-2">
+                    <span>📜</span> Recent Extractions
+                </h3>
+                <div x-show="stats" x-cloak class="text-[10px] font-black text-jolly-dark/40 uppercase bg-gray-50 px-3 py-1 rounded-full border border-gray-100">
+                    SUCCESS: <span class="text-jolly" x-text="stats?.success_count || 0"></span>
+                </div>
+            </div>
+            <div x-show="loading" class="text-gray-400 text-sm italic font-medium py-4 text-center">Refreshing tracker history...</div>
+            <div x-show="!loading && logs.length === 0" class="text-gray-400 text-sm italic font-medium py-4 text-center">No recent activity detected.</div>
+            <div x-show="!loading && logs.length > 0" class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <template x-for="log in logs" :key="log.id">
+                    <div class="p-3 text-[11px] rounded-2xl border transition-all" :class="log.status === 'error' ? 'border-jolly-rose/20 bg-jolly-rose/5' : 'border-jolly/20 bg-jolly/5'">
+                        <div class="flex justify-between items-center px-1 mb-2">
+                            <span class="font-black flex items-center gap-1.5" :class="log.status === 'error' ? 'text-jolly-vivid' : 'text-jolly-dark'">
+                                <span x-text="log.status === 'success' ? '⚡' : '⚠️'"></span>
+                                Item #<span x-text="log.tracked_item_id"></span>
+                            </span>
+                            <span class="text-jolly-dark/30 text-[9px] font-bold" x-text="formatTime(log.created_at)"></span>
+                        </div>
+                        <div class="flex items-center gap-2 px-1">
+                            <span x-show="log.status === 'success'" class="text-jolly-dark/60 font-medium truncate">
+                                <span class="font-black text-jolly-dark" x-text="log.currency + ' ' + (log.price?.toFixed(2) || '0.00')"></span> 
+                                via <span class="font-bold uppercase text-[9px] tracking-tight" x-text="log.model_used"></span>
+                            </span>
+                            <span x-show="log.status === 'error'" class="text-jolly-rose font-medium italic truncate" x-text="log.error_message"></span>
+                        </div>
+                    </div>
+                </template>
+            </div>
         </div>
     </div>
 
-    <!-- Right Panel: Compact Scheduler & Deals -->
+    <!-- Right Column: Graphs, Scheduler, Deals, Warnings (Narrower Space) -->
     <div class="lg:col-span-4 flex flex-col gap-6">
+        
+        <!-- Trend Graph -->
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+            <div class="flex items-center justify-between mb-6">
+                <h3 class="text-sm font-black text-jolly-dark uppercase tracking-wider">📈 Price Trends</h3>
+                <div class="flex gap-2 text-[10px] font-black text-jolly-dark/40 uppercase tracking-widest">
+                    <span>7 Days</span>
+                </div>
+            </div>
+            <div class="h-48">
+                <canvas id="mainTrendChart"></canvas>
+            </div>
+            <!-- Compact Toggles -->
+            <div class="mt-4 flex flex-wrap gap-1.5">
+                <template x-for="(ds, index) in chartDatasets" :key="index">
+                    <button @click="toggleDataset(index)"
+                            class="flex-shrink-0 inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[9px] font-bold transition-all border hover:opacity-80"
+                            :class="datasetVisibility[index] ? 'text-white' : 'bg-gray-50 border-gray-200 text-gray-400'"
+                            :style="datasetVisibility[index] ? `background-color: ${ds.borderColor}; border-color: ${ds.borderColor}` : ''">
+                        <span class="w-1 h-1 rounded-full" :style="`background-color: ${datasetVisibility[index] ? 'white' : ds.borderColor}`"></span>
+                        <span x-text="ds.label" class="truncate max-w-[80px]"></span>
+                    </button>
+                </template>
+            </div>
+        </div>
+
         <!-- Compact Scheduler -->
         <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5" x-data="schedulerPanel()">
             <div class="flex items-center justify-between mb-4">
@@ -44,7 +283,7 @@
             </div>
             <div class="grid grid-cols-2 gap-3 mb-4">
                 <div class="p-2 bg-gray-50 rounded-lg text-center">
-                    <div class="text-xl font-black text-blue-600 leading-tight" x-text="status.items_count || 0"></div>
+                    <div class="text-lg font-black text-blue-600 leading-tight" x-text="status.items_count || 0"></div>
                     <div class="text-[9px] text-gray-400 font-bold uppercase">Items</div>
                 </div>
                 <div class="p-2 bg-gray-50 rounded-lg text-center flex flex-col justify-center">
@@ -54,10 +293,10 @@
             </div>
             <div class="flex gap-2">
                 <button x-show="!status.paused" @click="pauseScheduler()" class="flex-1 px-3 py-2 bg-jolly-sandy text-jolly-dark text-[10px] font-black rounded-lg hover:bg-jolly-sandy/80 transition-all uppercase tracking-tighter border border-jolly-dark/10 shadow-sm">
-                    Pause Spying
+                    Pause
                 </button>
                 <button x-show="status.paused" @click="resumeScheduler()" class="flex-1 px-3 py-2 bg-jolly text-jolly-dark text-[10px] font-black rounded-lg hover:bg-jolly-lime transition-all uppercase tracking-tighter shadow-sm border border-jolly-dark/10">
-                    Resume Spying
+                    Resume
                 </button>
             </div>
         </div>
@@ -65,23 +304,20 @@
         <!-- Deals Highlight -->
         {% if deals %}
         <div class="bg-gradient-to-br from-jolly/10 to-jolly-lime/10 rounded-2xl border border-jolly/20 p-5 shadow-sm">
-            <h3 class="text-sm font-black text-jolly-dark uppercase tracking-wider mb-3 flex items-center gap-2">
-                <span class="text-lg">🔥</span> Hot Deals
+            <h3 class="text-xs font-black text-jolly-dark uppercase tracking-wider mb-3 flex items-center gap-2">
+                <span>🔥</span> Hot Deals
             </h3>
             <div class="space-y-2">
                 {% for deal in deals %}
-                <div class="px-3 py-2 bg-white/40 border border-jolly/20 rounded-lg text-xs flex justify-between items-center group cursor-default">
+                <div class="px-3 py-2 bg-white/40 border border-jolly/20 rounded-lg text-[11px] flex justify-between items-center group cursor-default">
                     <div class="flex flex-col min-w-0">
                         <span class="font-bold text-jolly-dark/80 truncate mr-2">{{ deal.product_name }}</span>
-                        <span class="text-[9px] font-black uppercase {{ 'text-jolly-lime' if deal.is_target_hit else 'text-emerald-600' }}">
-                            {{ '🎯 Target Hit' if deal.is_target_hit else '✨ Promo' }}
+                        <span class="text-[8px] font-black uppercase {{ 'text-jolly-lime' if deal.is_target_hit else 'text-emerald-600' }}">
+                            {{ '🎯 Hit' if deal.is_target_hit else '✨ Promo' }}
                         </span>
                     </div>
                     <div class="flex flex-col items-end">
                         <span class="font-black text-jolly-dark whitespace-nowrap">{{ deal.currency }} {{ "%.2f"|format(deal.price) }}</span>
-                        {% if deal.unit_price and deal.unit %}
-                            <span class="text-[9px] text-jolly-dark/40 uppercase tracking-tighter">{{ deal.currency }} {{ "%.2f"|format(deal.unit_price) }}/{{ deal.unit }}</span>
-                        {% endif %}
                     </div>
                 </div>
                 {% endfor %}
@@ -92,29 +328,24 @@
         <!-- Warnings Highlight -->
         {% if low_stock or price_increases %}
         <div class="bg-gradient-to-br from-jolly-rose/10 to-jolly-vivid/10 rounded-2xl border border-jolly-rose/20 p-5 shadow-sm">
-            <h3 class="text-sm font-black text-jolly-vivid uppercase tracking-wider mb-3 flex items-center gap-2">
-                <span class="text-lg">⚠️</span> Warnings
+            <h3 class="text-xs font-black text-jolly-vivid uppercase tracking-wider mb-3 flex items-center gap-2">
+                <span>⚠️</span> Warnings
             </h3>
             <div class="space-y-2">
                 {% for warn in low_stock %}
-                <div class="px-3 py-2 bg-white/40 border border-jolly-rose/20 rounded-lg text-[11px] flex flex-col group cursor-default">
+                <div class="px-3 py-2 bg-white/40 border border-jolly-rose/20 rounded-lg text-[10px] flex flex-col group cursor-default">
                     <div class="flex justify-between items-center mb-1">
-                        <span class="font-bold text-jolly-vivid truncate">{{ warn.product_name }}</span>
-                        <span class="px-1.5 py-0.5 rounded bg-jolly-rose/20 text-jolly-vivid text-[9px] font-black uppercase tracking-tighter border border-jolly-rose/30">Low Stock</span>
+                        <span class="font-bold text-jolly-vivid truncate max-w-[100px]">{{ warn.product_name }}</span>
+                        <span class="px-1 py-0.5 rounded bg-jolly-rose/20 text-jolly-vivid text-[8px] font-black uppercase tracking-tighter border border-jolly-rose/30">Low Stock</span>
                     </div>
-                    <span class="text-jolly-rose font-medium italic line-clamp-1">"{{ warn.notes }}"</span>
                 </div>
                 {% endfor %}
                 
                 {% for warn in price_increases %}
-                <div class="px-3 py-2 bg-white/40 border border-jolly-vivid/20 rounded-lg text-[11px] flex flex-col group cursor-default">
+                <div class="px-3 py-2 bg-white/40 border border-jolly-vivid/20 rounded-lg text-[10px] flex flex-col group cursor-default">
                     <div class="flex justify-between items-center mb-1">
-                        <span class="font-bold text-jolly-vivid truncate">{{ warn.product_name }}</span>
-                        <span class="px-1.5 py-0.5 rounded bg-jolly-vivid/20 text-jolly-vivid text-[9px] font-black uppercase tracking-tighter border border-jolly-vivid/30">Price Up</span>
-                    </div>
-                    <div class="flex items-center gap-2">
-                        <span class="text-jolly-rose/60 line-through">{{ warn.currency }} {{ "%.2f"|format(warn.previous_price) }}</span>
-                        <span class="font-black text-jolly-vivid">→ {{ warn.currency }} {{ "%.2f"|format(warn.price) }}</span>
+                        <span class="font-bold text-jolly-vivid truncate max-w-[100px]">{{ warn.product_name }}</span>
+                        <span class="font-black text-jolly-vivid">↑ {{ warn.currency }} {{ "%.2f"|format(warn.price) }}</span>
                     </div>
                 </div>
                 {% endfor %}
@@ -125,259 +356,19 @@
         <!-- Spying Required Alert -->
         {% if untracked_planned %}
         <div class="bg-gradient-to-br from-jolly-sandy/20 to-jolly-lime/10 rounded-2xl border border-jolly-sandy/30 p-5 shadow-sm">
-            <h3 class="text-sm font-black text-jolly-dark uppercase tracking-wider mb-3 flex items-center gap-2">
-                <span class="text-lg">🕒</span> Spying Required
+            <h3 class="text-xs font-black text-jolly-dark uppercase tracking-wider mb-3 flex items-center gap-2">
+                <span>🕒</span> Spying Required
             </h3>
-            <p class="text-[10px] text-jolly-dark/60 font-medium mb-3 italic">Planned products without active trackers:</p>
             <div class="space-y-2">
                 {% for item in untracked_planned %}
-                <a href="/products" class="px-3 py-2 bg-white/60 border border-jolly-sandy/20 rounded-lg text-[11px] flex flex-col group hover:bg-white hover:shadow-sm transition-all">
-                    <div class="flex justify-between items-center">
-                        <span class="font-bold text-jolly-dark tracking-tight group-hover:text-jolly">{{ item.name }}</span>
-                        <span class="text-[9px] font-black bg-jolly-sandy/30 text-jolly-dark px-1.5 py-0.5 rounded border border-jolly-sandy/40 uppercase">{{ item.planned_date }}</span>
-                    </div>
+                <a href="/products" class="px-3 py-2 bg-white/60 border border-jolly-sandy/20 rounded-lg text-[10px] flex items-center justify-between group hover:bg-white hover:shadow-sm transition-all">
+                    <span class="font-bold text-jolly-dark truncate max-w-[120px]">{{ item.name }}</span>
+                    <span class="text-[8px] font-black bg-jolly-sandy/30 text-jolly-dark px-1.5 py-0.5 rounded border border-jolly-sandy/40 uppercase">{{ item.planned_date.split('-W')[1] }}</span>
                 </a>
                 {% endfor %}
             </div>
         </div>
         {% endif %}
-    </div>
-</div>
-
-<!-- Product-Centric Dashboard Grid -->
-{% if products %}
-<div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
-    {% for product in products %}
-    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden flex flex-col transition-all hover:shadow-md h-full">
-        <!-- Card Header -->
-        <div class="px-6 py-4 bg-gradient-to-r from-gray-50/50 to-white border-b border-jolly-dark/5 flex flex-col sm:flex-row justify-between items-start gap-4">
-            <div class="min-w-0 flex-1">
-                <h3 class="text-lg font-black text-jolly-dark truncate mb-1" title="{{ product.name }}">📦 {{ product.name }}</h3>
-                <div class="flex items-center gap-2 flex-wrap">
-                    {% if product.target_price %}
-                        <span class="text-[10px] font-bold text-jolly-dark/40 uppercase tracking-tighter">🎯 Target:</span>
-                        <span class="text-sm font-black text-jolly-dark">
-                            EUR {{ "%.2f"|format(product.target_price) }}{% if product.target_unit %}/{{ product.target_unit }}{% endif %}
-                        </span>
-                    {% endif %}
-                    {% if product.brand %}
-                        <span class="px-2 py-0.5 rounded-full text-[8px] font-black bg-blue-100 text-blue-700 uppercase tracking-widest border border-blue-200 whitespace-nowrap">{{ product.brand }}</span>
-                    {% endif %}
-                    {% if product.category %}
-                        <span class="px-2 py-0.5 rounded-full text-[8px] font-black bg-jolly-lime/30 text-jolly-dark/60 uppercase tracking-widest border border-jolly-dark/5 whitespace-nowrap {{ 'ml-2' if product.target_price else '' }}">{{ product.category }}</span>
-                    {% endif %}
-                </div>
-            </div>
-            
-            {% set has_target_hit = product.tracked_items | selectattr('is_target_hit') | list | length > 0 %}
-            {% set has_promo_deal = product.tracked_items | selectattr('is_deal') | list | length > 0 %}
-            {% set has_price_drop = product.tracked_items | selectattr('is_price_drop') | list | length > 0 %}
-
-            <div class="flex gap-2">
-                {% if has_target_hit %}
-                    <span class="flex-shrink-0 inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-black bg-jolly-lime text-jolly-dark shadow-sm animate-bounce border border-white">
-                        🎯 TARGET HIT!
-                    </span>
-                {% endif %}
-
-                {% if has_promo_deal %}
-                    <span class="flex-shrink-0 inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-black bg-emerald-500 text-white shadow-sm animate-bounce border border-white/20">
-                         ✨ PROMO!
-                    </span>
-                {% elif has_price_drop and not has_target_hit %}
-                    <span class="flex-shrink-0 inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-black bg-blue-500 text-white shadow-sm border border-white/20">
-                        📉 DROP
-                    </span>
-                {% endif %}
-            </div>
-        </div>
-
-        <!-- Card Content: Items List -->
-        <div class="flex-1 divide-y divide-gray-50">
-            {% for item in product.tracked_items %}
-            <div x-data="{ loading: false, error: null, success: null }" class="group px-6 py-4 hover:bg-gray-50/50 transition-colors">
-                <div class="flex flex-col sm:flex-row sm:items-center gap-4">
-                    <!-- Store & Screenshot Info -->
-                    <div class="flex-1 min-w-0 flex items-center gap-4">
-                        {% if item.screenshot_path %}
-                            <div class="relative flex-shrink-0">
-                                <img src="/screenshots/{{ item.id }}.png"
-                                     alt="Latest screenshot"
-                                     class="w-14 h-12 object-cover rounded-lg border border-gray-100 shadow-sm cursor-zoom-in transition-transform group-hover:scale-105"
-                                     @click="window.open('/screenshots/{{ item.id }}.png', '_blank')">
-                            </div>
-                        {% else %}
-                            <div class="w-14 h-12 flex-shrink-0 bg-gray-50 rounded-lg flex items-center justify-center text-gray-300 border border-dashed border-gray-100">
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
-                            </div>
-                        {% endif %}
-                        
-                        <div class="min-w-0 flex-1">
-                            <div class="flex items-center gap-2 mb-0.5">
-                                <span class="font-black text-jolly-dark uppercase tracking-tight text-[11px] flex items-center gap-1.5">
-                                    {{ item.store_name }}
-                                    {% if item.is_best_deal %}
-                                        <span class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-amber-400 text-amber-900 text-[8px] font-black shadow-sm animate-bounce border border-white" title="Best Unit Price!">
-                                            <span>⭐</span> BEST VALUE
-                                        </span>
-                                    {% endif %}
-                                </span>
-                                {% if item.is_available is not none %}
-                                    {% if item.is_available and not item.is_size_matched %}
-                                        <span class="px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-tighter bg-amber-100 text-amber-700 border border-amber-200" 
-                                              title="A price was found, but we couldn't confirm it's for your target size.">
-                                            Size Unconfirmed
-                                        </span>
-                                    {% else %}
-                                        <span class="px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-tighter {{ 'bg-jolly/20 text-jolly-dark border border-jolly/30' if item.is_available else 'bg-jolly-rose/20 text-jolly-rose border border-jolly-rose/30' }}" 
-                                              title="{{ 'Your size is in stock!' if item.is_available else 'Your size is out of stock' }}">
-                                            {{ 'In Stock' if item.is_available else 'Out of Stock' }}
-                                        </span>
-                                    {% endif %}
-                                {% endif %}
-                                {% if item.target_size %}
-                                    <span class="text-[9px] font-bold text-gray-400 uppercase">Size: {{ item.target_size }}</span>
-                                {% endif %}
-                            </div>
-                            <a href="{{ item.url }}" target="_blank" class="text-[10px] text-jolly-dark/40 hover:text-jolly transition-colors truncate block underline decoration-jolly/20 hover:decoration-jolly" title="{{ item.url }}">{{ item.url }}</a>
-                            {% if item.notes %}
-                                <p class="text-[10px] text-jolly-dark/60 mt-1 italic font-medium line-clamp-1 flex items-center gap-1" title="{{ item.notes }}">
-                                    <span>📝</span> "{{ item.notes }}"
-                                </p>
-                            {% endif %}
-                        </div>
-                    </div>
-
-                    <!-- Price & Actions -->
-                    <div class="flex items-center justify-between sm:justify-end gap-6">
-                        <div class="text-right">
-                            <div class="flex flex-col items-end">
-                                {% if item.original_price and item.original_price > item.price %}
-                                    <span class="text-[10px] text-jolly-rose line-through font-bold leading-none mb-1 opacity-60">{{ item.currency }} {{ "%.2f"|format(item.original_price) }}</span>
-                                {% endif %}
-                                 <div class="flex items-center justify-end gap-2">
-                                     <div class="text-xl font-black {% if item.is_target_hit %}text-jolly-lime{% elif item.is_deal %}text-emerald-500{% elif item.is_price_drop %}text-blue-500{% else %}text-jolly-dark{% endif %} tabular-nums">
-                                         {% if item.price %}
-                                             {{ item.currency }} {{ "%.2f"|format(item.price) }}
-                                         {% else %}
-                                             <span class="text-jolly-dark/20 italic text-sm">---</span>
-                                         {% endif %}
-                                     </div>
-                                 </div>
-                             </div>
-                             
-                             <div class="mt-1 flex flex-col items-end gap-1">
-                                 {% if item.is_deal %}
-                                     <div class="flex flex-col items-end">
-                                         <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-black bg-emerald-500 text-white uppercase tracking-tighter shadow-sm border border-white/10" title="{{ item.deal_description or '' }}">
-                                             ✨ {% if item.deal_type and item.deal_type != 'none' %}
-                                                   {{ item.deal_type | replace('_', ' ') }}
-                                                {% elif item.deal_description %}
-                                                   {{ item.deal_description }}
-                                                {% else %}
-                                                   DEAL
-                                                {% endif %}
-                                         </span>
-                                     </div>
-                                 {% elif item.is_price_drop and not item.is_target_hit %}
-                                     <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-black bg-blue-500 text-white uppercase tracking-tighter shadow-sm border border-white/10">
-                                         📉 Drop
-                                     </span>
-                                 {% endif %}
-                                 
-                                 {% if item.unit_price and item.unit %}
-                                    <div class="text-[9px] text-jolly-dark/40 font-bold uppercase tracking-wider">
-                                        {{ item.currency }} {{ "%.2f"|format(item.unit_price) }}/{{ item.unit }}
-                                    </div>
-                                 {% endif %}
-                             </div>
-                        </div>
-
-                        <div class="flex gap-1.5">
-                            <button @click="openPriceHistory({{ item.id }})"
-                                    class="p-2 text-jolly-dark/40 hover:text-jolly hover:bg-jolly/5 rounded-xl transition-all border border-transparent hover:border-jolly/20"
-                                    title="History">
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"/></svg>
-                            </button>
-                            <button
-                                @click="
-                                    if (globalSpying) return;
-                                    loading = true; 
-                                    globalSpying = true;
-                                    error = null; 
-                                    success = null;
-                                    fetch('/api/extract/{{ item.id }}', {method: 'POST'})
-                                    .then(r => r.json())
-                                    .then(data => {
-                                        loading = false;
-                                        // Keep globalSpying true if success to prevent clicks during reload delay
-                                        if (data.status === 'error') {
-                                            globalSpying = false;
-                                            error = data.error;
-                                        } else {
-                                            success = 'Goal!';
-                                            setTimeout(() => location.reload(), 1500);
-                                        }
-                                    })
-                                    .catch(e => { 
-                                        loading = false; 
-                                        globalSpying = false; 
-                                        error = e.message; 
-                                    })"
-                                :disabled="loading || (globalSpying && !loading)"
-                                :class="(loading || (globalSpying && !loading)) ? 'bg-jolly-lime/50 text-jolly-dark/30 cursor-not-allowed' : 'bg-jolly text-jolly-dark hover:bg-jolly-lime hover:shadow-lg hover:shadow-jolly/20'"
-                                class="px-4 py-2 text-[10px] font-black rounded-xl shadow-sm transition-all focus:ring-2 focus:ring-jolly/30 uppercase tracking-widest border border-jolly-dark/5">
-                                <span x-show="!loading">Spy</span>
-                                <span x-show="loading">
-                                    <svg class="animate-spin h-3 w-3 text-jolly-dark" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                                </span>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-                <div x-show="error" x-cloak class="mt-2 text-[10px] text-red-500 bg-red-50 p-1.5 rounded border border-red-100" x-text="error"></div>
-                <div x-show="success" x-cloak class="mt-2 text-[10px] text-green-600 font-bold" x-text="success"></div>
-            </div>
-            {% endfor %}
-        </div>
-        
-    </div>
-    {% endfor %}
-</div>
-{% endif %}
-<!-- Recent Extractions Section -->
-<div class="mt-8">
-    <div class="bg-white rounded-3xl shadow-sm border border-gray-100 p-8" x-data="extractionLogs()">
-        <div class="flex justify-between items-center mb-6">
-            <h3 class="text-sm font-black text-jolly-dark uppercase tracking-wider flex items-center gap-2">
-                <span>📜</span> Recent Extractions
-            </h3>
-            <div x-show="stats" x-cloak class="text-[10px] font-black text-jolly-dark/40 uppercase bg-gray-50 px-3 py-1 rounded-full border border-gray-100">
-                SUCCESS: <span class="text-jolly" x-text="stats?.success_count || 0"></span>
-            </div>
-        </div>
-        <div x-show="loading" class="text-gray-400 text-sm italic font-medium py-4 text-center">Refreshing tracker history...</div>
-        <div x-show="!loading && logs.length === 0" class="text-gray-400 text-sm italic font-medium py-4 text-center">No recent activity detected.</div>
-        <div x-show="!loading && logs.length > 0" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-            <template x-for="log in logs" :key="log.id">
-                <div class="p-3 text-[11px] rounded-2xl border transition-all" :class="log.status === 'error' ? 'border-jolly-rose/20 bg-jolly-rose/5' : 'border-jolly/20 bg-jolly/5'">
-                    <div class="flex justify-between items-center px-1 mb-2">
-                        <span class="font-black flex items-center gap-1.5" :class="log.status === 'error' ? 'text-jolly-vivid' : 'text-jolly-dark'">
-                            <span x-text="log.status === 'success' ? '⚡' : '⚠️'"></span>
-                            Item #<span x-text="log.tracked_item_id"></span>
-                        </span>
-                        <span class="text-jolly-dark/30 text-[9px] font-bold" x-text="formatTime(log.created_at)"></span>
-                    </div>
-                    <div class="flex items-center gap-2 px-1">
-                        <span x-show="log.status === 'success'" class="text-jolly-dark/60 font-medium truncate">
-                            <span class="font-black text-jolly-dark" x-text="log.currency + ' ' + (log.price?.toFixed(2) || '0.00')"></span> 
-                            via <span class="font-bold uppercase text-[9px] tracking-tight" x-text="log.model_used"></span>
-                        </span>
-                        <span x-show="log.status === 'error'" class="text-jolly-rose font-medium italic truncate" x-text="log.error_message"></span>
-                    </div>
-                </div>
-            </template>
-        </div>
     </div>
 </div>
 
