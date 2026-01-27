@@ -11,7 +11,7 @@
 <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
     
     <!-- Left Column: Main Product Grid (Main Vertical Space) -->
-    <div class="lg:col-span-8 flex flex-col gap-8">
+    <div class="lg:col-span-8 flex flex-col gap-8 order-last lg:order-first">
         {% if products %}
         <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
             {% for product in products %}
@@ -248,7 +248,7 @@
     </div>
 
     <!-- Right Column: Deals, Warnings, Graph, Spying, Scheduler (Narrrower Space) -->
-    <div class="lg:col-span-4 flex flex-col gap-6">
+    <div class="lg:col-span-4 flex flex-col gap-6 order-first lg:order-last">
         
         <!-- 1) Deals Highlight (Hot Deals) -->
         {% if deals %}
