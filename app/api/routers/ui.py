@@ -278,6 +278,75 @@ async def stores_page(request: Request):
     """Render stores management page."""
     return templates.TemplateResponse(request, "stores.html", {})
 
+@router.get("/timeline")
+async def timeline_page(request: Request, db=Depends(get_db)):
+    """Render the vertical wishlist timeline."""
+    from collections import defaultdict
+    from datetime import datetime
+    
+    product_repo = ProductRepository(db)
+    price_repo = PriceHistoryRepository(db)
+    
+    products = product_repo.get_all()
+    timeline_data = defaultdict(lambda: defaultdict(list))
+    
+    # Filter products that have a planned date
+    planned_products = [p for p in products if p.planned_date]
+    
+    for p in planned_products:
+        # planned_date is '2026-W05'
+        try:
+            year, week_str = p.planned_date.split("-W")
+            year = int(year)
+            week = int(week_str)
+            
+            # Get latest price for the product (best deal among its tracked items)
+            from app.storage.repositories import TrackedItemRepository
+            tracked_repo = TrackedItemRepository(db)
+            tracked_items = tracked_repo.get_by_product(p.id)
+            
+            best_price = None
+            best_currency = "EUR"
+            
+            for item in tracked_items:
+                latest = price_repo.get_latest_by_url(item.url)
+                if latest and latest.price:
+                    if best_price is None or latest.price < best_price:
+                        best_price = latest.price
+                        best_currency = latest.currency
+            
+            product_card = {
+                "id": p.id,
+                "name": p.name,
+                "category": p.category,
+                "target_price": p.target_price,
+                "planned_date": p.planned_date,
+                "best_price": best_price,
+                "currency": best_currency,
+                "tracked_count": len(tracked_items)
+            }
+            
+            timeline_data[year][week].append(product_card)
+        except (ValueError, AttributeError):
+            continue
+
+    # Sort years descending, weeks ascending
+    sorted_timeline = []
+    for year in sorted(timeline_data.keys(), reverse=True):
+        year_data = {"year": year, "weeks": []}
+        for week in sorted(timeline_data[year].keys()):
+            year_data["weeks"].append({
+                "week": week,
+                "products": timeline_data[year][week]
+            })
+        sorted_timeline.append(year_data)
+
+    return templates.TemplateResponse(
+        request, 
+        "timeline.html", 
+        {"timeline": sorted_timeline}
+    )
+
 @router.get("/tracked-items")
 async def tracked_items_page(request: Request):
     """Render tracked items management page."""

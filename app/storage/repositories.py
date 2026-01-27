@@ -215,8 +215,8 @@ class ProductRepository:
         cursor = self.db.execute(
             """
             INSERT INTO products
-            (name, category, purchase_type, target_price, target_unit)
-            VALUES (?, ?, ?, ?, ?)
+            (name, category, purchase_type, target_price, target_unit, planned_date)
+            VALUES (?, ?, ?, ?, ?, ?)
             """,
             (
                 product.name,
@@ -224,6 +224,7 @@ class ProductRepository:
                 product.purchase_type,
                 product.target_price,
                 product.target_unit,
+                product.planned_date,
             )
         )
         self.db.commit()
@@ -317,7 +318,8 @@ class ProductRepository:
                 category = ?,
                 purchase_type = ?,
                 target_price = ?,
-                target_unit = ?
+                target_unit = ?,
+                planned_date = ?
             WHERE id = ?
             """,
             (
@@ -326,6 +328,7 @@ class ProductRepository:
                 product.purchase_type,
                 product.target_price,
                 product.target_unit,
+                product.planned_date,
                 product_id,
             )
         )
@@ -345,6 +348,7 @@ class ProductRepository:
             purchase_type=row["purchase_type"],
             target_price=row["target_price"],
             target_unit=row["target_unit"],
+            planned_date=row["planned_date"],
             created_at=datetime.fromisoformat(row["created_at"]),
         )
 

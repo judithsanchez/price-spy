@@ -49,6 +49,7 @@ async def create_product(product: ProductCreate, db=Depends(get_db)):
             "purchase_type": product.purchase_type,
             "target_price": product.target_price,
             "target_unit": product.target_unit,
+            "planned_date": product.planned_date,
         }
 
         # Auto-create category if it doesn't exist
@@ -96,6 +97,7 @@ async def update_product(product_id: int, product: ProductCreate, db=Depends(get
             purchase_type=product.purchase_type,
             target_price=product.target_price,
             target_unit=product.target_unit,
+            planned_date=product.planned_date,
         )
 
         # Auto-create category if it doesn't exist
