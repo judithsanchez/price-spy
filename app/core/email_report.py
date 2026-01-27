@@ -6,6 +6,7 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from typing import List, Dict, Any, Optional
 from datetime import datetime
+from jinja2 import Environment, FileSystemLoader
 
 from app.storage.database import Database
 from app.storage.repositories import (
@@ -277,7 +278,6 @@ def build_subject(report_data: Dict[str, Any]) -> str:
     return " ".join(parts)
 
 
-from jinja2 import Environment, FileSystemLoader
 
 # Initialize Jinja2 environment for email templates
 template_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "templates", "email")

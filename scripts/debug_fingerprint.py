@@ -1,8 +1,6 @@
 
 import asyncio
 import logging
-import random
-from app.core.browser import create_stealth_context
 from playwright.async_api import async_playwright
 from playwright_stealth import Stealth
 import sys
@@ -41,7 +39,7 @@ async def main():
                 display = Display(visible=0, size=(1920, 1080))
                 display.start()
                 logger.info("Virtual Display Started")
-            except:
+            except Exception:
                 logger.warning("No Xvfb?")
 
         logger.info("Launching Browser...")

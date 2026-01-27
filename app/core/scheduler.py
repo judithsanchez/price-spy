@@ -1,7 +1,6 @@
 """Scheduler for automated price extraction."""
 
 import os
-import asyncio
 from datetime import datetime, timezone
 from typing import Dict, Any, Optional
 from contextlib import asynccontextmanager
@@ -9,12 +8,14 @@ from contextlib import asynccontextmanager
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 
+from app.core.config import settings
+
+
 # Global scheduler instance
 _scheduler: Optional[AsyncIOScheduler] = None
 _last_run_result: Optional[Dict[str, Any]] = None
 
 
-from app.core.config import settings
 
 def get_scheduler_config() -> Dict[str, Any]:
     """Get scheduler configuration from environment."""
@@ -135,11 +136,11 @@ def get_scheduler_status() -> Dict[str, Any]:
             is_paused = True
 
     # Get items count
+    from app.storage.database import Database
+    from app.storage.repositories import TrackedItemRepository
+
     items_count = 0
     try:
-        from app.storage.database import Database
-        from app.storage.repositories import TrackedItemRepository
-
         db_path = os.getenv("DATABASE_PATH", "data/pricespy.db")
         db = Database(db_path)
         db.initialize()

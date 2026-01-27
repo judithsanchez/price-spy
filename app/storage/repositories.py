@@ -615,7 +615,7 @@ class TrackedItemRepository:
         if row["last_checked_at"]:
             try:
                 last_checked = datetime.fromisoformat(row["last_checked_at"])
-            except:
+            except Exception:
                 pass
 
         return TrackedItem(

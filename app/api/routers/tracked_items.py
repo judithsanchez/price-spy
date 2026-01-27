@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List
 from fastapi import APIRouter, Depends, HTTPException
 from app.api.deps import get_db
 from app.storage.repositories import TrackedItemRepository, ProductRepository, StoreRepository, CategoryRepository

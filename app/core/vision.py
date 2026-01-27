@@ -7,7 +7,8 @@ from typing import Union, Optional, Tuple
 
 from app.models.schemas import ProductInfo, ExtractionResult, ExtractionContext
 from app.utils.logging import get_logger
-from app.core.gemini import GeminiModels
+from app.core.gemini import GeminiModels, ModelConfig, is_rate_limit_error
+import re
 
 logger = get_logger(__name__)
 
@@ -215,8 +216,7 @@ If fields are missing, use 0.0 for price and "N/A" for currency.
     return base_prompt
 
 
-from app.core.gemini import ModelConfig, is_rate_limit_error
-import re
+    # Imports moved to top of file
 
 
 def _extract_json(text: str) -> str:
@@ -291,7 +291,6 @@ async def _call_gemini_api(
     return result
 
 
-from typing import Tuple
 
 async def extract_with_structured_output(
     image_bytes: bytes,

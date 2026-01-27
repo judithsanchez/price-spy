@@ -39,7 +39,7 @@ def validate_url(url: str) -> bool:
     try:
         result = urlparse(url)
         return all([result.scheme, result.netloc])
-    except:
+    except Exception:
         return False
 
 async def cmd_extract(args) -> int:
@@ -199,7 +199,7 @@ async def cmd_check(args) -> int:
         output_path = f"diagnostics/check_{domain}_{timestamp}.png"
 
         print(f"Checking URL: {args.url}")
-        print(f"Capturing screenshot...")
+        print("Capturing screenshot...")
         screenshot = await capture_screenshot(args.url)
         
         with open(output_path, "wb") as f:

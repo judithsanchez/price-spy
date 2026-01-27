@@ -47,7 +47,7 @@ async def create_stealth_context(playwright) -> BrowserContext:
     """Create a browser context with stealth settings."""
     # Standard 1080p viewport is safer than randomized weird dimensions
     width = 1920
-    height = 1080
+    width = 1920
     
     # Pick a random UA profile
     profile = random.choice([
@@ -135,7 +135,7 @@ async def handle_zalando_interaction(page, target_size: Optional[str] = None):
                 if await btn.is_visible(timeout=3000):
                     size_button = btn
                     break
-            except:
+            except Exception:
                 continue
 
         if size_button:
@@ -162,7 +162,7 @@ async def handle_zalando_interaction(page, target_size: Optional[str] = None):
                         if await opt.is_visible(timeout=2000):
                             size_option = opt
                             break
-                    except:
+                    except Exception:
                         continue
 
                 if size_option:
@@ -220,7 +220,7 @@ async def capture_screenshot(url: str, target_size: Optional[str] = None) -> byt
                             await btn.click()
                             await page.wait_for_timeout(1000) # Give it time to disappear
                             clicked_any = True
-                    except:
+                    except Exception:
                         continue
                 if not clicked_any:
                     break
@@ -245,7 +245,7 @@ async def capture_screenshot(url: str, target_size: Optional[str] = None) -> byt
                     # Scroll a bit more up to show context
                     await page.mouse.wheel(0, -150)
                     break
-        except:
+        except Exception:
             pass
 
         # Wait for page to stabilize

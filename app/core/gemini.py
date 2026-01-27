@@ -3,7 +3,6 @@
 from enum import Enum
 from dataclasses import dataclass
 from typing import Optional
-from datetime import datetime, timezone
 
 
 class GeminiModel(str, Enum):
