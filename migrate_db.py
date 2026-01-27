@@ -17,7 +17,9 @@ except sqlite3.OperationalError as e:
 
 try:
     print("Adding is_size_sensitive to categories...")
-    cursor.execute("ALTER TABLE categories ADD COLUMN is_size_sensitive BOOLEAN DEFAULT 0;")
+    cursor.execute(
+        "ALTER TABLE categories ADD COLUMN is_size_sensitive BOOLEAN DEFAULT 0;"
+    )
 except sqlite3.OperationalError as e:
     print(f"Note: {e}")
 
@@ -37,7 +39,7 @@ try:
     try:
         cursor.execute("ALTER TABLE brand_sizes ADD COLUMN label TEXT;")
     except sqlite3.OperationalError:
-        pass # Already exists
+        pass  # Already exists
 except sqlite3.OperationalError as e:
     print(f"Error creating table: {e}")
 

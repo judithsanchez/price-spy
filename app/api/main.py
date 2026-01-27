@@ -8,25 +8,25 @@ from pathlib import Path
 
 from app.core.scheduler import lifespan_scheduler
 from app.api.routers import (
-    products, 
-    categories, 
-    units, 
-    purchase_types, 
-    stores, 
-    labels, 
+    products,
+    categories,
+    units,
+    purchase_types,
+    stores,
+    labels,
     tracked_items,
     extraction,
     logs,
     scheduler,
     email,
-    ui
+    ui,
 )
 
 app = FastAPI(
     title="Price Spy",
     description="Visual price tracking with AI",
     version="0.3.0",
-    lifespan=lifespan_scheduler
+    lifespan=lifespan_scheduler,
 )
 
 # Include API routers
@@ -55,17 +55,14 @@ if screenshots_dir.exists():
 async def pydantic_validation_exception_handler(request: Request, exc: ValidationError):
     """Handle Pydantic validation errors by returning a 422 JSON response."""
     from app.core.error_logger import log_error_to_db
+
     log_error_to_db(
         error_type="validation_error",
         message=f"Validation error: {str(exc)}",
-        url=str(request.url)
+        url=str(request.url),
     )
     return JSONResponse(
-        status_code=422,
-        content={
-            "detail": exc.errors(),
-            "message": "Validation error"
-        }
+        status_code=422, content={"detail": exc.errors(), "message": "Validation error"}
     )
 
 
@@ -73,14 +70,12 @@ async def pydantic_validation_exception_handler(request: Request, exc: Validatio
 async def global_exception_handler(request: Request, exc: Exception):
     """Global catch-all for unhandled exceptions."""
     from app.core.error_logger import log_error_to_db
+
     log_error_to_db(
-        error_type="unhandled_exception",
-        message=str(exc),
-        url=str(request.url)
+        error_type="unhandled_exception", message=str(exc), url=str(request.url)
     )
     return JSONResponse(
-        status_code=500,
-        content={"message": "An internal server error occurred."}
+        status_code=500, content={"message": "An internal server error occurred."}
     )
 
 

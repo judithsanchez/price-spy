@@ -7,13 +7,12 @@ from app.core.rate_limiter import RateLimitTracker
 from app.core.gemini import GeminiModels
 from app.storage.repositories import ExtractionLogRepository, ErrorLogRepository
 
-router = APIRouter(
-    prefix="/api",
-    tags=["Logs"]
-)
+router = APIRouter(prefix="/api", tags=["Logs"])
+
 
 class ExtractionLogResponse(BaseModel):
     """Response model for extraction log."""
+
     id: int
     tracked_item_id: int
     status: str
@@ -24,8 +23,10 @@ class ExtractionLogResponse(BaseModel):
     duration_ms: Optional[int] = None
     created_at: str
 
+
 class ErrorLogResponse(BaseModel):
     """Response model for error log."""
+
     id: int
     error_type: str
     message: str
@@ -34,20 +35,25 @@ class ErrorLogResponse(BaseModel):
     stack_trace: Optional[str] = None
     created_at: str
 
+
 class ExtractionStatsResponse(BaseModel):
     """Response model for extraction statistics."""
+
     total_today: int
     success_count: int
     error_count: int
     avg_duration_ms: int
 
+
 class ApiUsageResponse(BaseModel):
     """Response model for API usage per model."""
+
     model: str
     used: int
     limit: int
     remaining: int
     exhausted: bool
+
 
 @router.get("/logs", response_model=List[ExtractionLogResponse])
 async def get_extraction_logs(
@@ -57,7 +63,7 @@ async def get_extraction_logs(
     end_date: Optional[str] = None,
     limit: int = 100,
     offset: int = 0,
-    db=Depends(get_db)
+    db=Depends(get_db),
 ):
     """Get recent extraction logs with optional filters."""
     try:
@@ -87,6 +93,7 @@ async def get_extraction_logs(
     finally:
         db.close()
 
+
 @router.get("/errors", response_model=List[ErrorLogResponse])
 async def get_error_logs(
     error_type: Optional[str] = None,
@@ -94,7 +101,7 @@ async def get_error_logs(
     end_date: Optional[str] = None,
     limit: int = 100,
     offset: int = 0,
-    db=Depends(get_db)
+    db=Depends(get_db),
 ):
     """Get recent error logs with optional filters."""
     try:
@@ -121,6 +128,7 @@ async def get_error_logs(
     finally:
         db.close()
 
+
 @router.get("/logs/stats", response_model=ExtractionStatsResponse)
 async def get_extraction_stats(db=Depends(get_db)):
     """Get extraction statistics for today."""
@@ -130,6 +138,7 @@ async def get_extraction_stats(db=Depends(get_db)):
         return ExtractionStatsResponse(**stats)
     finally:
         db.close()
+
 
 @router.get("/usage", response_model=List[ApiUsageResponse])
 async def get_api_usage(db=Depends(get_db)):
@@ -143,18 +152,17 @@ async def get_api_usage(db=Depends(get_db)):
         for config in GeminiModels.VISION_MODELS:
             model_name = config.model.value
             if model_name in status:
-                result.append(ApiUsageResponse(
-                    model=model_name,
-                    **status[model_name]
-                ))
+                result.append(ApiUsageResponse(model=model_name, **status[model_name]))
             else:
-                result.append(ApiUsageResponse(
-                    model=model_name,
-                    used=0,
-                    limit=config.rate_limits.rpd,
-                    remaining=config.rate_limits.rpd,
-                    exhausted=False,
-                ))
+                result.append(
+                    ApiUsageResponse(
+                        model=model_name,
+                        used=0,
+                        limit=config.rate_limits.rpd,
+                        remaining=config.rate_limits.rpd,
+                        exhausted=False,
+                    )
+                )
         return result
     finally:
         db.close()

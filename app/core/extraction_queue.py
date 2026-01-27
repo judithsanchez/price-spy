@@ -12,14 +12,18 @@ from app.storage.repositories import (
     PriceHistoryRepository,
     ExtractionLogRepository,
     ProductRepository,
-    CategoryRepository
+    CategoryRepository,
 )
-from app.models.schemas import PriceHistoryRecord, ExtractionLog, TrackedItem, ExtractionContext
+from app.models.schemas import (
+    PriceHistoryRecord,
+    ExtractionLog,
+    TrackedItem,
+    ExtractionContext,
+)
 from app.core.rate_limiter import RateLimitTracker
 
 # Maximum concurrent extractions (respects Gemini's 15 RPM limit)
 MAX_CONCURRENT = 10
-
 
 
 def get_api_key() -> Optional[str]:
@@ -28,10 +32,7 @@ def get_api_key() -> Optional[str]:
 
 
 async def extract_single_item(
-    item_id: int,
-    url: str,
-    api_key: str,
-    db: Database
+    item_id: int, url: str, api_key: str, db: Database
 ) -> Dict[str, Any]:
     """
     Extract price for a single tracked item.
@@ -64,7 +65,11 @@ async def extract_single_item(
             raise Exception("Item not found")
 
         product = product_repo.get_by_id(item.product_id)
-        category = category_repo.get_by_name(product.category) if product and product.category else None
+        category = (
+            category_repo.get_by_name(product.category)
+            if product and product.category
+            else None
+        )
 
         # Build context
         context = ExtractionContext(
@@ -73,11 +78,13 @@ async def extract_single_item(
             is_size_sensitive=category.is_size_sensitive if category else False,
             target_size=item.target_size,
             quantity_size=item.quantity_size,
-            quantity_unit=item.quantity_unit
+            quantity_unit=item.quantity_unit,
         )
 
         # Capture screenshot
-        screenshot_bytes = await capture_screenshot(url, target_size=item.target_size if item else None)
+        screenshot_bytes = await capture_screenshot(
+            url, target_size=item.target_size if item else None
+        )
 
         # Save screenshot
         screenshot_path = Path(f"screenshots/{item_id}.png")
@@ -92,7 +99,7 @@ async def extract_single_item(
         duration_ms = int((time.time() - start_time) * 1000)
 
         import json
-        
+
         # Save to price history
         record = PriceHistoryRecord(
             item_id=item_id,
@@ -107,21 +114,25 @@ async def extract_single_item(
             discount_percentage=result.discount_percentage,
             discount_fixed_amount=result.discount_fixed_amount,
             deal_description=result.deal_description,
-            available_sizes=json.dumps(result.available_sizes) if result.available_sizes else None,
+            available_sizes=json.dumps(result.available_sizes)
+            if result.available_sizes
+            else None,
             is_available=result.is_available,
-            notes=result.notes
+            notes=result.notes,
         )
         price_repo.insert(record)
 
         # Log successful extraction
-        log_repo.insert(ExtractionLog(
-            tracked_item_id=item_id,
-            status="success",
-            model_used=model_used,
-            price=result.price,
-            currency=result.currency,
-            duration_ms=duration_ms
-        ))
+        log_repo.insert(
+            ExtractionLog(
+                tracked_item_id=item_id,
+                status="success",
+                model_used=model_used,
+                price=result.price,
+                currency=result.currency,
+                duration_ms=duration_ms,
+            )
+        )
 
         # Update last checked time
         tracked_repo.set_last_checked(item_id)
@@ -132,7 +143,7 @@ async def extract_single_item(
             "price": result.price,
             "currency": result.currency,
             "model_used": model_used,
-            "duration_ms": duration_ms
+            "duration_ms": duration_ms,
         }
 
     except Exception as e:
@@ -140,25 +151,26 @@ async def extract_single_item(
         error_msg = str(e)
 
         # Log failed extraction
-        log_repo.insert(ExtractionLog(
-            tracked_item_id=item_id,
-            status="error",
-            model_used=model_used,
-            error_message=error_msg[:2000],
-            duration_ms=duration_ms
-        ))
+        log_repo.insert(
+            ExtractionLog(
+                tracked_item_id=item_id,
+                status="error",
+                model_used=model_used,
+                error_message=error_msg[:2000],
+                duration_ms=duration_ms,
+            )
+        )
 
         return {
             "item_id": item_id,
             "status": "error",
             "error": error_msg,
-            "duration_ms": duration_ms
+            "duration_ms": duration_ms,
         }
 
 
 async def process_extraction_queue(
-    items: List[TrackedItem],
-    db: Database
+    items: List[TrackedItem], db: Database
 ) -> List[Dict[str, Any]]:
     """
     Process extraction queue with concurrency limit.
@@ -177,11 +189,14 @@ async def process_extraction_queue(
 
     api_key = get_api_key()
     if not api_key:
-        return [{
-            "item_id": item.id,
-            "status": "error",
-            "error": "GEMINI_API_KEY not configured"
-        } for item in items]
+        return [
+            {
+                "item_id": item.id,
+                "status": "error",
+                "error": "GEMINI_API_KEY not configured",
+            }
+            for item in items
+        ]
 
     semaphore = asyncio.Semaphore(MAX_CONCURRENT)
 
@@ -190,17 +205,10 @@ async def process_extraction_queue(
         async with semaphore:
             try:
                 return await extract_single_item(
-                    item_id=item.id,
-                    url=item.url,
-                    api_key=api_key,
-                    db=db
+                    item_id=item.id, url=item.url, api_key=api_key, db=db
                 )
             except Exception as e:
-                return {
-                    "item_id": item.id,
-                    "status": "error",
-                    "error": str(e)
-                }
+                return {"item_id": item.id, "status": "error", "error": str(e)}
 
     # Process all items with concurrency limit
     tasks = [extract_with_limit(item) for item in items]
@@ -210,11 +218,9 @@ async def process_extraction_queue(
     final_results = []
     for i, result in enumerate(results):
         if isinstance(result, Exception):
-            final_results.append({
-                "item_id": items[i].id,
-                "status": "error",
-                "error": str(result)
-            })
+            final_results.append(
+                {"item_id": items[i].id, "status": "error", "error": str(result)}
+            )
         else:
             final_results.append(result)
 
@@ -238,5 +244,5 @@ def get_queue_summary(results: List[Dict[str, Any]]) -> Dict[str, Any]:
         "total": len(results),
         "success_count": success_count,
         "error_count": error_count,
-        "results": results
+        "results": results,
     }

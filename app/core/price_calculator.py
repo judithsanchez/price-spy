@@ -7,11 +7,11 @@ from app.models.schemas import PriceComparison
 
 # Unit conversion constants
 UNIT_CONVERSIONS = {
-    "ml": ("L", 1000),      # 1000ml = 1L
-    "cl": ("L", 100),       # 100cl = 1L
-    "g": ("kg", 1000),      # 1000g = 1kg
-    "L": ("L", 1),          # Already in L
-    "kg": ("kg", 1),        # Already in kg
+    "ml": ("L", 1000),  # 1000ml = 1L
+    "cl": ("L", 100),  # 100cl = 1L
+    "g": ("kg", 1000),  # 1000g = 1kg
+    "L": ("L", 1),  # Already in L
+    "kg": ("kg", 1),  # Already in kg
 }
 
 
@@ -26,10 +26,7 @@ def normalize_unit(unit: str) -> str:
 
 
 def calculate_volume_price(
-    page_price: float,
-    items_per_lot: int,
-    quantity_size: float,
-    quantity_unit: str
+    page_price: float, items_per_lot: int, quantity_size: float, quantity_unit: str
 ) -> Tuple[float, str]:
     """
     Calculate price per standard unit.
@@ -78,7 +75,7 @@ def compare_prices(
     deal_type: Optional[str] = None,
     discount_percentage: Optional[float] = None,
     discount_fixed_amount: Optional[float] = None,
-    deal_description: Optional[str] = None
+    deal_description: Optional[str] = None,
 ) -> PriceComparison:
     """
     Compare current price with previous price and evaluate deals.
@@ -110,11 +107,13 @@ def compare_prices(
             deal_type=deal_type,
             discount_percentage=discount_percentage,
             discount_fixed_amount=discount_fixed_amount,
-            deal_description=deal_description
+            deal_description=deal_description,
         )
 
     price_change = round(current - previous, 2)
-    price_change_percent = round((price_change / previous) * 100, 2) if previous > 0 else 0
+    price_change_percent = (
+        round((price_change / previous) * 100, 2) if previous > 0 else 0
+    )
     is_price_drop = price_change < 0
 
     return PriceComparison(
@@ -128,7 +127,7 @@ def compare_prices(
         deal_type=deal_type,
         discount_percentage=discount_percentage,
         discount_fixed_amount=discount_fixed_amount,
-        deal_description=deal_description
+        deal_description=deal_description,
     )
 
 
@@ -139,7 +138,7 @@ def is_size_available(target_size: str, available_sizes: list[str]) -> bool:
     """
     if not target_size or not available_sizes:
         return False
-    
+
     target = target_size.lower().strip()
     return any(s.lower().strip() == target for s in available_sizes)
 
@@ -148,25 +147,26 @@ def determine_effective_availability(
     is_size_sensitive: bool,
     raw_is_available: bool,
     available_sizes_json: Optional[str],
-    target_size: Optional[str]
+    target_size: Optional[str],
 ) -> bool:
     """
     Determine the effective availability of an item.
-    If category is size-sensitive and we have a target size, 
+    If category is size-sensitive and we have a target size,
     availability depends on that size being in stock.
     Otherwise, it uses the raw availability from the page.
     """
     if not raw_is_available:
         return False
-        
+
     if not is_size_sensitive:
         return raw_is_available
-        
+
     if not target_size or not available_sizes_json:
         # Sensitive but no target or no sizes extracted, fall back to raw
         return raw_is_available
-        
+
     import json
+
     try:
         extracted_sizes = json.loads(available_sizes_json)
         if not isinstance(extracted_sizes, list):

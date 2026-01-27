@@ -10,5 +10,5 @@ from . import (
     logs as logs,
     scheduler as scheduler,
     email as email,
-    ui as ui
+    ui as ui,
 )

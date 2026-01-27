@@ -13,7 +13,7 @@ from app.storage.repositories import (
     PriceHistoryRepository,
     ExtractionLogRepository,
     ProductRepository,
-    CategoryRepository
+    CategoryRepository,
 )
 from app.models.schemas import PriceHistoryRecord, ExtractionLog, ExtractionContext
 from app.core.rate_limiter import RateLimitTracker
@@ -25,7 +25,7 @@ async def extract_single_item(
     api_key: str,
     db: Database,
     tracker: Optional[RateLimitTracker] = None,
-    delay_seconds: float = 0
+    delay_seconds: float = 0,
 ) -> Dict[str, Any]:
     """
     Extract price for a single tracked item.
@@ -59,7 +59,11 @@ async def extract_single_item(
     try:
         item = tracked_repo.get_by_id(item_id)
         product = product_repo.get_by_id(item.product_id) if item else None
-        category = category_repo.get_by_name(product.category) if product and product.category else None
+        category = (
+            category_repo.get_by_name(product.category)
+            if product and product.category
+            else None
+        )
 
         # Build context
         context = ExtractionContext(
@@ -68,11 +72,13 @@ async def extract_single_item(
             is_size_sensitive=category.is_size_sensitive if category else False,
             target_size=item.target_size if item else None,
             quantity_size=item.quantity_size if item else 1.0,
-            quantity_unit=item.quantity_unit if item else "unit"
+            quantity_unit=item.quantity_unit if item else "unit",
         )
 
         # Capture screenshot
-        screenshot_bytes = await capture_screenshot(url, target_size=item.target_size if item else None)
+        screenshot_bytes = await capture_screenshot(
+            url, target_size=item.target_size if item else None
+        )
 
         # Save screenshot
         screenshot_path = Path(f"screenshots/{item_id}.png")
@@ -103,19 +109,21 @@ async def extract_single_item(
             discount_percentage=result.discount_percentage,
             discount_fixed_amount=result.discount_fixed_amount,
             deal_description=result.deal_description,
-            notes=result.notes
+            notes=result.notes,
         )
         price_repo.insert(record)
 
         # Log successful extraction
-        log_repo.insert(ExtractionLog(
-            tracked_item_id=item_id,
-            status="success",
-            model_used=model_used,
-            price=result.price,
-            currency=result.currency,
-            duration_ms=duration_ms
-        ))
+        log_repo.insert(
+            ExtractionLog(
+                tracked_item_id=item_id,
+                status="success",
+                model_used=model_used,
+                price=result.price,
+                currency=result.currency,
+                duration_ms=duration_ms,
+            )
+        )
 
         # Update last checked time
         tracked_repo.set_last_checked(item_id)
@@ -131,7 +139,7 @@ async def extract_single_item(
             "discount_fixed_amount": result.discount_fixed_amount,
             "deal_description": result.deal_description,
             "model_used": model_used,
-            "duration_ms": duration_ms
+            "duration_ms": duration_ms,
         }
 
     except Exception as e:
@@ -139,28 +147,29 @@ async def extract_single_item(
         error_msg = str(e)
 
         # Log failed extraction
-        log_repo.insert(ExtractionLog(
-            tracked_item_id=item_id,
-            status="error",
-            model_used=model_used,
-            error_message=error_msg[:2000],
-            duration_ms=duration_ms
-        ))
+        log_repo.insert(
+            ExtractionLog(
+                tracked_item_id=item_id,
+                status="error",
+                model_used=model_used,
+                error_message=error_msg[:2000],
+                duration_ms=duration_ms,
+            )
+        )
 
         return {
             "item_id": item_id,
             "status": "error",
             "error": error_msg,
-            "duration_ms": duration_ms
+            "duration_ms": duration_ms,
         }
-
 
 
 # ...
 
+
 async def extract_all_items(
-    db: Database,
-    delay_seconds: float = 5.0
+    db: Database, delay_seconds: float = 5.0
 ) -> List[Dict[str, Any]]:
     """
     Extract prices for all active tracked items.
@@ -174,11 +183,13 @@ async def extract_all_items(
     """
     api_key = settings.GEMINI_API_KEY
     if not api_key:
-        return [{
-            "item_id": None,
-            "status": "error",
-            "error": "GEMINI_API_KEY not configured"
-        }]
+        return [
+            {
+                "item_id": None,
+                "status": "error",
+                "error": "GEMINI_API_KEY not configured",
+            }
+        ]
 
     tracked_repo = TrackedItemRepository(db)
     tracker = RateLimitTracker(db)
@@ -196,7 +207,7 @@ async def extract_all_items(
             api_key=api_key,
             db=db,
             tracker=tracker,
-            delay_seconds=delay
+            delay_seconds=delay,
         )
         results.append(result)
 
@@ -220,5 +231,5 @@ def get_batch_summary(results: List[Dict[str, Any]]) -> Dict[str, Any]:
         "total": len(results),
         "success_count": success_count,
         "error_count": error_count,
-        "results": results
+        "results": results,
     }

@@ -48,26 +48,28 @@ async def create_stealth_context(playwright) -> BrowserContext:
     # Standard 1080p viewport is safer than randomized weird dimensions
     width = 1920
     width = 1920
-    
+
     # Pick a random UA profile
-    profile = random.choice([
-        {
-            "ua": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-            "platform": '"Windows"',
-            "sec_ch_ua_platform": "Windows"
-        },
-        {
-            "ua": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-            "platform": '"macOS"',
-            "sec_ch_ua_platform": "macOS"
-        },
-        {
-            "ua": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-            "platform": '"Linux"',
-            "sec_ch_ua_platform": "Linux"
-        }
-    ])
-    
+    profile = random.choice(
+        [
+            {
+                "ua": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                "platform": '"Windows"',
+                "sec_ch_ua_platform": "Windows",
+            },
+            {
+                "ua": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                "platform": '"macOS"',
+                "sec_ch_ua_platform": "macOS",
+            },
+            {
+                "ua": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                "platform": '"Linux"',
+                "sec_ch_ua_platform": "Linux",
+            },
+        ]
+    )
+
     # args to disable automation flags
     launch_args = [
         "--disable-blink-features=AutomationControlled",
@@ -78,14 +80,11 @@ async def create_stealth_context(playwright) -> BrowserContext:
         "--ignore-certificate-errors",
         "--disable-extensions",
         "--disable-gpu",  # Often helps on ARM/Raspberry Pi
-        f"--user-agent={profile['ua']}"
+        f"--user-agent={profile['ua']}",
     ]
 
-    browser = await playwright.chromium.launch(
-        headless=True,
-        args=launch_args
-    )
-    
+    browser = await playwright.chromium.launch(headless=True, args=launch_args)
+
     # Use a taller viewport by default to avoid clipping issues
     context = await browser.new_context(
         viewport={"width": width, "height": 1200},
@@ -105,8 +104,8 @@ async def create_stealth_context(playwright) -> BrowserContext:
             "Sec-Fetch-Mode": "navigate",
             "Sec-Fetch-Site": "none",
             "Sec-Fetch-User": "?1",
-            "Upgrade-Insecure-Requests": "1"
-        }
+            "Upgrade-Insecure-Requests": "1",
+        },
     )
     return context
 
@@ -125,9 +124,9 @@ async def handle_zalando_interaction(page, target_size: Optional[str] = None):
             'button[data-testid="pdp-size-selector-trigger"]',
             'button:has-text("Maat kiezen")',
             'button:has-text("Select size")',
-            'button:has-text("Maat selecteren")'
+            'button:has-text("Maat selecteren")',
         ]
-        
+
         size_button = None
         for selector in selectors:
             try:
@@ -143,7 +142,7 @@ async def handle_zalando_interaction(page, target_size: Optional[str] = None):
             await size_button.click()
             logger.info("Clicked Zalando size dropdown")
             await page.wait_for_timeout(1000)
-            
+
             # 2. If target_size provided, try to click it
             if target_size:
                 # Zalando sizes are often in a list or grid
@@ -152,9 +151,9 @@ async def handle_zalando_interaction(page, target_size: Optional[str] = None):
                     f'button[data-testid="pdp-size-selector-item"]:has-text("{target_size}")',
                     f'button[data-testid="pdp-size-picker-item"]:has-text("{target_size}")',
                     f'li[data-testid="pdp-size-selector-item"] button:has-text("{target_size}")',
-                    f'button:has-text("{target_size}")'
+                    f'button:has-text("{target_size}")',
                 ]
-                
+
                 size_option = None
                 for selector in size_selectors:
                     try:
@@ -168,9 +167,11 @@ async def handle_zalando_interaction(page, target_size: Optional[str] = None):
                 if size_option:
                     await size_option.click()
                     logger.info(f"Clicked Zalando size option: {target_size}")
-                    await page.wait_for_timeout(2000) # Wait for price update
+                    await page.wait_for_timeout(2000)  # Wait for price update
                 else:
-                    logger.warning(f"Zalando size option '{target_size}' not found or not visible")
+                    logger.warning(
+                        f"Zalando size option '{target_size}' not found or not visible"
+                    )
         else:
             logger.warning("Zalando size button not found")
     except Exception as e:
@@ -193,7 +194,9 @@ async def capture_screenshot(url: str, target_size: Optional[str] = None) -> byt
             # Use 'networkidle' to ensure images/styles are loaded
             await page.goto(url, wait_until="networkidle", timeout=60000)
         except Exception as e:
-            logger.warning(f"Networkidle failed for {url}, falling back to domcontentloaded: {e}")
+            logger.warning(
+                f"Networkidle failed for {url}, falling back to domcontentloaded: {e}"
+            )
             try:
                 await page.goto(url, wait_until="domcontentloaded", timeout=30000)
             except Exception as e2:
@@ -204,13 +207,17 @@ async def capture_screenshot(url: str, target_size: Optional[str] = None) -> byt
         # Try to dismiss cookie consent popups
         try:
             selectors = [
-                '#sp-cc-accept', '#js-first-screen-accept-all-button', 
-                '[data-test="consent-modal-ofc-confirm-btn"]', 'button:has-text("Alles accepteren")',
-                '#onetrust-accept-btn-handler', '#onetrust-banner-sdk',
-                'button:has-text("Accepteren")', 'button:has-text("Accept All")',
-                '.uc-btn-accept'
+                "#sp-cc-accept",
+                "#js-first-screen-accept-all-button",
+                '[data-test="consent-modal-ofc-confirm-btn"]',
+                'button:has-text("Alles accepteren")',
+                "#onetrust-accept-btn-handler",
+                "#onetrust-banner-sdk",
+                'button:has-text("Accepteren")',
+                'button:has-text("Accept All")',
+                ".uc-btn-accept",
             ]
-            
+
             for _ in range(3):
                 clicked_any = False
                 for selector in selectors:
@@ -218,7 +225,9 @@ async def capture_screenshot(url: str, target_size: Optional[str] = None) -> byt
                         btn = page.locator(selector).first
                         if await btn.is_visible(timeout=500):
                             await btn.click()
-                            await page.wait_for_timeout(1000) # Give it time to disappear
+                            await page.wait_for_timeout(
+                                1000
+                            )  # Give it time to disappear
                             clicked_any = True
                     except Exception:
                         continue
@@ -234,9 +243,13 @@ async def capture_screenshot(url: str, target_size: Optional[str] = None) -> byt
         # Try to find a product image or main title to scroll to
         try:
             product_selectors = [
-                'h1', 'img[data-testid="pdp-main-image"]', 
-                '.product-title', '.pdp-info', '#productTitle',
-                '.pdp__name', '.pdp__price'
+                "h1",
+                'img[data-testid="pdp-main-image"]',
+                ".product-title",
+                ".pdp-info",
+                "#productTitle",
+                ".pdp__name",
+                ".pdp__price",
             ]
             for selector in product_selectors:
                 el = page.locator(selector).first
@@ -253,8 +266,7 @@ async def capture_screenshot(url: str, target_size: Optional[str] = None) -> byt
 
         # Capture screenshot - using 1280x960 to get a better thumbnail aspect ratio
         screenshot_bytes = await page.screenshot(
-            type="png",
-            clip={"x": 0, "y": 0, "width": 1280, "height": 960}
+            type="png", clip={"x": 0, "y": 0, "width": 1280, "height": 960}
         )
 
         await context.browser.close()

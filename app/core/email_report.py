@@ -19,6 +19,7 @@ from app.storage.repositories import (
 
 from app.core.config import settings
 
+
 def get_email_config() -> Dict[str, Any]:
     """Get email configuration from environment."""
     return {
@@ -68,10 +69,7 @@ def get_item_details(item_id: int, db: Database) -> Optional[Dict[str, Any]]:
     }
 
 
-def generate_report_data(
-    results: List[Dict[str, Any]],
-    db: Database
-) -> Dict[str, Any]:
+def generate_report_data(results: List[Dict[str, Any]], db: Database) -> Dict[str, Any]:
     """Generate report data from extraction results."""
 
     if not results:
@@ -140,7 +138,7 @@ def generate_report_data(
 
         # Calculate if it's a target hit (unit-price aware)
         from app.core.price_calculator import calculate_volume_price, normalize_unit
-        
+
         is_target_hit = False
         unit_price = None
         current_unit = None
@@ -150,16 +148,18 @@ def generate_report_data(
                 price,
                 details["items_per_lot"] if details else 1,
                 details["quantity_size"] if details else 1,
-                details["quantity_unit"] if details else None
+                details["quantity_unit"] if details else None,
             )
-            
+
             t_price = details["target_price"] if details else None
             t_unit = details["target_unit"] if details else None
-            
+
             if t_price is not None:
                 if t_unit:
                     norm_target_unit = normalize_unit(t_unit)
-                    norm_curr_unit = normalize_unit(current_unit) if current_unit else None
+                    norm_curr_unit = (
+                        normalize_unit(current_unit) if current_unit else None
+                    )
                     if norm_target_unit == norm_curr_unit:
                         is_target_hit = unit_price <= t_price
                 else:
@@ -170,7 +170,7 @@ def generate_report_data(
             has_original_higher = original_price is not None and original_price > price
             has_deal_type = deal_type is not None and deal_type.lower() != "none"
             is_promo_deal = has_original_higher or has_deal_type
-        
+
         is_price_drop = status == "success" and price_change < -0.01
 
         item_data = {
@@ -198,7 +198,7 @@ def generate_report_data(
             items.append(item_data)
             if is_target_hit or is_promo_deal:
                 deals.append(item_data)
-            
+
             # Categorize changes
             if is_price_drop:
                 price_drops.append(item_data)
@@ -215,9 +215,10 @@ def generate_report_data(
 
     # Identify planned but untracked products within 4 weeks (Spying Required)
     from datetime import datetime as dt, timedelta
+
     now_dt = dt.now()
     four_weeks_later = now_dt + timedelta(days=28)
-    
+
     product_repo = ProductRepository(db)
     tracked_repo = TrackedItemRepository(db)
     all_products = product_repo.get_all()
@@ -225,20 +226,24 @@ def generate_report_data(
     for product in all_products:
         if product.planned_date:
             try:
-                planned_dt = dt.strptime(product.planned_date + '-1', "%G-W%V-%u")
+                planned_dt = dt.strptime(product.planned_date + "-1", "%G-W%V-%u")
                 if planned_dt > four_weeks_later:
                     continue
             except (ValueError, TypeError):
                 continue
 
-            active_items = [ti for ti in tracked_repo.get_by_product(product.id) if ti.is_active]
+            active_items = [
+                ti for ti in tracked_repo.get_by_product(product.id) if ti.is_active
+            ]
             if not active_items:
-                untracked_planned.append({
-                    "id": product.id,
-                    "name": product.name,
-                    "planned_date": product.planned_date
-                })
-    
+                untracked_planned.append(
+                    {
+                        "id": product.id,
+                        "name": product.name,
+                        "planned_date": product.planned_date,
+                    }
+                )
+
     untracked_planned.sort(key=lambda p: p["planned_date"])
 
     return {
@@ -278,9 +283,10 @@ def build_subject(report_data: Dict[str, Any]) -> str:
     return " ".join(parts)
 
 
-
 # Initialize Jinja2 environment for email templates
-template_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "templates", "email")
+template_dir = os.path.join(
+    os.path.dirname(os.path.dirname(__file__)), "templates", "email"
+)
 env = Environment(loader=FileSystemLoader(template_dir))
 
 
@@ -299,11 +305,7 @@ def render_text_email(report_data: Dict[str, Any], config: Dict[str, Any]) -> st
 
 
 def send_email(
-    to: str,
-    subject: str,
-    html: str,
-    text: str,
-    config: Dict[str, Any]
+    to: str, subject: str, html: str, text: str, config: Dict[str, Any]
 ) -> bool:
     """Send email via SMTP."""
     msg = MIMEMultipart("alternative")
@@ -326,10 +328,7 @@ def send_email(
         return False
 
 
-def send_daily_report(
-    results: List[Dict[str, Any]],
-    db: Database
-) -> bool:
+def send_daily_report(results: List[Dict[str, Any]], db: Database) -> bool:
     """Send daily email report after scheduler run."""
     if not is_email_configured():
         return False
@@ -354,5 +353,5 @@ def send_daily_report(
         subject=subject,
         html=html_content,
         text=text_content,
-        config=config
+        config=config,
     )

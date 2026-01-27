@@ -17,6 +17,7 @@ PACIFIC_TZ = pytz.timezone("America/Los_Angeles")
 @dataclass
 class UsageRecord:
     """Record of API usage for a model."""
+
     model: str
     date: str  # YYYY-MM-DD in Pacific time
     request_count: int
@@ -75,7 +76,7 @@ class RateLimitTracker:
         cursor = self.db.execute(
             "SELECT model, date, request_count, last_request_at, is_exhausted "
             "FROM api_usage WHERE model = ? AND date = ?",
-            (model.value, today)
+            (model.value, today),
         )
         row = cursor.fetchone()
         if not row:
@@ -85,7 +86,7 @@ class RateLimitTracker:
             date=row[1],
             request_count=row[2],
             last_request_at=datetime.fromisoformat(row[3]) if row[3] else None,
-            is_exhausted=bool(row[4])
+            is_exhausted=bool(row[4]),
         )
 
     def record_usage(self, config: ModelConfig):
@@ -93,13 +94,16 @@ class RateLimitTracker:
         today = self._get_pacific_date()
         now = datetime.now(timezone.utc).isoformat()
 
-        self.db.execute("""
+        self.db.execute(
+            """
             INSERT INTO api_usage (model, date, request_count, last_request_at, is_exhausted)
             VALUES (?, ?, 1, ?, 0)
             ON CONFLICT(model, date) DO UPDATE SET
                 request_count = request_count + 1,
                 last_request_at = ?
-        """, (config.model.value, today, now, now))
+        """,
+            (config.model.value, today, now, now),
+        )
         self.db.commit()
 
         usage = self.get_usage(config.model)
@@ -108,8 +112,8 @@ class RateLimitTracker:
             extra={
                 "model": config.model.value,
                 "daily_count": usage.request_count if usage else 1,
-                "daily_limit": config.rate_limits.rpd
-            }
+                "daily_limit": config.rate_limits.rpd,
+            },
         )
 
     def mark_exhausted(self, config: ModelConfig):
@@ -117,18 +121,21 @@ class RateLimitTracker:
         today = self._get_pacific_date()
         now = datetime.now(timezone.utc).isoformat()
 
-        self.db.execute("""
+        self.db.execute(
+            """
             INSERT INTO api_usage (model, date, request_count, last_request_at, is_exhausted)
             VALUES (?, ?, 0, ?, 1)
             ON CONFLICT(model, date) DO UPDATE SET
                 is_exhausted = 1,
                 last_request_at = ?
-        """, (config.model.value, today, now, now))
+        """,
+            (config.model.value, today, now, now),
+        )
         self.db.commit()
 
         logger.warning(
             "Model marked as exhausted",
-            extra={"model": config.model.value, "date": today}
+            extra={"model": config.model.value, "date": today},
         )
 
     def is_available(self, config: ModelConfig) -> bool:
@@ -160,7 +167,9 @@ class RateLimitTracker:
             if self.is_available(config):
                 return config
 
-        logger.error("All models exhausted", extra={"models": [m.model.value for m in models]})
+        logger.error(
+            "All models exhausted", extra={"models": [m.model.value for m in models]}
+        )
         return None
 
     def get_status(self) -> dict:
@@ -168,7 +177,7 @@ class RateLimitTracker:
         today = self._get_pacific_date()
         cursor = self.db.execute(
             "SELECT model, request_count, is_exhausted FROM api_usage WHERE date = ?",
-            (today,)
+            (today,),
         )
 
         status = {}
@@ -182,7 +191,7 @@ class RateLimitTracker:
                         "used": row[1],
                         "limit": limits.rpd,
                         "exhausted": bool(row[2]),
-                        "remaining": max(0, limits.rpd - row[1])
+                        "remaining": max(0, limits.rpd - row[1]),
                     }
                     break
 
@@ -193,6 +202,6 @@ class RateLimitTracker:
         today = self._get_pacific_date()
         self.db.execute(
             "UPDATE api_usage SET is_exhausted = 0 WHERE model = ? AND date = ?",
-            (model.value, today)
+            (model.value, today),
         )
         self.db.commit()

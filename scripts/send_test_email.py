@@ -10,12 +10,13 @@ from app.core.email_report import (
     render_html_email,
     render_text_email,
     send_email,
-    build_subject
+    build_subject,
 )
+
 
 def send_mock_email():
     config = get_email_config()
-    
+
     if not config["enabled"] or not config["recipient"]:
         print("Error: Email not enabled or recipient not set in .env")
         return
@@ -38,7 +39,7 @@ def send_mock_email():
                 "currency": "EUR",
                 "target_price": 15.00,
                 "url": "https://amazon.com/coffee",
-                "is_deal": True
+                "is_deal": True,
             }
         ],
         "price_drops": [
@@ -59,7 +60,7 @@ def send_mock_email():
                 "price_change": -0.70,
                 "price_change_pct": -6.25,
                 "currency": "EUR",
-            }
+            },
         ],
         "price_increases": [
             {
@@ -80,7 +81,7 @@ def send_mock_email():
                 "price_change_pct": -25.0,
                 "currency": "EUR",
                 "is_deal": True,
-                "target_price": 15.00
+                "target_price": 15.00,
             },
             {
                 "product_name": "Oat Milk 6-pack",
@@ -89,7 +90,7 @@ def send_mock_email():
                 "price_change_pct": -6.25,
                 "currency": "EUR",
                 "is_deal": False,
-                "target_price": 9.00
+                "target_price": 9.00,
             },
             {
                 "product_name": "Extra Virgin Olive Oil 500ml",
@@ -98,7 +99,7 @@ def send_mock_email():
                 "price_change_pct": 19.3,
                 "currency": "EUR",
                 "is_deal": False,
-                "target_price": 7.00
+                "target_price": 7.00,
             },
             {
                 "product_name": "Basmati Rice 5kg",
@@ -107,17 +108,17 @@ def send_mock_email():
                 "price_change_pct": 0.0,
                 "currency": "EUR",
                 "is_deal": False,
-                "target_price": None
-            }
+                "target_price": None,
+            },
         ],
         "errors": [
             {
                 "product_name": "Greek Yogurt 1kg",
                 "store_name": "Plus",
-                "error": "Timeout while waiting for selector"
+                "error": "Timeout while waiting for selector",
             }
         ],
-        "next_run": "Tomorrow 23:00"
+        "next_run": "Tomorrow 23:00",
     }
 
     # Generate content
@@ -131,13 +132,14 @@ def send_mock_email():
         subject=subject,
         html=html_content,
         text=text_content,
-        config=config
+        config=config,
     )
 
     if success:
         print("Test email sent successfully!")
     else:
         print("Failed to send test email.")
+
 
 if __name__ == "__main__":
     send_mock_email()
