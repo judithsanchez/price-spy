@@ -47,10 +47,10 @@ def extract_all_command(db_path: str = "data/pricespy.db", delay: float = 5.0):
         print(f"  - Successful: {summary['success_count']}")
         print(f"  - Errors: {summary['error_count']}")
 
-        if summary['error_count'] > 0:
+        if summary["error_count"] > 0:
             print("\nErrors:")
-            for r in summary['results']:
-                if r.get('status') == 'error':
+            for r in summary["results"]:
+                if r.get("status") == "error":
                     print(f"  - Item {r['item_id']}: {r.get('error', 'Unknown error')}")
     finally:
         db.close()
@@ -59,37 +59,34 @@ def extract_all_command(db_path: str = "data/pricespy.db", delay: float = 5.0):
 def main():
     """Main CLI entry point."""
     parser = argparse.ArgumentParser(
-        description="Price Spy CLI",
-        prog="python -m app.cli"
+        description="Price Spy CLI", prog="python -m app.cli"
     )
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
 
     # seed-test-data command
     seed_parser = subparsers.add_parser(
-        "seed-test-data",
-        help="Seed database with test data for UI testing"
+        "seed-test-data", help="Seed database with test data for UI testing"
     )
     seed_parser.add_argument(
         "--db-path",
         default="data/pricespy.db",
-        help="Path to database file (default: data/pricespy.db)"
+        help="Path to database file (default: data/pricespy.db)",
     )
 
     # extract-all command
     extract_parser = subparsers.add_parser(
-        "extract-all",
-        help="Extract prices for all active tracked items"
+        "extract-all", help="Extract prices for all active tracked items"
     )
     extract_parser.add_argument(
         "--db-path",
         default="data/pricespy.db",
-        help="Path to database file (default: data/pricespy.db)"
+        help="Path to database file (default: data/pricespy.db)",
     )
     extract_parser.add_argument(
         "--delay",
         type=float,
         default=5.0,
-        help="Delay between extractions in seconds (default: 5.0)"
+        help="Delay between extractions in seconds (default: 5.0)",
     )
 
     args = parser.parse_args()

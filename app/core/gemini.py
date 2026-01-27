@@ -10,6 +10,7 @@ class GeminiModel(str, Enum):
 
     See: https://ai.google.dev/gemini-api/docs/models
     """
+
     # Full models
     FLASH_2_5 = "gemini-2.5-flash"
     PRO_2_5 = "gemini-2.5-pro"
@@ -29,14 +30,16 @@ class RateLimits:
     See: https://ai.google.dev/gemini-api/docs/rate-limits
     RPD resets at midnight Pacific time.
     """
-    rpm: int   # Requests per minute
-    tpm: int   # Tokens per minute
-    rpd: int   # Requests per day
+
+    rpm: int  # Requests per minute
+    tpm: int  # Tokens per minute
+    rpd: int  # Requests per day
 
 
 @dataclass
 class ModelConfig:
     """Configuration for a specific model."""
+
     model: GeminiModel
     description: str
     rate_limits: RateLimits
@@ -120,17 +123,22 @@ class GeminiModels:
         try:
             model = GeminiModel(model_name)
             # Check existing predefined configs
-            configs = [cls.VISION_EXTRACTION, cls.VISION_FALLBACK, cls.TEXT_ONLY, cls.API_TEST]
+            configs = [
+                cls.VISION_EXTRACTION,
+                cls.VISION_FALLBACK,
+                cls.TEXT_ONLY,
+                cls.API_TEST,
+            ]
             for config in configs:
                 if config.model == model:
                     return config
-            
+
             # Generic config for valid model
             if model in RATE_LIMITS:
                 return ModelConfig(
                     model=model,
                     description=f"Generic config for {model_name}",
-                    rate_limits=RATE_LIMITS[model]
+                    rate_limits=RATE_LIMITS[model],
                 )
         except ValueError:
             pass
@@ -154,6 +162,12 @@ class GeminiModels:
 
 def is_rate_limit_error(error_message: str) -> bool:
     """Check if an error message indicates a rate limit (429)."""
-    indicators = ["429", "quota", "rate limit", "resource_exhausted", "too many requests"]
+    indicators = [
+        "429",
+        "quota",
+        "rate limit",
+        "resource_exhausted",
+        "too many requests",
+    ]
     error_lower = error_message.lower()
     return any(indicator in error_lower for indicator in indicators)

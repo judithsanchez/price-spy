@@ -50,7 +50,7 @@ class PriceHistoryRepository:
                 record.discount_fixed_amount,
                 record.deal_description,
                 record.available_sizes,
-            )
+            ),
         )
         self.db.commit()
         return cursor.lastrowid
@@ -58,8 +58,7 @@ class PriceHistoryRepository:
     def get_by_id(self, record_id: int) -> Optional[PriceHistoryRecord]:
         """Get a price history record by ID."""
         cursor = self.db.execute(
-            "SELECT * FROM price_history WHERE id = ?",
-            (record_id,)
+            "SELECT * FROM price_history WHERE id = ?", (record_id,)
         )
         row = cursor.fetchone()
         if row is None:
@@ -69,8 +68,7 @@ class PriceHistoryRepository:
     def get_by_url(self, url: str) -> List[PriceHistoryRecord]:
         """Get all price history records for a URL."""
         cursor = self.db.execute(
-            "SELECT * FROM price_history WHERE url = ? ORDER BY created_at DESC",
-            (url,)
+            "SELECT * FROM price_history WHERE url = ? ORDER BY created_at DESC", (url,)
         )
         return [self._row_to_record(row) for row in cursor.fetchall()]
 
@@ -78,18 +76,20 @@ class PriceHistoryRepository:
         """Get the most recent price history record for a URL."""
         cursor = self.db.execute(
             "SELECT * FROM price_history WHERE url = ? ORDER BY created_at DESC, id DESC LIMIT 1",
-            (url,)
+            (url,),
         )
         row = cursor.fetchone()
         if row is None:
             return None
         return self._row_to_record(row)
 
-    def get_recent_history_by_url(self, url: str, limit: int = 30) -> List[PriceHistoryRecord]:
+    def get_recent_history_by_url(
+        self, url: str, limit: int = 30
+    ) -> List[PriceHistoryRecord]:
         """Get the recent price history records for a URL."""
         cursor = self.db.execute(
             "SELECT * FROM price_history WHERE url = ? ORDER BY created_at DESC LIMIT ?",
-            (url, limit)
+            (url, limit),
         )
         return [self._row_to_record(row) for row in cursor.fetchall()]
 
@@ -97,7 +97,7 @@ class PriceHistoryRepository:
         """Get price history records for a URL since a specific date."""
         cursor = self.db.execute(
             "SELECT * FROM price_history WHERE url = ? AND created_at >= ? ORDER BY created_at DESC",
-            (url, since.isoformat())
+            (url, since.isoformat()),
         )
         return [self._row_to_record(row) for row in cursor.fetchall()]
 
@@ -146,7 +146,7 @@ class ErrorLogRepository:
                 error.url,
                 error.screenshot_path,
                 error.stack_trace,
-            )
+            ),
         )
         self.db.commit()
         return cursor.lastrowid
@@ -154,8 +154,7 @@ class ErrorLogRepository:
     def get_recent(self, limit: int = 10) -> List[ErrorRecord]:
         """Get recent error records."""
         cursor = self.db.execute(
-            "SELECT * FROM error_log ORDER BY created_at DESC LIMIT ?",
-            (limit,)
+            "SELECT * FROM error_log ORDER BY created_at DESC LIMIT ?", (limit,)
         )
         return [self._row_to_record(row) for row in cursor.fetchall()]
 
@@ -165,7 +164,7 @@ class ErrorLogRepository:
         start_date: Optional[str] = None,
         end_date: Optional[str] = None,
         limit: int = 100,
-        offset: int = 0
+        offset: int = 0,
     ) -> List[ErrorRecord]:
         """Get all error logs with filters and pagination."""
         query = "SELECT * FROM error_log"
@@ -225,17 +224,14 @@ class ProductRepository:
                 product.target_price,
                 product.target_unit,
                 product.planned_date,
-            )
+            ),
         )
         self.db.commit()
         return cursor.lastrowid
 
     def get_by_id(self, product_id: int) -> Optional[Product]:
         """Get a product by ID."""
-        cursor = self.db.execute(
-            "SELECT * FROM products WHERE id = ?",
-            (product_id,)
-        )
+        cursor = self.db.execute("SELECT * FROM products WHERE id = ?", (product_id,))
         row = cursor.fetchone()
         if row is None:
             return None
@@ -249,16 +245,14 @@ class ProductRepository:
     def search(self, query: str) -> List[Product]:
         """Search products by name using SQL LIKE."""
         cursor = self.db.execute(
-            "SELECT * FROM products WHERE name LIKE ? ORDER BY name",
-            (f"%{query}%",)
+            "SELECT * FROM products WHERE name LIKE ? ORDER BY name", (f"%{query}%",)
         )
         return [self._row_to_record(row) for row in cursor.fetchall()]
 
     def get_by_category(self, category: str) -> List[Product]:
         """Get products by category."""
         cursor = self.db.execute(
-            "SELECT * FROM products WHERE category = ? ORDER BY name",
-            (category,)
+            "SELECT * FROM products WHERE category = ? ORDER BY name", (category,)
         )
         return [self._row_to_record(row) for row in cursor.fetchall()]
 
@@ -278,17 +272,16 @@ class ProductRepository:
         """Delete multiple products and their tracked items."""
         if not product_ids:
             return
-        
+
         placeholders = ",".join("?" for _ in product_ids)
         # 1. Delete tracked items first (cascade)
         self.db.execute(
             f"DELETE FROM tracked_items WHERE product_id IN ({placeholders})",
-            tuple(product_ids)
+            tuple(product_ids),
         )
         # 2. Delete products
         self.db.execute(
-            f"DELETE FROM products WHERE id IN ({placeholders})",
-            tuple(product_ids)
+            f"DELETE FROM products WHERE id IN ({placeholders})", tuple(product_ids)
         )
         self.db.commit()
 
@@ -296,12 +289,12 @@ class ProductRepository:
         """Merge source product into target product and move all tracked items."""
         if source_id == target_id:
             return
-            
+
         try:
             # 1. Update all tracked items to point to the target product
             self.db.execute(
                 "UPDATE tracked_items SET product_id = ? WHERE product_id = ?",
-                (target_id, source_id)
+                (target_id, source_id),
             )
             # 2. Delete the source product
             self.db.execute("DELETE FROM products WHERE id = ?", (source_id,))
@@ -309,6 +302,7 @@ class ProductRepository:
         except Exception as e:
             self.db.rollback()
             raise e
+
     def update(self, product_id: int, product: Product) -> None:
         """Update a product."""
         self.db.execute(
@@ -330,7 +324,7 @@ class ProductRepository:
                 product.target_unit,
                 product.planned_date,
                 product_id,
-            )
+            ),
         )
         self.db.commit()
 
@@ -364,29 +358,25 @@ class StoreRepository:
         clean_name = name.strip()
         if not clean_name:
             return clean_name
-            
-        cursor = self.db.execute("SELECT name FROM stores WHERE name = ? COLLATE NOCASE", (clean_name,))
+
+        cursor = self.db.execute(
+            "SELECT name FROM stores WHERE name = ? COLLATE NOCASE", (clean_name,)
+        )
         row = cursor.fetchone()
         if row:
             return row["name"]
-            
+
         return clean_name.capitalize()
 
     def insert(self, store: Store) -> int:
         """Insert a store and return its ID."""
-        cursor = self.db.execute(
-            "INSERT INTO stores (name) VALUES (?)",
-            (store.name,)
-        )
+        cursor = self.db.execute("INSERT INTO stores (name) VALUES (?)", (store.name,))
         self.db.commit()
         return cursor.lastrowid
 
     def get_by_id(self, store_id: int) -> Optional[Store]:
         """Get a store by ID."""
-        cursor = self.db.execute(
-            "SELECT * FROM stores WHERE id = ?",
-            (store_id,)
-        )
+        cursor = self.db.execute("SELECT * FROM stores WHERE id = ?", (store_id,))
         row = cursor.fetchone()
         if row is None:
             return None
@@ -394,10 +384,7 @@ class StoreRepository:
 
     def get_by_name(self, name: str) -> Optional[Store]:
         """Get a store by name."""
-        cursor = self.db.execute(
-            "SELECT * FROM stores WHERE name = ?",
-            (name,)
-        )
+        cursor = self.db.execute("SELECT * FROM stores WHERE name = ?", (name,))
         row = cursor.fetchone()
         if row is None:
             return None
@@ -411,8 +398,7 @@ class StoreRepository:
     def update(self, store_id: int, store: Store) -> None:
         """Update a store."""
         self.db.execute(
-            "UPDATE stores SET name = ? WHERE id = ?",
-            (store.name, store_id)
+            "UPDATE stores SET name = ? WHERE id = ?", (store.name, store_id)
         )
         self.db.commit()
 
@@ -423,10 +409,7 @@ class StoreRepository:
 
     def _row_to_record(self, row) -> Store:
         """Convert a database row to a Store."""
-        return Store(
-            id=row["id"],
-            name=row["name"]
-        )
+        return Store(id=row["id"], name=row["name"])
 
 
 class TrackedItemRepository:
@@ -453,17 +436,14 @@ class TrackedItemRepository:
                 item.items_per_lot,
                 1 if item.is_active else 0,
                 1 if item.alerts_enabled else 0,
-            )
+            ),
         )
         self.db.commit()
         return cursor.lastrowid
 
     def get_by_id(self, item_id: int) -> Optional[TrackedItem]:
         """Get a tracked item by ID."""
-        cursor = self.db.execute(
-            "SELECT * FROM tracked_items WHERE id = ?",
-            (item_id,)
-        )
+        cursor = self.db.execute("SELECT * FROM tracked_items WHERE id = ?", (item_id,))
         row = cursor.fetchone()
         if row is None:
             return None
@@ -471,10 +451,7 @@ class TrackedItemRepository:
 
     def get_by_url(self, url: str) -> Optional[TrackedItem]:
         """Get a tracked item by URL."""
-        cursor = self.db.execute(
-            "SELECT * FROM tracked_items WHERE url = ?",
-            (url,)
-        )
+        cursor = self.db.execute("SELECT * FROM tracked_items WHERE url = ?", (url,))
         row = cursor.fetchone()
         if row is None:
             return None
@@ -487,9 +464,7 @@ class TrackedItemRepository:
 
     def get_active(self) -> List[TrackedItem]:
         """Get all active tracked items."""
-        cursor = self.db.execute(
-            "SELECT * FROM tracked_items WHERE is_active = 1"
-        )
+        cursor = self.db.execute("SELECT * FROM tracked_items WHERE is_active = 1")
         return [self._row_to_record(row) for row in cursor.fetchall()]
 
     def get_due_for_check(self) -> List[TrackedItem]:
@@ -507,7 +482,7 @@ class TrackedItemRepository:
         """Update the last_checked_at timestamp."""
         self.db.execute(
             "UPDATE tracked_items SET last_checked_at = datetime('now') WHERE id = ?",
-            (item_id,)
+            (item_id,),
         )
         self.db.commit()
 
@@ -538,7 +513,7 @@ class TrackedItemRepository:
                 1 if item.is_active else 0,
                 1 if item.alerts_enabled else 0,
                 item_id,
-            )
+            ),
         )
         self.db.commit()
 
@@ -550,26 +525,21 @@ class TrackedItemRepository:
     def get_by_product(self, product_id: int) -> List[TrackedItem]:
         """Get all tracked items for a product."""
         cursor = self.db.execute(
-            "SELECT * FROM tracked_items WHERE product_id = ?",
-            (product_id,)
+            "SELECT * FROM tracked_items WHERE product_id = ?", (product_id,)
         )
         return [self._row_to_record(row) for row in cursor.fetchall()]
 
     def count_by_store(self, store_id: int) -> int:
         """Count tracked items associated with a store."""
         cursor = self.db.execute(
-            "SELECT COUNT(*) FROM tracked_items WHERE store_id = ?",
-            (store_id,)
+            "SELECT COUNT(*) FROM tracked_items WHERE store_id = ?", (store_id,)
         )
         row = cursor.fetchone()
         return row[0] if row else 0
 
     def delete_by_product(self, product_id: int) -> None:
         """Delete all tracked items for a product."""
-        self.db.execute(
-            "DELETE FROM tracked_items WHERE product_id = ?",
-            (product_id,)
-        )
+        self.db.execute("DELETE FROM tracked_items WHERE product_id = ?", (product_id,))
         self.db.commit()
 
     # --- Label Management ---
@@ -578,7 +548,7 @@ class TrackedItemRepository:
         """Associate a label with a tracked item."""
         self.db.execute(
             "INSERT OR IGNORE INTO tracked_item_labels (tracked_item_id, label_id) VALUES (?, ?)",
-            (tracked_item_id, label_id)
+            (tracked_item_id, label_id),
         )
         self.db.commit()
 
@@ -586,7 +556,7 @@ class TrackedItemRepository:
         """Remove all label associations for a tracked item."""
         self.db.execute(
             "DELETE FROM tracked_item_labels WHERE tracked_item_id = ?",
-            (tracked_item_id,)
+            (tracked_item_id,),
         )
         self.db.commit()
 
@@ -604,9 +574,10 @@ class TrackedItemRepository:
             JOIN tracked_item_labels til ON l.id = til.label_id
             WHERE til.tracked_item_id = ?
             """,
-            (tracked_item_id,)
+            (tracked_item_id,),
         )
         from app.models.schemas import Label
+
         return [Label(id=row["id"], name=row["name"]) for row in cursor.fetchall()]
 
     def _row_to_record(self, row) -> TrackedItem:
@@ -655,7 +626,7 @@ class ExtractionLogRepository:
                 log.currency,
                 log.error_message,
                 log.duration_ms,
-            )
+            ),
         )
         self.db.commit()
         return cursor.lastrowid
@@ -663,8 +634,7 @@ class ExtractionLogRepository:
     def get_by_id(self, log_id: int) -> Optional[ExtractionLog]:
         """Get an extraction log by ID."""
         cursor = self.db.execute(
-            "SELECT * FROM extraction_logs WHERE id = ?",
-            (log_id,)
+            "SELECT * FROM extraction_logs WHERE id = ?", (log_id,)
         )
         row = cursor.fetchone()
         if row is None:
@@ -674,8 +644,7 @@ class ExtractionLogRepository:
     def get_recent(self, limit: int = 50) -> List[ExtractionLog]:
         """Get recent extraction logs."""
         cursor = self.db.execute(
-            "SELECT * FROM extraction_logs ORDER BY created_at DESC LIMIT ?",
-            (limit,)
+            "SELECT * FROM extraction_logs ORDER BY created_at DESC LIMIT ?", (limit,)
         )
         return [self._row_to_record(row) for row in cursor.fetchall()]
 
@@ -688,7 +657,7 @@ class ExtractionLogRepository:
             ORDER BY created_at DESC
             LIMIT ?
             """,
-            (tracked_item_id, limit)
+            (tracked_item_id, limit),
         )
         return [self._row_to_record(row) for row in cursor.fetchall()]
 
@@ -708,7 +677,9 @@ class ExtractionLogRepository:
             "total_today": row["total"] or 0,
             "success_count": row["success_count"] or 0,
             "error_count": row["error_count"] or 0,
-            "avg_duration_ms": int(row["avg_duration_ms"]) if row["avg_duration_ms"] else 0,
+            "avg_duration_ms": int(row["avg_duration_ms"])
+            if row["avg_duration_ms"]
+            else 0,
         }
 
     def get_all_filtered(
@@ -718,7 +689,7 @@ class ExtractionLogRepository:
         start_date: Optional[str] = None,
         end_date: Optional[str] = None,
         limit: int = 100,
-        offset: int = 0
+        offset: int = 0,
     ) -> List[ExtractionLog]:
         """Get all extraction logs with filters and pagination."""
         query = "SELECT * FROM extraction_logs"
@@ -775,7 +746,7 @@ class SchedulerRunRepository:
             INSERT INTO scheduler_runs (items_total, status)
             VALUES (?, 'running')
             """,
-            (items_total,)
+            (items_total,),
         )
         self.db.commit()
         return cursor.lastrowid
@@ -785,7 +756,7 @@ class SchedulerRunRepository:
         run_id: int,
         items_success: int,
         items_failed: int,
-        error_message: Optional[str] = None
+        error_message: Optional[str] = None,
     ) -> None:
         """Mark a scheduler run as completed."""
         status = "failed" if error_message else "completed"
@@ -799,7 +770,7 @@ class SchedulerRunRepository:
                 error_message = ?
             WHERE id = ?
             """,
-            (status, items_success, items_failed, error_message, run_id)
+            (status, items_success, items_failed, error_message, run_id),
         )
         self.db.commit()
 
@@ -813,16 +784,13 @@ class SchedulerRunRepository:
                 error_message = ?
             WHERE id = ?
             """,
-            (error_message, run_id)
+            (error_message, run_id),
         )
         self.db.commit()
 
     def get_by_id(self, run_id: int) -> Optional[dict]:
         """Get a scheduler run by ID."""
-        cursor = self.db.execute(
-            "SELECT * FROM scheduler_runs WHERE id = ?",
-            (run_id,)
-        )
+        cursor = self.db.execute("SELECT * FROM scheduler_runs WHERE id = ?", (run_id,))
         row = cursor.fetchone()
         if row:
             return dict(row)
@@ -841,8 +809,7 @@ class SchedulerRunRepository:
     def get_recent(self, limit: int = 10) -> List[dict]:
         """Get recent scheduler runs."""
         cursor = self.db.execute(
-            "SELECT * FROM scheduler_runs ORDER BY started_at DESC LIMIT ?",
-            (limit,)
+            "SELECT * FROM scheduler_runs ORDER BY started_at DESC LIMIT ?", (limit,)
         )
         return [dict(row) for row in cursor.fetchall()]
 
@@ -858,19 +825,21 @@ class CategoryRepository:
         clean_name = name.strip()
         if not clean_name:
             return clean_name
-            
-        cursor = self.db.execute("SELECT name FROM categories WHERE name = ? COLLATE NOCASE", (clean_name,))
+
+        cursor = self.db.execute(
+            "SELECT name FROM categories WHERE name = ? COLLATE NOCASE", (clean_name,)
+        )
         row = cursor.fetchone()
         if row:
             return row["name"]
-            
+
         return clean_name.capitalize()
 
     def insert(self, category: Category) -> int:
         """Insert a category and return its ID."""
         cursor = self.db.execute(
             "INSERT INTO categories (name, is_size_sensitive) VALUES (?, ?)",
-            (category.name, 1 if category.is_size_sensitive else 0)
+            (category.name, 1 if category.is_size_sensitive else 0),
         )
         self.db.commit()
         return cursor.lastrowid
@@ -883,17 +852,13 @@ class CategoryRepository:
     def search(self, query: str) -> List[Category]:
         """Search categories by name."""
         cursor = self.db.execute(
-            "SELECT * FROM categories WHERE name LIKE ? ORDER BY name",
-            (f"%{query}%",)
+            "SELECT * FROM categories WHERE name LIKE ? ORDER BY name", (f"%{query}%",)
         )
         return [self._row_to_record(row) for row in cursor.fetchall()]
 
     def get_by_name(self, name: str) -> Optional[Category]:
         """Get a category by name."""
-        cursor = self.db.execute(
-            "SELECT * FROM categories WHERE name = ?",
-            (name,)
-        )
+        cursor = self.db.execute("SELECT * FROM categories WHERE name = ?", (name,))
         row = cursor.fetchone()
         if row is None:
             return None
@@ -902,8 +867,7 @@ class CategoryRepository:
     def get_by_id(self, category_id: int) -> Optional[Category]:
         """Get a category by ID."""
         cursor = self.db.execute(
-            "SELECT * FROM categories WHERE id = ?",
-            (category_id,)
+            "SELECT * FROM categories WHERE id = ?", (category_id,)
         )
         row = cursor.fetchone()
         if row is None:
@@ -914,7 +878,7 @@ class CategoryRepository:
         """Update a category."""
         self.db.execute(
             "UPDATE categories SET name = ?, is_size_sensitive = ? WHERE id = ?",
-            (category.name, 1 if category.is_size_sensitive else 0, category_id)
+            (category.name, 1 if category.is_size_sensitive else 0, category_id),
         )
         self.db.commit()
 
@@ -941,10 +905,7 @@ class LabelRepository:
 
     def insert(self, label: Label) -> int:
         """Insert a label and return its ID."""
-        cursor = self.db.execute(
-            "INSERT INTO labels (name) VALUES (?)",
-            (label.name,)
-        )
+        cursor = self.db.execute("INSERT INTO labels (name) VALUES (?)", (label.name,))
         self.db.commit()
         return cursor.lastrowid
 
@@ -956,17 +917,13 @@ class LabelRepository:
     def search(self, query: str) -> List[Label]:
         """Search labels by name."""
         cursor = self.db.execute(
-            "SELECT * FROM labels WHERE name LIKE ? ORDER BY name",
-            (f"%{query}%",)
+            "SELECT * FROM labels WHERE name LIKE ? ORDER BY name", (f"%{query}%",)
         )
         return [self._row_to_record(row) for row in cursor.fetchall()]
 
     def get_by_name(self, name: str) -> Optional[Label]:
         """Get a label by name."""
-        cursor = self.db.execute(
-            "SELECT * FROM labels WHERE name = ?",
-            (name,)
-        )
+        cursor = self.db.execute("SELECT * FROM labels WHERE name = ?", (name,))
         row = cursor.fetchone()
         if row is None:
             return None
@@ -974,10 +931,7 @@ class LabelRepository:
 
     def get_by_id(self, label_id: int) -> Optional[Label]:
         """Get a label by ID."""
-        cursor = self.db.execute(
-            "SELECT * FROM labels WHERE id = ?",
-            (label_id,)
-        )
+        cursor = self.db.execute("SELECT * FROM labels WHERE id = ?", (label_id,))
         row = cursor.fetchone()
         if row is None:
             return None
@@ -985,10 +939,7 @@ class LabelRepository:
 
     def update(self, label_id: int, name: str) -> None:
         """Update a label name."""
-        self.db.execute(
-            "UPDATE labels SET name = ? WHERE id = ?",
-            (name, label_id)
-        )
+        self.db.execute("UPDATE labels SET name = ? WHERE id = ?", (name, label_id))
         self.db.commit()
 
     def delete(self, label_id: int) -> None:
@@ -1005,7 +956,6 @@ class LabelRepository:
         )
 
 
-
 class UnitRepository:
     """Repository for unit operations."""
 
@@ -1014,10 +964,7 @@ class UnitRepository:
 
     def insert(self, unit: Unit) -> int:
         """Insert a unit and return its ID."""
-        cursor = self.db.execute(
-            "INSERT INTO units (name) VALUES (?)",
-            (unit.name,)
-        )
+        cursor = self.db.execute("INSERT INTO units (name) VALUES (?)", (unit.name,))
         self.db.commit()
         return cursor.lastrowid
 
@@ -1053,18 +1000,15 @@ class UnitRepository:
             # Update products target_unit
             self.db.execute(
                 "UPDATE products SET target_unit = ? WHERE target_unit = ?",
-                (unit.name, old_unit.name)
+                (unit.name, old_unit.name),
             )
             # Update tracked_items quantity_unit
             self.db.execute(
                 "UPDATE tracked_items SET quantity_unit = ? WHERE quantity_unit = ?",
-                (unit.name, old_unit.name)
+                (unit.name, old_unit.name),
             )
 
-        self.db.execute(
-            "UPDATE units SET name = ? WHERE id = ?",
-            (unit.name, unit_id)
-        )
+        self.db.execute("UPDATE units SET name = ? WHERE id = ?", (unit.name, unit_id))
         self.db.commit()
 
     def delete(self, unit_id: int) -> None:
@@ -1074,10 +1018,7 @@ class UnitRepository:
 
     def _row_to_record(self, row) -> Unit:
         """Convert a database row to a Unit."""
-        return Unit(
-            id=row["id"],
-            name=row["name"]
-        )
+        return Unit(id=row["id"], name=row["name"])
 
 
 class PurchaseTypeRepository:
@@ -1089,8 +1030,7 @@ class PurchaseTypeRepository:
     def insert(self, pt: PurchaseType) -> int:
         """Insert a purchase type and return its ID."""
         cursor = self.db.execute(
-            "INSERT INTO purchase_types (name) VALUES (?)",
-            (pt.name,)
+            "INSERT INTO purchase_types (name) VALUES (?)", (pt.name,)
         )
         self.db.commit()
         return cursor.lastrowid
@@ -1126,12 +1066,11 @@ class PurchaseTypeRepository:
         if pt.name != old_pt.name:
             self.db.execute(
                 "UPDATE products SET purchase_type = ? WHERE purchase_type = ?",
-                (pt.name, old_pt.name)
+                (pt.name, old_pt.name),
             )
 
         self.db.execute(
-            "UPDATE purchase_types SET name = ? WHERE id = ?",
-            (pt.name, pt_id)
+            "UPDATE purchase_types SET name = ? WHERE id = ?", (pt.name, pt_id)
         )
         self.db.commit()
 
@@ -1142,7 +1081,4 @@ class PurchaseTypeRepository:
 
     def _row_to_record(self, row) -> PurchaseType:
         """Convert a database row to a PurchaseType."""
-        return PurchaseType(
-            id=row["id"],
-            name=row["name"]
-        )
+        return PurchaseType(id=row["id"], name=row["name"])

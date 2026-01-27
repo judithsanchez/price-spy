@@ -34,6 +34,7 @@ from app.utils.logging import get_logger
 
 logger = get_logger(__name__)
 
+
 def validate_url(url: str) -> bool:
     """Check if a string is a valid URL."""
     try:
@@ -41,6 +42,7 @@ def validate_url(url: str) -> bool:
         return all([result.scheme, result.netloc])
     except Exception:
         return False
+
 
 async def cmd_extract(args) -> int:
     """Extract price from URL."""
@@ -67,8 +69,10 @@ async def cmd_extract(args) -> int:
 
         print("Extracting product info with Gemini...", file=sys.stderr)
         preferred_model = getattr(args, "model", None)
-        result, model_used = await extract_with_structured_output(screenshot, api_key, preferred_model=preferred_model)
-        
+        result, model_used = await extract_with_structured_output(
+            screenshot, api_key, preferred_model=preferred_model
+        )
+
         # Check for tracked item to get volume info
         tracked = tracked_repo.get_by_url(args.url)
 
@@ -91,7 +95,9 @@ async def cmd_extract(args) -> int:
             discount_percentage=result.discount_percentage,
             discount_fixed_amount=result.discount_fixed_amount,
             deal_description=result.deal_description,
-            available_sizes=json.dumps(result.available_sizes) if result.available_sizes else None,
+            available_sizes=json.dumps(result.available_sizes)
+            if result.available_sizes
+            else None,
         )
         record_id = price_repo.insert(record)
         logger.info("Price saved to database", extra={"record_id": record_id})
@@ -100,14 +106,18 @@ async def cmd_extract(args) -> int:
         print(f"\nProduct: {result.product_name}")
         print(f"Price: {result.currency} {result.price}")
         if result.original_price and result.original_price > result.price:
-            print(f"Original Price: {result.currency} {result.original_price} (Save {((result.original_price-result.price)/result.original_price)*100:.0f}%)")
-        
-        if result.deal_type and result.deal_type != 'none':
+            print(
+                f"Original Price: {result.currency} {result.original_price} (Save {((result.original_price - result.price) / result.original_price) * 100:.0f}%)"
+            )
+
+        if result.deal_type and result.deal_type != "none":
             print(f"PROMO: {result.deal_type}")
             if result.discount_percentage:
                 print(f"  Discount: {result.discount_percentage}% off")
             if result.discount_fixed_amount:
-                print(f"  Discount: {result.currency} {result.discount_fixed_amount} off")
+                print(
+                    f"  Discount: {result.currency} {result.discount_fixed_amount} off"
+                )
             if result.deal_description:
                 print(f"  Details: {result.deal_description}")
 
@@ -132,15 +142,15 @@ async def cmd_extract(args) -> int:
 
         # Show price comparison
         comparison = compare_prices(
-            result.price, 
+            result.price,
             previous.price if previous else None,
             original_price=result.original_price,
             deal_type=result.deal_type,
             discount_percentage=result.discount_percentage,
             discount_fixed_amount=result.discount_fixed_amount,
-            deal_description=result.deal_description
+            deal_description=result.deal_description,
         )
-        
+
         if previous:
             if comparison.price_change != 0:
                 direction = "↓" if comparison.is_price_drop else "↑"
@@ -154,9 +164,13 @@ async def cmd_extract(args) -> int:
         if comparison.is_deal:
             print("\n*** DEAL DETECTED ***")
             if comparison.is_price_drop:
-                print(f"-> Price dropped by {abs(comparison.price_change):.2f} {result.currency}")
+                print(
+                    f"-> Price dropped by {abs(comparison.price_change):.2f} {result.currency}"
+                )
             if comparison.original_price and comparison.original_price > result.price:
-                print(f"-> Promotion: {comparison.currency} {result.price} (was {comparison.original_price})")
+                print(
+                    f"-> Promotion: {comparison.currency} {result.price} (was {comparison.original_price})"
+                )
             if comparison.deal_type:
                 print(f"-> Offer: {comparison.deal_type}")
 
@@ -166,13 +180,17 @@ async def cmd_extract(args) -> int:
         error_msg = str(e)
         stack = traceback.format_exc()
 
-        logger.error("Price extraction failed", extra={"url": args.url, "error": error_msg})
-        error_repo.insert(ErrorRecord(
-            error_type="extraction_error",
-            message=error_msg[:2000],
-            url=args.url,
-            stack_trace=stack,
-        ))
+        logger.error(
+            "Price extraction failed", extra={"url": args.url, "error": error_msg}
+        )
+        error_repo.insert(
+            ErrorRecord(
+                error_type="extraction_error",
+                message=error_msg[:2000],
+                url=args.url,
+                stack_trace=stack,
+            )
+        )
 
         print(f"Error: {e}", file=sys.stderr)
         return 1
@@ -201,41 +219,51 @@ async def cmd_check(args) -> int:
         print(f"Checking URL: {args.url}")
         print("Capturing screenshot...")
         screenshot = await capture_screenshot(args.url)
-        
+
         with open(output_path, "wb") as f:
             f.write(screenshot)
         print(f"Screenshot saved to: {output_path}")
 
         print("Analyzing with AI...")
         result, model_used = await extract_with_structured_output(screenshot, api_key)
-        
+
         print("\n--- Diagnostic Results ---")
         print(f"Detection Status: {'BLOCKED' if result.is_blocked else 'CLEAR'}")
         if result.is_blocked:
             print("Page appears to be blocked by a modal, captcha, or WAF.")
-        
-        print(f"Store Detected: {result.store_name if result.store_name else 'Unknown'}")
-        print(f"Product Detected: {result.product_name if result.product_name else 'Unknown'}")
-        print(f"Price Found: {result.currency} {result.price if result.price > 0 else 'N/A'}")
+
+        print(
+            f"Store Detected: {result.store_name if result.store_name else 'Unknown'}"
+        )
+        print(
+            f"Product Detected: {result.product_name if result.product_name else 'Unknown'}"
+        )
+        print(
+            f"Price Found: {result.currency} {result.price if result.price > 0 else 'N/A'}"
+        )
         if result.original_price:
             print(f"Original Price: {result.currency} {result.original_price}")
-        if result.deal_type and result.deal_type != 'none':
+        if result.deal_type and result.deal_type != "none":
             print(f"Deal Type: {result.deal_type}")
             if result.discount_percentage:
                 print(f"Discount Percentage: {result.discount_percentage}%")
             if result.discount_fixed_amount:
-                print(f"Discount Fixed Amount: {result.currency} {result.discount_fixed_amount}")
+                print(
+                    f"Discount Fixed Amount: {result.currency} {result.discount_fixed_amount}"
+                )
         if result.deal_description:
             print(f"Deal Description: {result.deal_description}")
         print(f"Model Used: {model_used}")
         print("--------------------------")
-        
+
         if not result.is_blocked and result.price > 0:
             print("\nSuccess: This URL is likely compatible with Price Spy.")
         elif result.is_blocked:
             print("\nWarning: This site is detecting the bot or has persistent modals.")
         else:
-            print("\nInconclusive: Screenshot captured, but AI couldn't find clear product data.")
+            print(
+                "\nInconclusive: Screenshot captured, but AI couldn't find clear product data."
+            )
 
         return 0
     except Exception as e:
@@ -311,7 +339,9 @@ def cmd_track(args) -> int:
         # Verify product exists
         product = product_repo.get_by_id(args.product_id)
         if not product:
-            print(f"Error: Product with ID {args.product_id} not found", file=sys.stderr)
+            print(
+                f"Error: Product with ID {args.product_id} not found", file=sys.stderr
+            )
             return 1
 
         # Verify store exists
@@ -333,7 +363,7 @@ def cmd_track(args) -> int:
             quantity_size=args.size,
             quantity_unit=args.unit,
             items_per_lot=args.lot or 1,
-            preferred_model=getattr(args, "model", None)
+            preferred_model=getattr(args, "model", None),
         )
         item_id = tracked_repo.insert(item)
 
@@ -364,12 +394,16 @@ def cmd_list(args) -> int:
             if not products:
                 print("No products found.")
                 return 0
-            print(f"{'ID':<4} {'Name':<30} {'Category':<15} {'Target':<10} {'Stock':<6}")
+            print(
+                f"{'ID':<4} {'Name':<30} {'Category':<15} {'Target':<10} {'Stock':<6}"
+            )
             print("-" * 70)
             for p in products:
                 target = f"{p.target_price:.2f}" if p.target_price else "-"
                 cat = p.category or "-"
-                print(f"{p.id:<4} {p.name[:30]:<30} {cat[:15]:<15} {target:<10} {p.current_stock:<6}")
+                print(
+                    f"{p.id:<4} {p.name[:30]:<30} {cat[:15]:<15} {target:<10} {p.current_stock:<6}"
+                )
 
         elif args.what == "stores":
             stores = store_repo.get_all()
@@ -379,8 +413,14 @@ def cmd_list(args) -> int:
             print(f"{'ID':<4} {'Name':<25} {'Shipping':<10} {'Free Above':<12}")
             print("-" * 55)
             for s in stores:
-                free = f"{s.free_shipping_threshold:.2f}" if s.free_shipping_threshold else "-"
-                print(f"{s.id:<4} {s.name[:25]:<25} {s.shipping_cost_standard:<10.2f} {free:<12}")
+                free = (
+                    f"{s.free_shipping_threshold:.2f}"
+                    if s.free_shipping_threshold
+                    else "-"
+                )
+                print(
+                    f"{s.id:<4} {s.name[:25]:<25} {s.shipping_cost_standard:<10.2f} {free:<12}"
+                )
 
         else:  # tracked items (default)
             items = tracked_repo.get_active()
@@ -397,7 +437,9 @@ def cmd_list(args) -> int:
                     size_str += f" x{item.items_per_lot}"
                 pname = product.name[:20] if product else "?"
                 sname = store.name[:15] if store else "?"
-                print(f"{item.id:<4} {pname:<20} {sname:<15} {size_str:<12} {item.url[:40]}")
+                print(
+                    f"{item.id:<4} {pname:<20} {sname:<15} {size_str:<12} {item.url[:40]}"
+                )
 
         return 0
     except Exception as e:
@@ -417,30 +459,52 @@ def main():
     # Extract command (also default if URL given directly)
     extract_parser = subparsers.add_parser("extract", help="Extract price from URL")
     extract_parser.add_argument("url", help="Product page URL to analyze")
-    extract_parser.add_argument("--model", "-m", help="Gemini model to use (e.g., 'gemini-2.5-flash-lite')")
+    extract_parser.add_argument(
+        "--model", "-m", help="Gemini model to use (e.g., 'gemini-2.5-flash-lite')"
+    )
 
     # Add product command
     product_parser = subparsers.add_parser("add-product", help="Add a new product")
     product_parser.add_argument("name", help="Product name")
     product_parser.add_argument("--category", "-c", help="Product category")
-    product_parser.add_argument("--target-price", "-t", type=float, help="Target price for alerts")
-    product_parser.add_argument("--unit-size", "-u", help="Preferred unit size (e.g., '250ml')")
+    product_parser.add_argument(
+        "--target-price", "-t", type=float, help="Target price for alerts"
+    )
+    product_parser.add_argument(
+        "--unit-size", "-u", help="Preferred unit size (e.g., '250ml')"
+    )
 
     # Add store command
     store_parser = subparsers.add_parser("add-store", help="Add a new store")
     store_parser.add_argument("name", help="Store name")
-    store_parser.add_argument("--shipping", "-s", type=float, help="Standard shipping cost")
-    store_parser.add_argument("--free-threshold", "-f", type=float, help="Free shipping threshold")
+    store_parser.add_argument(
+        "--shipping", "-s", type=float, help="Standard shipping cost"
+    )
+    store_parser.add_argument(
+        "--free-threshold", "-f", type=float, help="Free shipping threshold"
+    )
 
     # Track command
     track_parser = subparsers.add_parser("track", help="Track a URL")
     track_parser.add_argument("url", help="URL to track")
-    track_parser.add_argument("--product-id", "-p", type=int, required=True, help="Product ID")
-    track_parser.add_argument("--store-id", "-s", type=int, required=True, help="Store ID")
-    track_parser.add_argument("--size", type=float, required=True, help="Quantity size (e.g., 250)")
-    track_parser.add_argument("--unit", "-u", required=True, help="Unit (e.g., 'ml', 'g', 'L')")
-    track_parser.add_argument("--lot", "-l", type=int, help="Items per lot (default: 1)")
-    track_parser.add_argument("--model", "-m", help="Preferred Gemini model for this item")
+    track_parser.add_argument(
+        "--product-id", "-p", type=int, required=True, help="Product ID"
+    )
+    track_parser.add_argument(
+        "--store-id", "-s", type=int, required=True, help="Store ID"
+    )
+    track_parser.add_argument(
+        "--size", type=float, required=True, help="Quantity size (e.g., 250)"
+    )
+    track_parser.add_argument(
+        "--unit", "-u", required=True, help="Unit (e.g., 'ml', 'g', 'L')"
+    )
+    track_parser.add_argument(
+        "--lot", "-l", type=int, help="Items per lot (default: 1)"
+    )
+    track_parser.add_argument(
+        "--model", "-m", help="Preferred Gemini model for this item"
+    )
 
     # List command
     list_parser = subparsers.add_parser("list", help="List items")
@@ -449,13 +513,14 @@ def main():
         nargs="?",
         default="tracked",
         choices=["tracked", "products", "stores"],
-        help="What to list (default: tracked)"
+        help="What to list (default: tracked)",
     )
 
     # Check command
-    check_parser = subparsers.add_parser("check", help="Test a new URL for compatibility")
+    check_parser = subparsers.add_parser(
+        "check", help="Test a new URL for compatibility"
+    )
     check_parser.add_argument("url", help="URL to test")
-
 
     args = parser.parse_args()
 

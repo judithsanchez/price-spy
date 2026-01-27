@@ -20,11 +20,29 @@ class JSONFormatter(logging.Formatter):
 
         # Standard LogRecord attributes to ignore
         standard_attrs = {
-            "name", "msg", "args", "levelname", "levelno", "pathname", 
-            "filename", "module", "exc_info", "exc_text", "stack_info", 
-            "lineno", "funcName", "created", "msecs", "relativeCreated", 
-            "thread", "threadName", "processName", "process", "message",
-            "persist_to_db", "db_error_type"
+            "name",
+            "msg",
+            "args",
+            "levelname",
+            "levelno",
+            "pathname",
+            "filename",
+            "module",
+            "exc_info",
+            "exc_text",
+            "stack_info",
+            "lineno",
+            "funcName",
+            "created",
+            "msecs",
+            "relativeCreated",
+            "thread",
+            "threadName",
+            "processName",
+            "process",
+            "message",
+            "persist_to_db",
+            "db_error_type",
         }
 
         # Add all extra fields dynamically
@@ -40,11 +58,12 @@ class JSONFormatter(logging.Formatter):
         if getattr(record, "persist_to_db", False) or record.levelno >= logging.ERROR:
             try:
                 from app.core.error_logger import log_error_to_db
+
                 log_error_to_db(
                     error_type=getattr(record, "db_error_type", "application_error"),
                     message=record.getMessage(),
                     url=getattr(record, "url", None),
-                    include_stack=bool(record.exc_info)
+                    include_stack=bool(record.exc_info),
                 )
             except Exception:
                 # Prevent recursion or crash if error logger fails
@@ -63,9 +82,7 @@ class ExtraFieldsAdapter(logging.LoggerAdapter):
 
 
 def get_logger(
-    name: str,
-    level: int = logging.INFO,
-    stream: Any = None
+    name: str, level: int = logging.INFO, stream: Any = None
 ) -> logging.Logger:
     """
     Create a JSON-formatted logger.

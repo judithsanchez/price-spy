@@ -16,7 +16,6 @@ _scheduler: Optional[AsyncIOScheduler] = None
 _last_run_result: Optional[Dict[str, Any]] = None
 
 
-
 def get_scheduler_config() -> Dict[str, Any]:
     """Get scheduler configuration from environment."""
     return {
@@ -53,7 +52,7 @@ async def run_scheduled_extraction():
                 "items_total": 0,
                 "items_success": 0,
                 "items_failed": 0,
-                "message": "No items due for check (all already checked today)"
+                "message": "No items due for check (all already checked today)",
             }
             return _last_run_result
 
@@ -68,13 +67,14 @@ async def run_scheduled_extraction():
         scheduler_repo.complete_run(
             run_id,
             items_success=summary["success_count"],
-            items_failed=summary["error_count"]
+            items_failed=summary["error_count"],
         )
 
         # Send daily email report
         email_sent = False
         try:
             from app.core.email_report import send_daily_report
+
             email_sent = send_daily_report(summary["results"], db)
         except Exception as e:
             print(f"Failed to send email report: {e}")
@@ -96,7 +96,7 @@ async def run_scheduled_extraction():
             "started_at": datetime.now(timezone.utc).isoformat(),
             "completed_at": datetime.now(timezone.utc).isoformat(),
             "status": "failed",
-            "error": str(e)
+            "error": str(e),
         }
         return _last_run_result
 
@@ -122,7 +122,7 @@ def get_scheduler_status() -> Dict[str, Any]:
             "next_run": None,
             "last_run": _last_run_result,
             "items_count": 0,
-            "config": config
+            "config": config,
         }
 
     # Get next run time
@@ -159,7 +159,7 @@ def get_scheduler_status() -> Dict[str, Any]:
         "next_run": next_run,
         "last_run": _last_run_result,
         "items_count": items_count,
-        "config": config
+        "config": config,
     }
 
 
@@ -180,7 +180,7 @@ def start_scheduler():
         CronTrigger(hour=config["hour"], minute=config["minute"]),
         id="daily_extraction",
         replace_existing=True,
-        name="Daily Price Extraction"
+        name="Daily Price Extraction",
     )
 
     _scheduler.start()

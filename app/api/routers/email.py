@@ -4,22 +4,24 @@ from pydantic import BaseModel
 
 from app.core.email_report import get_email_config, is_email_configured, send_email
 
-router = APIRouter(
-    prefix="/api/email",
-    tags=["Email"]
-)
+router = APIRouter(prefix="/api/email", tags=["Email"])
+
 
 class EmailTestResponse(BaseModel):
     """Response for email test endpoint."""
+
     success: bool
     message: str
     recipient: Optional[str] = None
 
+
 class EmailStatusResponse(BaseModel):
     """Response for email status endpoint."""
+
     enabled: bool
     configured: bool
     recipient: Optional[str] = None
+
 
 @router.get("/status", response_model=EmailStatusResponse)
 async def email_status():
@@ -30,6 +32,7 @@ async def email_status():
         configured=is_email_configured(),
         recipient=config.get("recipient"),
     )
+
 
 @router.post("/test", response_model=EmailTestResponse)
 async def email_test():
@@ -69,7 +72,7 @@ If you received this, your daily reports will work!
         subject="Price Spy Test Email",
         html=html,
         text=text,
-        config=config
+        config=config,
     )
 
     if success:

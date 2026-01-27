@@ -1,4 +1,3 @@
-
 import asyncio
 import logging
 from playwright.async_api import async_playwright
@@ -12,12 +11,13 @@ logger = logging.getLogger(__name__)
 # Check input args to decide mode
 HEADFUL = True
 
+
 async def main():
     logger.info(f"Starting Fingerprint Diagnostic (Headful={HEADFUL})...")
-    
+
     # We use the diagnostic site that checks for common bot leaks
     url = "https://bot.sannysoft.com/"
-    
+
     async with async_playwright() as p:
         # Replicate the Exact startup logic from browser.py (Headful mode)
         profile = {
@@ -30,12 +30,13 @@ async def main():
             "--no-sandbox",
             "--disable-infobars",
             "--start-maximized",
-            f"--user-agent={profile['ua']}"
+            f"--user-agent={profile['ua']}",
         ]
 
         if HEADFUL and sys.platform.startswith("linux"):
             try:
                 from pyvirtualdisplay import Display
+
                 display = Display(visible=0, size=(1920, 1080))
                 display.start()
                 logger.info("Virtual Display Started")
@@ -44,34 +45,35 @@ async def main():
 
         logger.info("Launching Browser...")
         browser = await p.chromium.launch(
-            headless=False, # The magic key
-            args=launch_args
+            headless=False,  # The magic key
+            args=launch_args,
         )
-        
+
         context = await browser.new_context(
             viewport={"width": 1920, "height": 1080},
             user_agent=profile["ua"],
             locale="en-US",
             timezone_id="Europe/Amsterdam",
         )
-        
+
         page = await context.new_page()
-        
+
         # Apply Stealth
         stealth = Stealth()
         await stealth.apply_stealth_async(page)
-        
+
         logger.info(f"Navigating to {url}...")
         await page.goto(url, wait_until="networkidle")
         await page.wait_for_timeout(2000)
-        
+
         # Take screenshot
         output_file = "debug_fingerprint.png"
         await page.screenshot(path=output_file, full_page=True)
         logger.info(f"Fingerprint report saved to {output_file}")
-        
+
         await browser.close()
         # display.stop() # If using Xvfb
+
 
 if __name__ == "__main__":
     asyncio.run(main())

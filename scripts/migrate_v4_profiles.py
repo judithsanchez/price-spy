@@ -3,8 +3,9 @@ import shutil
 import os
 from datetime import datetime
 
-DB_PATH = 'data/pricespy.db'
-BACKUP_PATH = f'data/pricespy.db.backup_{datetime.now().strftime("%Y%m%d_%H%M%S")}'
+DB_PATH = "data/pricespy.db"
+BACKUP_PATH = f"data/pricespy.db.backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+
 
 def migrate():
     if not os.path.exists(DB_PATH):
@@ -29,7 +30,9 @@ def migrate():
 
         print("Migrating unique labels to profiles...")
         # Get all distinct labels from brand_sizes where label is not null/empty
-        cursor.execute("SELECT DISTINCT label FROM brand_sizes WHERE label IS NOT NULL AND label != ''")
+        cursor.execute(
+            "SELECT DISTINCT label FROM brand_sizes WHERE label IS NOT NULL AND label != ''"
+        )
         labels = cursor.fetchall()
 
         for (label,) in labels:
@@ -43,12 +46,14 @@ def migrate():
         # Check if columns exist
         cursor.execute("PRAGMA table_info(brand_sizes)")
         columns = [info[1] for info in cursor.fetchall()]
-        
-        if 'profile_id' not in columns:
+
+        if "profile_id" not in columns:
             print("  - Adding profile_id column")
-            cursor.execute("ALTER TABLE brand_sizes ADD COLUMN profile_id INTEGER REFERENCES profiles(id)")
-        
-        if 'item_type' not in columns:
+            cursor.execute(
+                "ALTER TABLE brand_sizes ADD COLUMN profile_id INTEGER REFERENCES profiles(id)"
+            )
+
+        if "item_type" not in columns:
             print("  - Adding item_type column")
             cursor.execute("ALTER TABLE brand_sizes ADD COLUMN item_type TEXT")
 
@@ -59,13 +64,15 @@ def migrate():
             SET profile_id = (SELECT id FROM profiles WHERE profiles.name = brand_sizes.label)
             WHERE label IS NOT NULL AND label != '' AND profile_id IS NULL
         """)
-        
+
         # Verify migration
-        cursor.execute("SELECT COUNT(*) FROM brand_sizes WHERE label IS NOT NULL AND label != '' AND profile_id IS NULL")
+        cursor.execute(
+            "SELECT COUNT(*) FROM brand_sizes WHERE label IS NOT NULL AND label != '' AND profile_id IS NULL"
+        )
         orphans = cursor.fetchone()[0]
         if orphans > 0:
             print(f"WARNING: {orphans} preferences could not be linked to a profile!")
-        
+
         conn.commit()
         print("Migration completed successfully!")
 
@@ -75,6 +82,7 @@ def migrate():
         print("Rolled back changes. Restoring backup is manual if needed.")
     finally:
         conn.close()
+
 
 if __name__ == "__main__":
     migrate()

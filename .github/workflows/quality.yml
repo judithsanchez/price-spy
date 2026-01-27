@@ -17,15 +17,61 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+          cache: 'pip'
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-          pip install ruff pytest pytest-cov
+          pip install ruff mypy bandit pip-audit pytest pytest-cov
+
+      - name: Check formatting with Ruff
+        run: ruff format --check .
 
       - name: Lint with Ruff
         run: ruff check .
+
+      - name: Static type check with mypy
+        run: mypy --ignore-missing-imports . || true
+
+      - name: Security scan with Bandit
+        run: bandit -r app/ --skip B101 || true
+
+      - name: Audit dependencies
+        run: pip-audit
+
+      - name: Check branch name
+        if: github.event_name == 'pull_request'
+        run: |
+          BRANCH_NAME="${{ github.head_ref }}"
+          REGEX="^(feat|fix|docs|test|refactor|chore)/[a-z0-9-]+$"
+          if [[ ! $BRANCH_NAME =~ $REGEX ]]; then
+            echo "⚠️  WARNING: Branch name '$BRANCH_NAME' does not follow conventional naming: $REGEX"
+          fi
+        continue-on-error: true
+
+      - name: Check PR size
+        if: github.event_name == 'pull_request'
+        run: |
+          DIFF_SIZE=$(git diff origin/${{ github.base_ref }}...HEAD --shortstat | awk '{print $4 + $6}')
+          if [ "$DIFF_SIZE" -gt 500 ]; then
+            echo "⚠️  WARNING: PR is large ($DIFF_SIZE lines changed). Consider splitting it."
+          fi
+        continue-on-error: true
+
+      - name: Documentation Sync Check
+        if: github.event_name == 'pull_request'
+        run: |
+          APP_CHANGES=$(git diff --name-only origin/${{ github.base_ref }}...HEAD | grep "^app/" | wc -l)
+          DOC_CHANGES=$(git diff --name-only origin/${{ github.base_ref }}...HEAD | grep -E "^docs/|^README.md" | wc -l)
+          if [ "$APP_CHANGES" -gt 0 ] && [ "$DOC_CHANGES" -eq 0 ]; then
+            echo "⚠️  WARNING: Code changed in app/ but no changes found in docs/ or README.md."
+          fi
+        continue-on-error: true
+
+      - name: Mutation Testing (app/core)
+        run: mutmut run --paths-to-mutate app/core/ --time-out 10 --runner "pytest tests/test_basic.py" || true
+        continue-on-error: true
 
       - name: Run Tests
         run: pytest

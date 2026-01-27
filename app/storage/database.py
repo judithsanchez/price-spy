@@ -180,11 +180,16 @@ class Database:
     def _connect(self) -> sqlite3.Connection:
         """Create database connection with safety check."""
         import os
-        
+
         # SAFETY GUARD: Prevent accidental production database modification during tests
-        is_test = os.environ.get("PYTEST_CURRENT_TEST") or os.environ.get("PRICESPY_ENV") == "test"
-        is_prod_path = self.db_path == "data/pricespy.db" or os.path.abspath(self.db_path) == os.path.abspath("data/pricespy.db")
-        
+        is_test = (
+            os.environ.get("PYTEST_CURRENT_TEST")
+            or os.environ.get("PRICESPY_ENV") == "test"
+        )
+        is_prod_path = self.db_path == "data/pricespy.db" or os.path.abspath(
+            self.db_path
+        ) == os.path.abspath("data/pricespy.db")
+
         if is_test and is_prod_path:
             raise RuntimeError(
                 f"SAFETY BLOCK: Attempted to connect to production database '{self.db_path}' "
@@ -200,25 +205,27 @@ class Database:
         """Initialize database schema and perform migrations."""
         conn = self._connect()
         conn.executescript(SCHEMA)
-        
+
         cursor = conn.cursor()
 
         # 1. Handle products table migration (Removing columns in SQLite is a multi-step process)
         cursor.execute("PRAGMA table_info(products)")
         columns = [row["name"] for row in cursor.fetchall()]
         unwanted = ["labels", "brand", "preferred_unit_size", "current_stock"]
-        
+
         if any(col in columns for col in unwanted):
             # Identify columns we want to KEEP
             keep = [c for c in columns if c not in unwanted]
             keep_csv = ", ".join(keep)
-            
+
             # Create a backup/rebuild table
             conn.execute("BEGIN TRANSACTION")
             try:
                 conn.execute("ALTER TABLE products RENAME TO products_old")
                 conn.executescript(SCHEMA)
-                conn.execute(f"INSERT INTO products ({keep_csv}) SELECT {keep_csv} FROM products_old")
+                conn.execute(
+                    f"INSERT INTO products ({keep_csv}) SELECT {keep_csv} FROM products_old"
+                )
                 conn.execute("DROP TABLE products_old")
                 conn.commit()
             except Exception as e:
@@ -234,15 +241,22 @@ class Database:
         # 2. Handle stores table migration
         cursor.execute("PRAGMA table_info(stores)")
         columns = [row["name"] for row in cursor.fetchall()]
-        unwanted_stores = ["is_size_sensitive", "shipping_cost_standard", "free_shipping_threshold", "notes"]
-        
+        unwanted_stores = [
+            "is_size_sensitive",
+            "shipping_cost_standard",
+            "free_shipping_threshold",
+            "notes",
+        ]
+
         if any(col in columns for col in unwanted_stores):
             conn.execute("BEGIN TRANSACTION")
             try:
                 conn.execute("ALTER TABLE stores RENAME TO stores_old")
                 conn.executescript(SCHEMA)
                 # Only copy id and name
-                conn.execute("INSERT INTO stores (id, name) SELECT id, name FROM stores_old")
+                conn.execute(
+                    "INSERT INTO stores (id, name) SELECT id, name FROM stores_old"
+                )
                 conn.execute("DROP TABLE stores_old")
                 conn.commit()
                 print("Stores migration successful.")
@@ -254,34 +268,59 @@ class Database:
         cursor.execute("SELECT COUNT(*) FROM purchase_types")
         if cursor.fetchone()[0] == 0:
             purchase_types = ["recurring", "one_time"]
-            conn.executemany("INSERT INTO purchase_types (name) VALUES (?)", [(p,) for p in purchase_types])
+            conn.executemany(
+                "INSERT INTO purchase_types (name) VALUES (?)",
+                [(p,) for p in purchase_types],
+            )
 
         # 3. Seed units if empty
         cursor.execute("SELECT COUNT(*) FROM units")
         if cursor.fetchone()[0] == 0:
             units = [
-                'ml', 'cl', 'dl', 'L', 'g', 'kg', 'lb', 'oz', 'fl oz', 
-                'piece', 'pack', 'pair', 'set', 'tube', 'bottle', 'can', 
-                'box', 'bag', 'tub', 'jar', 'unit'
+                "ml",
+                "cl",
+                "dl",
+                "L",
+                "g",
+                "kg",
+                "lb",
+                "oz",
+                "fl oz",
+                "piece",
+                "pack",
+                "pair",
+                "set",
+                "tube",
+                "bottle",
+                "can",
+                "box",
+                "bag",
+                "tub",
+                "jar",
+                "unit",
             ]
-            conn.executemany("INSERT INTO units (name) VALUES (?)", [(u,) for u in units])
+            conn.executemany(
+                "INSERT INTO units (name) VALUES (?)", [(u,) for u in units]
+            )
 
         # 3. Handle tracked_items table migration
         cursor.execute("PRAGMA table_info(tracked_items)")
         columns = [row["name"] for row in cursor.fetchall()]
         unwanted_ti = ["item_name_on_site", "preferred_model", "target_size_label"]
-        
+
         if any(col in columns for col in unwanted_ti):
             # Identify columns we want to KEEP
             keep = [c for c in columns if c not in unwanted_ti]
             keep_csv = ", ".join(keep)
-            
+
             conn.execute("BEGIN TRANSACTION")
             try:
                 conn.execute("ALTER TABLE tracked_items RENAME TO tracked_items_old")
                 conn.executescript(SCHEMA)
                 # Copy data intersection
-                conn.execute(f"INSERT INTO tracked_items ({keep_csv}) SELECT {keep_csv} FROM tracked_items_old")
+                conn.execute(
+                    f"INSERT INTO tracked_items ({keep_csv}) SELECT {keep_csv} FROM tracked_items_old"
+                )
                 conn.execute("DROP TABLE tracked_items_old")
                 conn.commit()
                 print("Tracked items migration successful.")
@@ -297,7 +336,9 @@ class Database:
             try:
                 conn.execute("ALTER TABLE labels RENAME TO labels_old")
                 conn.executescript(SCHEMA)
-                conn.execute("INSERT INTO labels (id, name, created_at) SELECT id, name, created_at FROM labels_old")
+                conn.execute(
+                    "INSERT INTO labels (id, name, created_at) SELECT id, name, created_at FROM labels_old"
+                )
                 conn.execute("DROP TABLE labels_old")
                 conn.commit()
                 print("Labels table simplified.")
@@ -309,7 +350,9 @@ class Database:
         cursor.execute("PRAGMA table_info(price_history)")
         columns = [row["name"] for row in cursor.fetchall()]
         if "is_available" not in columns:
-            cursor.execute("ALTER TABLE price_history ADD COLUMN is_available INTEGER DEFAULT 1")
+            cursor.execute(
+                "ALTER TABLE price_history ADD COLUMN is_available INTEGER DEFAULT 1"
+            )
         if "notes" not in columns:
             cursor.execute("ALTER TABLE price_history ADD COLUMN notes TEXT")
         if "item_id" not in columns:
@@ -319,75 +362,195 @@ class Database:
         if "deal_type" not in columns:
             cursor.execute("ALTER TABLE price_history ADD COLUMN deal_type TEXT")
         if "discount_percentage" not in columns:
-            cursor.execute("ALTER TABLE price_history ADD COLUMN discount_percentage REAL")
+            cursor.execute(
+                "ALTER TABLE price_history ADD COLUMN discount_percentage REAL"
+            )
         if "discount_fixed_amount" not in columns:
-            cursor.execute("ALTER TABLE price_history ADD COLUMN discount_fixed_amount REAL")
+            cursor.execute(
+                "ALTER TABLE price_history ADD COLUMN discount_fixed_amount REAL"
+            )
         if "deal_description" not in columns:
             cursor.execute("ALTER TABLE price_history ADD COLUMN deal_description TEXT")
         if "available_sizes" not in columns:
             cursor.execute("ALTER TABLE price_history ADD COLUMN available_sizes TEXT")
         if "is_size_matched" not in columns:
-            cursor.execute("ALTER TABLE price_history ADD COLUMN is_size_matched INTEGER DEFAULT 1")
-            
+            cursor.execute(
+                "ALTER TABLE price_history ADD COLUMN is_size_matched INTEGER DEFAULT 1"
+            )
+
         # 5. Seed categories if table is empty
         cursor.execute("SELECT COUNT(*) FROM categories")
         if cursor.fetchone()[0] == 0:
             # Categories where physical size/fit is the tracking factor (Clothing, Footwear, Bedding)
-            size_sensitive = ["Clothing", "Footwear", "Bedding", "Underwear & Sleepwear", "Accessories", "Jewelry", "Luggage & Bags"]
-            
-            categories = [
-                "Dairy", "Bakery", "Beverages", "Snacks", "Frozen Foods", "Canned Goods",
-                "Pasta & Grains", "Meat & Poultry", "Seafood", "Fruits", "Vegetables",
-                "Condiments & Sauces", "Spices & Seasonings", "Baking Supplies",
-                "Breakfast Foods", "Coffee & Tea", "Delicatessen", "Health Foods",
-                "Baby Food", "Pet Food", "Cleaning Supplies", "Paper Products",
-                "Laundry Care", "Dishwashing", "Personal Care", "Hair Care",
-                "Skincare", "Oral Care", "Shaving & Grooming", "Cosmetics",
-                "Feminine Care", "First Aid", "Over-the-Counter Medicine",
-                "Vitamins & Minerals", "Baby Care", "School Supplies",
-                "Office Supplies", "Electronics", "Computer Accessories",
-                "Mobile Accessories", "Audio", "Photography", "Gaming",
-                "Kitchen Appliances", "Small Home Appliances", "Tools & Hardware",
-                "Painting & Decorating", "Electrical", "Plumbing", "Gardening",
-                "Outdoor Tools", "Home Security", "Automotive", "Sports Equipment",
-                "Fitness", "Camping & Outdoors", "Toys", "Board Games",
-                "Crafts & Hobbies", "Party Supplies", "Gift Wrapping", "Clothing",
-                "Underwear & Sleepwear", "Footwear", "Accessories", "Jewelry",
-                "Luggage & Bags", "Bedding", "Bath Linens", "Kitchen Linens",
-                "Curtains & Blinds", "Lighting", "Home Decor", "Storage & Organization",
-                "Furniture", "Cookware", "Dinnerware", "Flatware", "Kitchen Utensils",
-                "Glassware", "Barware", "Books - Fiction", "Books - Non-Fiction",
-                "Books - Educational", "Books - Children", "Magazines & Newspapers",
-                "Stationery", "Musical Instruments", "Professional Equipment",
-                "Safety Equipment", "Travel Accessories", "Seasonal Decor",
-                "Religious & Spiritual Items", "Wine", "Beer", "Spirits",
-                "Alcohol-Free Alternatives", "Organic Foods", "Gluten-Free Products",
-                "Vegan & Plant-Based", "International Foods - Asian",
-                "International Foods - Mexican", "International Foods - Mediterranean",
-                "Fresh Herbs", "Cooking Oils", "Vinegar", "Honey & Syrups",
-                "Spreads", "Prepared Meals", "Deli Meats", "Artisanal Cheeses",
-                "Smoked Fish", "Tofu & Meat Substitutes", "Special Diets",
-                "Nuts & Dried Fruits", "Seeds", "Sweets & Confectionery",
-                "Gum & Mints", "Dessert Toppings", "Water Softening Salts",
-                "Pest Control", "Pool Maintenance", "Bicycle Accessories",
-                "Pet Accessories", "Fish Tank Supplies", "Small Animal Supplies",
-                "Terrarium Supplies", "Collectibles", "Antiques", "Fine Art",
-                "Photography Equipment", "Video Projectors & Screens",
-                "Smart Home Devices", "Wearable Tech", "Drones & RC Vehicles",
-                "Home Office Furniture", "Space Heaters & Fans",
-                "Air Purifiers & Humidifiers", "Water Filtration",
-                "Fitness Large Equipment", "Yoga & Pilates", "Swimming Gear",
-                "Team Sports", "Exercise Monitors", "Protective Gear", "Foot Care",
-                "Eye Care", "Hearing Care", "Massage & Relaxation",
-                "Aromatherapy & Essential Oils"
+            size_sensitive = [
+                "Clothing",
+                "Footwear",
+                "Bedding",
+                "Underwear & Sleepwear",
+                "Accessories",
+                "Jewelry",
+                "Luggage & Bags",
             ]
-            
+
+            categories = [
+                "Dairy",
+                "Bakery",
+                "Beverages",
+                "Snacks",
+                "Frozen Foods",
+                "Canned Goods",
+                "Pasta & Grains",
+                "Meat & Poultry",
+                "Seafood",
+                "Fruits",
+                "Vegetables",
+                "Condiments & Sauces",
+                "Spices & Seasonings",
+                "Baking Supplies",
+                "Breakfast Foods",
+                "Coffee & Tea",
+                "Delicatessen",
+                "Health Foods",
+                "Baby Food",
+                "Pet Food",
+                "Cleaning Supplies",
+                "Paper Products",
+                "Laundry Care",
+                "Dishwashing",
+                "Personal Care",
+                "Hair Care",
+                "Skincare",
+                "Oral Care",
+                "Shaving & Grooming",
+                "Cosmetics",
+                "Feminine Care",
+                "First Aid",
+                "Over-the-Counter Medicine",
+                "Vitamins & Minerals",
+                "Baby Care",
+                "School Supplies",
+                "Office Supplies",
+                "Electronics",
+                "Computer Accessories",
+                "Mobile Accessories",
+                "Audio",
+                "Photography",
+                "Gaming",
+                "Kitchen Appliances",
+                "Small Home Appliances",
+                "Tools & Hardware",
+                "Painting & Decorating",
+                "Electrical",
+                "Plumbing",
+                "Gardening",
+                "Outdoor Tools",
+                "Home Security",
+                "Automotive",
+                "Sports Equipment",
+                "Fitness",
+                "Camping & Outdoors",
+                "Toys",
+                "Board Games",
+                "Crafts & Hobbies",
+                "Party Supplies",
+                "Gift Wrapping",
+                "Clothing",
+                "Underwear & Sleepwear",
+                "Footwear",
+                "Accessories",
+                "Jewelry",
+                "Luggage & Bags",
+                "Bedding",
+                "Bath Linens",
+                "Kitchen Linens",
+                "Curtains & Blinds",
+                "Lighting",
+                "Home Decor",
+                "Storage & Organization",
+                "Furniture",
+                "Cookware",
+                "Dinnerware",
+                "Flatware",
+                "Kitchen Utensils",
+                "Glassware",
+                "Barware",
+                "Books - Fiction",
+                "Books - Non-Fiction",
+                "Books - Educational",
+                "Books - Children",
+                "Magazines & Newspapers",
+                "Stationery",
+                "Musical Instruments",
+                "Professional Equipment",
+                "Safety Equipment",
+                "Travel Accessories",
+                "Seasonal Decor",
+                "Religious & Spiritual Items",
+                "Wine",
+                "Beer",
+                "Spirits",
+                "Alcohol-Free Alternatives",
+                "Organic Foods",
+                "Gluten-Free Products",
+                "Vegan & Plant-Based",
+                "International Foods - Asian",
+                "International Foods - Mexican",
+                "International Foods - Mediterranean",
+                "Fresh Herbs",
+                "Cooking Oils",
+                "Vinegar",
+                "Honey & Syrups",
+                "Spreads",
+                "Prepared Meals",
+                "Deli Meats",
+                "Artisanal Cheeses",
+                "Smoked Fish",
+                "Tofu & Meat Substitutes",
+                "Special Diets",
+                "Nuts & Dried Fruits",
+                "Seeds",
+                "Sweets & Confectionery",
+                "Gum & Mints",
+                "Dessert Toppings",
+                "Water Softening Salts",
+                "Pest Control",
+                "Pool Maintenance",
+                "Bicycle Accessories",
+                "Pet Accessories",
+                "Fish Tank Supplies",
+                "Small Animal Supplies",
+                "Terrarium Supplies",
+                "Collectibles",
+                "Antiques",
+                "Fine Art",
+                "Photography Equipment",
+                "Video Projectors & Screens",
+                "Smart Home Devices",
+                "Wearable Tech",
+                "Drones & RC Vehicles",
+                "Home Office Furniture",
+                "Space Heaters & Fans",
+                "Air Purifiers & Humidifiers",
+                "Water Filtration",
+                "Fitness Large Equipment",
+                "Yoga & Pilates",
+                "Swimming Gear",
+                "Team Sports",
+                "Exercise Monitors",
+                "Protective Gear",
+                "Foot Care",
+                "Eye Care",
+                "Hearing Care",
+                "Massage & Relaxation",
+                "Aromatherapy & Essential Oils",
+            ]
+
             # Use INSERT OR IGNORE to handle duplicates if schema exists
             for cat in categories:
                 is_sensitive = 1 if cat in size_sensitive else 0
                 conn.execute(
-                    "INSERT OR IGNORE INTO categories (name, is_size_sensitive) VALUES (?, ?)", 
-                    (cat, is_sensitive)
+                    "INSERT OR IGNORE INTO categories (name, is_size_sensitive) VALUES (?, ?)",
+                    (cat, is_sensitive),
                 )
             conn.commit()
 
@@ -396,43 +559,165 @@ class Database:
         if cursor.fetchone()[0] == 0:
             labels = [
                 # Sustainability & Ethics (30)
-                "Eco-friendly", "Sustainable", "Recyclable", "Biodegradable", "Plastic-free",
-                "Compostable", "Zero-waste", "Carbon-neutral", "Ethically-sourced", "Fair-trade",
-                "Cruelty-free", "Vegan", "Plant-based", "Organic", "Non-GMO",
-                "Pesticide-free", "BPA-free", "Reusable", "Refillable", "Upcycled",
-                "Local", "Handmade", "Artisanal", "B-Corp", "Rainforest-Alliance",
-                "FSC-certified", "Animal-welfare", "Forest-friendly", "Oceans-safe", "Low-impact",
+                "Eco-friendly",
+                "Sustainable",
+                "Recyclable",
+                "Biodegradable",
+                "Plastic-free",
+                "Compostable",
+                "Zero-waste",
+                "Carbon-neutral",
+                "Ethically-sourced",
+                "Fair-trade",
+                "Cruelty-free",
+                "Vegan",
+                "Plant-based",
+                "Organic",
+                "Non-GMO",
+                "Pesticide-free",
+                "BPA-free",
+                "Reusable",
+                "Refillable",
+                "Upcycled",
+                "Local",
+                "Handmade",
+                "Artisanal",
+                "B-Corp",
+                "Rainforest-Alliance",
+                "FSC-certified",
+                "Animal-welfare",
+                "Forest-friendly",
+                "Oceans-safe",
+                "Low-impact",
                 # Food & Diet (30)
-                "Gluten-free", "Dairy-free", "Nut-free", "Sugar-free", "Low-carb",
-                "Keto", "Paleo", "Kosher", "Halal", "High-protein",
-                "Low-sodium", "High-fiber", "No-additives", "No-preservatives", "Naturally-flavored",
-                "Raw", "Sprouted", "Whole-grain", "Ancient-grains", "Soy-free",
-                "Egg-free", "Shellfish-free", "Lactose-free", "Low-fat", "No-cholesterol",
-                "Cold-pressed", "Wild-caught", "Grass-fed", "Free-range", "Pasture-raised",
+                "Gluten-free",
+                "Dairy-free",
+                "Nut-free",
+                "Sugar-free",
+                "Low-carb",
+                "Keto",
+                "Paleo",
+                "Kosher",
+                "Halal",
+                "High-protein",
+                "Low-sodium",
+                "High-fiber",
+                "No-additives",
+                "No-preservatives",
+                "Naturally-flavored",
+                "Raw",
+                "Sprouted",
+                "Whole-grain",
+                "Ancient-grains",
+                "Soy-free",
+                "Egg-free",
+                "Shellfish-free",
+                "Lactose-free",
+                "Low-fat",
+                "No-cholesterol",
+                "Cold-pressed",
+                "Wild-caught",
+                "Grass-fed",
+                "Free-range",
+                "Pasture-raised",
                 # Electronics & Tech (25)
-                "Energy-star", "Wifi-enabled", "Bluetooth", "Smart", "Rechargeable",
-                "Wireless", "Compact", "High-speed", "4K-Ready", "HDR",
-                "Waterproof", "Shockproof", "Dustproof", "Anti-glare", "Ergonomic",
-                "Quick-charge", "Noise-cancelling", "Studio-grade", "Heavy-duty", "USB-C",
-                "Thunderbolt", "OLED", "LED", "Long-battery-life", "Portable",
+                "Energy-star",
+                "Wifi-enabled",
+                "Bluetooth",
+                "Smart",
+                "Rechargeable",
+                "Wireless",
+                "Compact",
+                "High-speed",
+                "4K-Ready",
+                "HDR",
+                "Waterproof",
+                "Shockproof",
+                "Dustproof",
+                "Anti-glare",
+                "Ergonomic",
+                "Quick-charge",
+                "Noise-cancelling",
+                "Studio-grade",
+                "Heavy-duty",
+                "USB-C",
+                "Thunderbolt",
+                "OLED",
+                "LED",
+                "Long-battery-life",
+                "Portable",
                 # Home & Living (25)
-                "Hypoallergenic", "Antibacterial", "Non-toxic", "Fragrance-free", "Odor-neutralizing",
-                "Machine-washable", "Stain-resistant", "Wrinkle-free", "Flame-retardant", "Hand-wash-only",
-                "Solid-wood", "Modular", "Space-saving", "Easy-assembly", "Child-safe",
-                "Pet-safe", "Indoor-only", "Outdoor-use", "Weather-resistant", "Lightweight",
-                "Premium", "Luxury", "Designer", "Limited-edition", "Bestseller",
+                "Hypoallergenic",
+                "Antibacterial",
+                "Non-toxic",
+                "Fragrance-free",
+                "Odor-neutralizing",
+                "Machine-washable",
+                "Stain-resistant",
+                "Wrinkle-free",
+                "Flame-retardant",
+                "Hand-wash-only",
+                "Solid-wood",
+                "Modular",
+                "Space-saving",
+                "Easy-assembly",
+                "Child-safe",
+                "Pet-safe",
+                "Indoor-only",
+                "Outdoor-use",
+                "Weather-resistant",
+                "Lightweight",
+                "Premium",
+                "Luxury",
+                "Designer",
+                "Limited-edition",
+                "Bestseller",
                 # Health & Beauty (20)
-                "Dermatologist-tested", "Paraben-free", "Sulfate-free", "Alcohol-free", "PH-balanced",
-                "Anti-aging", "Moisturizing", "Sensitive-skin", "Natural-ingredients", "Essentials",
-                "Travel-size", "Value-pack", "Refill", "Sample", "New-formula",
-                "Fast-absorbing", "Long-lasting", "Water-resistant", "SPF-protection", "Professional-use",
+                "Dermatologist-tested",
+                "Paraben-free",
+                "Sulfate-free",
+                "Alcohol-free",
+                "PH-balanced",
+                "Anti-aging",
+                "Moisturizing",
+                "Sensitive-skin",
+                "Natural-ingredients",
+                "Essentials",
+                "Travel-size",
+                "Value-pack",
+                "Refill",
+                "Sample",
+                "New-formula",
+                "Fast-absorbing",
+                "Long-lasting",
+                "Water-resistant",
+                "SPF-protection",
+                "Professional-use",
                 # General/Marketing (20)
-                "Buy-1-Get-1", "Discounted", "On-sale", "New-arrival", "Trending",
-                "Gift-idea", "Must-have", "Highly-rated", "Verified", "Authentic",
-                "Exclusive", "Member-only", "Early-access", "Bulk-buy", "Stock-clearance",
-                "Back-in-stock", "Seasonal", "Holiday-special", "Limited-stock", "Fan-favorite"
+                "Buy-1-Get-1",
+                "Discounted",
+                "On-sale",
+                "New-arrival",
+                "Trending",
+                "Gift-idea",
+                "Must-have",
+                "Highly-rated",
+                "Verified",
+                "Authentic",
+                "Exclusive",
+                "Member-only",
+                "Early-access",
+                "Bulk-buy",
+                "Stock-clearance",
+                "Back-in-stock",
+                "Seasonal",
+                "Holiday-special",
+                "Limited-stock",
+                "Fan-favorite",
             ]
-            conn.executemany("INSERT INTO labels (name) VALUES (?)", [(label,) for label in labels])
+            conn.executemany(
+                "INSERT INTO labels (name) VALUES (?)", [(label,) for label in labels]
+            )
 
         conn.commit()
 
@@ -452,9 +737,11 @@ class Database:
             self._conn.close()
             self._conn = None
 
+
 def get_database(db_path: Optional[str] = None) -> Database:
     """Get a database instance."""
     from app.core.config import settings
+
     path = db_path or settings.DATABASE_PATH
     db = Database(path)
     db.initialize()

@@ -17,7 +17,9 @@ class ProductInfo(BaseModel):
     store_name: Optional[str] = Field(default=None)
     page_type: Literal["single_product", "search_results"]
     confidence: float = Field(..., ge=0.0, le=1.0, alias="confidence_score")
-    is_blocked: bool = Field(default=False, description="Whether the page is blocked by a modal")
+    is_blocked: bool = Field(
+        default=False, description="Whether the page is blocked by a modal"
+    )
 
     @field_validator("price")
     @classmethod
@@ -28,6 +30,7 @@ class ProductInfo(BaseModel):
 
 class ExtractionContext(BaseModel):
     """Context information passed to the AI to improve extraction accuracy."""
+
     product_name: str
     category: Optional[str] = None
     is_size_sensitive: bool = False
@@ -72,7 +75,9 @@ class PriceHistoryRecord(BaseModel):
     discount_percentage: Optional[float] = None
     discount_fixed_amount: Optional[float] = None
     deal_description: Optional[str] = None
-    available_sizes: Optional[str] = Field(default=None, description="JSON string of available sizes")
+    available_sizes: Optional[str] = Field(
+        default=None, description="JSON string of available sizes"
+    )
     is_size_matched: bool = True
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
@@ -88,7 +93,9 @@ class Product(BaseModel):
     purchase_type: Literal["recurring", "one_time"] = "recurring"
     target_price: Optional[float] = Field(default=None, gt=0)
     target_unit: Optional[str] = Field(default=None, max_length=20)
-    planned_date: Optional[str] = Field(default=None, max_length=20, description="Target purchase date (e.g. 2026-W05)")
+    planned_date: Optional[str] = Field(
+        default=None, max_length=20, description="Target purchase date (e.g. 2026-W05)"
+    )
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
@@ -107,6 +114,7 @@ class ProductCreate(BaseModel):
 
 class ProductUpdate(BaseModel):
     """Request model for partially updating a product."""
+
     model_config = ConfigDict(str_strip_whitespace=True)
     name: Optional[str] = Field(default=None, min_length=1, max_length=200)
     category: Optional[str] = Field(default=None, max_length=100)
@@ -133,6 +141,7 @@ class ProductResponse(BaseModel):
 
 class Store(BaseModel):
     """Store definition (Names only)."""
+
     model_config = ConfigDict(str_strip_whitespace=True)
     id: Optional[int] = None
     name: str = Field(..., min_length=1, max_length=100)
@@ -140,18 +149,21 @@ class Store(BaseModel):
 
 class StoreCreate(BaseModel):
     """Request model for creating a store."""
+
     model_config = ConfigDict(str_strip_whitespace=True)
     name: str = Field(..., min_length=1, max_length=100)
 
 
 class StoreUpdate(BaseModel):
     """Request model for partially updating a store."""
+
     model_config = ConfigDict(str_strip_whitespace=True)
     name: Optional[str] = Field(default=None, min_length=1, max_length=100)
 
 
 class StoreResponse(BaseModel):
     """Response model for store."""
+
     model_config = ConfigDict(from_attributes=True)
     id: int
     name: str
@@ -159,6 +171,7 @@ class StoreResponse(BaseModel):
 
 class TrackedItem(BaseModel):
     """URL to track - linked to product and store."""
+
     model_config = ConfigDict(str_strip_whitespace=True)
     id: Optional[int] = None
     product_id: int = Field(...)
@@ -175,6 +188,7 @@ class TrackedItem(BaseModel):
 
 class TrackedItemCreate(BaseModel):
     """Request model for creating a tracked item."""
+
     model_config = ConfigDict(str_strip_whitespace=True)
     product_id: int
     store_id: int
@@ -188,6 +202,7 @@ class TrackedItemCreate(BaseModel):
 
 class TrackedItemUpdate(BaseModel):
     """Request model for partially updating a tracked item."""
+
     model_config = ConfigDict(str_strip_whitespace=True)
     product_id: Optional[int] = None
     store_id: Optional[int] = None
@@ -203,6 +218,7 @@ class TrackedItemUpdate(BaseModel):
 
 class TrackedItemResponse(BaseModel):
     """Response model for tracked item."""
+
     model_config = ConfigDict(from_attributes=True)
     id: int
     product_id: int
@@ -251,14 +267,31 @@ class ExtractionResult(BaseModel):
     product_name: str = Field(..., min_length=1)
     store_name: Optional[str] = Field(default=None)
     notes: Optional[str] = Field(default=None, description="AI notes/observations")
-    is_blocked: bool = Field(default=False, description="Whether the page is blocked by a modal")
-    original_price: Optional[float] = Field(default=None, ge=0, description="Original price before discount")
-    deal_type: Optional[str] = Field(default=None, max_length=50, description="The type of promotion detected")
-    discount_percentage: Optional[float] = Field(default=None, description="The percentage value of the discount")
-    discount_fixed_amount: Optional[float] = Field(default=None, description="The absolute currency value off")
-    deal_description: Optional[str] = Field(default=None, description="Brief description of the deal")
-    available_sizes: list[str] = Field(default_factory=list, description="List of sizes currently in stock")
-    is_size_matched: bool = Field(default=True, description="Whether the extracted price is confirmed for the target size")
+    is_blocked: bool = Field(
+        default=False, description="Whether the page is blocked by a modal"
+    )
+    original_price: Optional[float] = Field(
+        default=None, ge=0, description="Original price before discount"
+    )
+    deal_type: Optional[str] = Field(
+        default=None, max_length=50, description="The type of promotion detected"
+    )
+    discount_percentage: Optional[float] = Field(
+        default=None, description="The percentage value of the discount"
+    )
+    discount_fixed_amount: Optional[float] = Field(
+        default=None, description="The absolute currency value off"
+    )
+    deal_description: Optional[str] = Field(
+        default=None, description="Brief description of the deal"
+    )
+    available_sizes: list[str] = Field(
+        default_factory=list, description="List of sizes currently in stock"
+    )
+    is_size_matched: bool = Field(
+        default=True,
+        description="Whether the extracted price is confirmed for the target size",
+    )
     detected_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
     @field_validator("price")
@@ -297,6 +330,7 @@ class Category(BaseModel):
 
 class CategoryCreate(BaseModel):
     """Request model for creating/updating a category."""
+
     model_config = ConfigDict(str_strip_whitespace=True)
     name: str = Field(..., min_length=1, max_length=100)
     is_size_sensitive: bool = False
@@ -304,6 +338,7 @@ class CategoryCreate(BaseModel):
 
 class CategoryUpdate(BaseModel):
     """Request model for partially updating a category."""
+
     model_config = ConfigDict(str_strip_whitespace=True)
     name: Optional[str] = Field(default=None, min_length=1, max_length=100)
     is_size_sensitive: Optional[bool] = None
@@ -311,6 +346,7 @@ class CategoryUpdate(BaseModel):
 
 class CategoryResponse(BaseModel):
     """Response model for category."""
+
     model_config = ConfigDict(from_attributes=True)
     id: int
     name: str
@@ -320,6 +356,7 @@ class CategoryResponse(BaseModel):
 
 class Label(BaseModel):
     """Label for tracked items."""
+
     model_config = ConfigDict(str_strip_whitespace=True)
     id: Optional[int] = None
     name: str = Field(..., min_length=1, max_length=50)
@@ -328,28 +365,30 @@ class Label(BaseModel):
 
 class LabelCreate(BaseModel):
     """Request model for creating a label."""
+
     model_config = ConfigDict(str_strip_whitespace=True)
     name: str = Field(..., min_length=1, max_length=50)
 
 
 class LabelUpdate(BaseModel):
     """Request model for partially updating a label."""
+
     model_config = ConfigDict(str_strip_whitespace=True)
     name: Optional[str] = Field(default=None, min_length=1, max_length=50)
 
 
 class LabelResponse(BaseModel):
     """Response model for label."""
+
     model_config = ConfigDict(from_attributes=True)
     id: int
     name: str
     created_at: datetime
 
 
-
-
 class Unit(BaseModel):
     """Unit definition for measurements."""
+
     model_config = ConfigDict(str_strip_whitespace=True)
     id: Optional[int] = None
     name: str = Field(..., min_length=1, max_length=20)
@@ -357,18 +396,21 @@ class Unit(BaseModel):
 
 class UnitCreate(BaseModel):
     """Request model for creating a unit."""
+
     model_config = ConfigDict(str_strip_whitespace=True)
     name: str = Field(..., min_length=1, max_length=20)
 
 
 class UnitUpdate(BaseModel):
     """Request model for partially updating a unit."""
+
     model_config = ConfigDict(str_strip_whitespace=True)
     name: Optional[str] = Field(default=None, min_length=1, max_length=20)
 
 
 class UnitResponse(BaseModel):
     """Response model for unit."""
+
     model_config = ConfigDict(from_attributes=True)
     id: int
     name: str
@@ -376,6 +418,7 @@ class UnitResponse(BaseModel):
 
 class PurchaseType(BaseModel):
     """Purchase type definition (recurring, etc)."""
+
     model_config = ConfigDict(str_strip_whitespace=True)
     id: Optional[int] = None
     name: str = Field(..., min_length=1, max_length=50)
@@ -383,18 +426,21 @@ class PurchaseType(BaseModel):
 
 class PurchaseTypeCreate(BaseModel):
     """Request model for creating a purchase type."""
+
     model_config = ConfigDict(str_strip_whitespace=True)
     name: str = Field(..., min_length=1, max_length=50)
 
 
 class PurchaseTypeUpdate(BaseModel):
     """Request model for partially updating a purchase type."""
+
     model_config = ConfigDict(str_strip_whitespace=True)
     name: Optional[str] = Field(default=None, min_length=1, max_length=50)
 
 
 class PurchaseTypeResponse(BaseModel):
     """Response model for purchase type."""
+
     model_config = ConfigDict(from_attributes=True)
     id: int
     name: str
