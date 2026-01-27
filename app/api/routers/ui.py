@@ -248,10 +248,10 @@ async def dashboard(request: Request, db=Depends(get_db)):
                         "is_target_hit": item["is_target_hit"]
                     })
 
-        # Identify planned but untracked products within 1 month
+        # Identify planned but untracked products within 4 weeks
         from datetime import datetime, timedelta
         now = datetime.now()
-        one_month_later = now + timedelta(days=31)
+        four_weeks_later = now + timedelta(days=28)
         
         all_products = product_repo.get_all()
         untracked_planned_products = []
@@ -262,9 +262,9 @@ async def dashboard(request: Request, db=Depends(get_db)):
                     # Parse as the first day of that week
                     planned_dt = datetime.strptime(product.planned_date + '-1', "%G-W%V-%u")
                     
-                    # Only alert if the planned date is within the next month
+                    # Only alert if the planned date is within the next 4 weeks
                     # (Also include past dates if they were never tracked)
-                    if planned_dt > one_month_later:
+                    if planned_dt > four_weeks_later:
                         continue
                 except (ValueError, TypeError):
                     continue
@@ -276,6 +276,9 @@ async def dashboard(request: Request, db=Depends(get_db)):
                         "name": product.name,
                         "planned_date": product.planned_date
                     })
+
+        # Sort by planned_date (YYYY-Www) which is chronological
+        untracked_planned_products.sort(key=lambda p: p["planned_date"])
 
         return templates.TemplateResponse(
             request,
