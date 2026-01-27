@@ -238,11 +238,26 @@ async def _call_gemini_api(
     url = GeminiModels.get_api_url(config, api_key)
     image_base64 = base64.b64encode(image_bytes).decode("utf-8")
 
+    prompt_text = get_extraction_prompt(context)
+    
+    # Log the prompt and context (including screenshot path)
+    log_extras = {"model": config.model.value, "image_size": len(image_bytes)}
+    if context and context.screenshot_path:
+        log_extras["screenshot_path"] = context.screenshot_path
+    
+    logger.info(
+        "Sending request to Gemini API",
+        extra={
+            **log_extras,
+            "prompt_sample": prompt_text[:500] + "..." if len(prompt_text) > 500 else prompt_text
+        }
+    )
+
     payload = {
         "contents": [
             {
                 "parts": [
-                    {"text": get_extraction_prompt(context)},
+                    {"text": prompt_text},
                     {
                         "inline_data": {
                             "mime_type": "image/png",
@@ -258,11 +273,6 @@ async def _call_gemini_api(
         }
     }
 
-    logger.info(
-        "Sending image to Gemini API",
-        extra={"model": config.model.value, "image_size": len(image_bytes)}
-    )
-
     async with aiohttp.ClientSession() as session:
         async with session.post(url, json=payload, timeout=60) as response:
             if response.status != 200:
@@ -276,6 +286,16 @@ async def _call_gemini_api(
             data = await response.json()
 
     text = data["candidates"][0]["content"]["parts"][0]["text"].strip()
+    
+    # Log raw response
+    logger.info(
+        "Received raw response from Gemini",
+        extra={
+            "model": config.model.value,
+            "raw_response": text
+        }
+    )
+
     json_text = _extract_json(text)
     result = ExtractionResult.model_validate_json(json_text)
 
