@@ -34,6 +34,7 @@ class ExtractionContext(BaseModel):
     target_size: Optional[str] = None
     quantity_size: Optional[float] = None
     quantity_unit: Optional[str] = None
+    screenshot_path: Optional[str] = None
 
 
 class ErrorRecord(BaseModel):

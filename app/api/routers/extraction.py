@@ -80,6 +80,8 @@ async def run_extraction(item_id: int, db_path: str):
         screenshot_path = Path(f"screenshots/{item_id}.png")
         screenshot_path.parent.mkdir(parents=True, exist_ok=True)
         screenshot_path.write_bytes(screenshot_bytes)
+        
+        context.screenshot_path = str(screenshot_path)
 
         # Extract price
         result, _ = await extract_with_structured_output(
@@ -179,6 +181,9 @@ async def trigger_extraction(item_id: int, db=Depends(get_db)):
             screenshot_path = Path(f"screenshots/{item_id}.png")
             screenshot_path.parent.mkdir(parents=True, exist_ok=True)
             screenshot_path.write_bytes(screenshot_bytes)
+            
+            # Update context with screenshot path for logging
+            context.screenshot_path = str(screenshot_path)
 
             # Extract price with rate limiting
             result, model_used = await extract_with_structured_output(
