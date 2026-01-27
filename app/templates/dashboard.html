@@ -121,6 +121,26 @@
             </div>
         </div>
         {% endif %}
+
+        <!-- Spying Required Alert -->
+        {% if untracked_planned %}
+        <div class="bg-gradient-to-br from-jolly-sandy/20 to-jolly-lime/10 rounded-2xl border border-jolly-sandy/30 p-5 shadow-sm">
+            <h3 class="text-sm font-black text-jolly-dark uppercase tracking-wider mb-3 flex items-center gap-2">
+                <span class="text-lg">🕒</span> Spying Required
+            </h3>
+            <p class="text-[10px] text-jolly-dark/60 font-medium mb-3 italic">Planned products without active trackers:</p>
+            <div class="space-y-2">
+                {% for item in untracked_planned %}
+                <a href="/products" class="px-3 py-2 bg-white/60 border border-jolly-sandy/20 rounded-lg text-[11px] flex flex-col group hover:bg-white hover:shadow-sm transition-all">
+                    <div class="flex justify-between items-center">
+                        <span class="font-bold text-jolly-dark tracking-tight group-hover:text-jolly">{{ item.name }}</span>
+                        <span class="text-[9px] font-black bg-jolly-sandy/30 text-jolly-dark px-1.5 py-0.5 rounded border border-jolly-sandy/40 uppercase">{{ item.planned_date }}</span>
+                    </div>
+                </a>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
     </div>
 </div>
 

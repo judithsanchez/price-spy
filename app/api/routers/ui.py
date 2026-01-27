@@ -248,6 +248,35 @@ async def dashboard(request: Request, db=Depends(get_db)):
                         "is_target_hit": item["is_target_hit"]
                     })
 
+        # Identify planned but untracked products within 1 month
+        from datetime import datetime, timedelta
+        now = datetime.now()
+        one_month_later = now + timedelta(days=31)
+        
+        all_products = product_repo.get_all()
+        untracked_planned_products = []
+        for product in all_products:
+            if product.planned_date:
+                # Format is YYYY-Www, e.g., '2026-W05'
+                try:
+                    # Parse as the first day of that week
+                    planned_dt = datetime.strptime(product.planned_date + '-1', "%G-W%V-%u")
+                    
+                    # Only alert if the planned date is within the next month
+                    # (Also include past dates if they were never tracked)
+                    if planned_dt > one_month_later:
+                        continue
+                except (ValueError, TypeError):
+                    continue
+
+                active_items = [ti for ti in tracked_repo.get_by_product(product.id) if ti.is_active]
+                if not active_items:
+                    untracked_planned_products.append({
+                        "id": product.id,
+                        "name": product.name,
+                        "planned_date": product.planned_date
+                    })
+
         return templates.TemplateResponse(
             request,
             "dashboard.html",
@@ -256,6 +285,7 @@ async def dashboard(request: Request, db=Depends(get_db)):
                 "deals": all_deals,
                 "low_stock": low_stock_warnings,
                 "price_increases": price_increase_warnings,
+                "untracked_planned": untracked_planned_products,
                 "graph_data": graph_data,
                 "has_any_items": len(tracked_items) > 0
             }
