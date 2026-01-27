@@ -247,10 +247,66 @@
         </div>
     </div>
 
-    <!-- Right Column: Graphs, Scheduler, Deals, Warnings (Narrower Space) -->
+    <!-- Right Column: Deals, Warnings, Graph, Spying, Scheduler (Narrrower Space) -->
     <div class="lg:col-span-4 flex flex-col gap-6">
         
-        <!-- Trend Graph -->
+        <!-- 1) Deals Highlight (Hot Deals) -->
+        {% if deals %}
+        <div class="bg-gradient-to-br from-jolly/10 to-jolly-lime/10 rounded-2xl border border-jolly/20 p-5 shadow-sm">
+            <h3 class="text-xs font-black text-jolly-dark uppercase tracking-wider mb-3 flex items-center gap-2">
+                <span>🔥</span> Hot Deals
+            </h3>
+            <div class="space-y-2">
+                {% for deal in deals %}
+                <div class="px-3 py-2 bg-white/40 border border-jolly/20 rounded-lg text-[11px] flex justify-between items-center group cursor-default">
+                    <div class="flex flex-col min-w-0">
+                        <span class="font-bold text-jolly-dark/80 truncate mr-2">{{ deal.product_name }}</span>
+                        <span class="text-[8px] font-black uppercase {{ 'text-jolly-lime' if deal.is_target_hit else 'text-emerald-600' }}">
+                            {{ '🎯 Hit' if deal.is_target_hit else '✨ Promo' }}
+                        </span>
+                    </div>
+                    <div class="flex flex-col items-end">
+                        <span class="font-black text-jolly-dark whitespace-nowrap">{{ deal.currency }} {{ "%.2f"|format(deal.price) }}</span>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- 2) Warnings Highlight (Price Increase) -->
+        {% if price_increases or low_stock %}
+        <div class="bg-gradient-to-br from-jolly-rose/10 to-jolly-vivid/10 rounded-2xl border border-jolly-rose/20 p-5 shadow-sm">
+            <h3 class="text-xs font-black text-jolly-vivid uppercase tracking-wider mb-3 flex items-center gap-2">
+                <span>⚠️</span> Warnings
+            </h3>
+            <div class="space-y-2">
+                {% for warn in price_increases %}
+                <div class="px-3 py-2 bg-white/40 border border-jolly-vivid/20 rounded-lg text-[10px] flex flex-col group cursor-default">
+                    <div class="flex justify-between items-center mb-1">
+                        <span class="font-bold text-jolly-vivid truncate max-w-[100px]">{{ warn.product_name }}</span>
+                        <span class="font-black text-jolly-vivid text-[11px]">↑ {{ warn.currency }} {{ "%.2f"|format(warn.price) }}</span>
+                    </div>
+                    <div class="flex items-center gap-2 opacity-60 text-[9px] font-bold">
+                        <span>Was {{ warn.currency }} {{ "%.2f"|format(warn.previous_price) }}</span>
+                        <span class="text-jolly-rose/60">+{{ "%.1f"|format((warn.price - warn.previous_price) / warn.previous_price * 100) }}%</span>
+                    </div>
+                </div>
+                {% endfor %}
+
+                {% for warn in low_stock %}
+                <div class="px-3 py-2 bg-white/40 border border-jolly-rose/20 rounded-lg text-[10px] flex flex-col group cursor-default">
+                    <div class="flex justify-between items-center">
+                        <span class="font-bold text-jolly-vivid truncate max-w-[100px]">{{ warn.product_name }}</span>
+                        <span class="px-1 py-0.5 rounded bg-jolly-rose/20 text-jolly-vivid text-[8px] font-black uppercase tracking-tighter border border-jolly-rose/30">Low Stock</span>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- 3) Trend Graph (Price Trends) -->
         <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
             <div class="flex items-center justify-between mb-6">
                 <h3 class="text-sm font-black text-jolly-dark uppercase tracking-wider">📈 Price Trends</h3>
@@ -275,7 +331,24 @@
             </div>
         </div>
 
-        <!-- Compact Scheduler -->
+        <!-- 4) Spying Required Alert -->
+        {% if untracked_planned %}
+        <div class="bg-gradient-to-br from-jolly-sandy/20 to-jolly-lime/10 rounded-2xl border border-jolly-sandy/30 p-5 shadow-sm">
+            <h3 class="text-xs font-black text-jolly-dark uppercase tracking-wider mb-3 flex items-center gap-2">
+                <span>🕒</span> Spying Required
+            </h3>
+            <div class="space-y-2">
+                {% for item in untracked_planned %}
+                <a href="/products" class="px-3 py-2 bg-white/60 border border-jolly-sandy/20 rounded-lg text-[10px] flex items-center justify-between group hover:bg-white hover:shadow-sm transition-all">
+                    <span class="font-bold text-jolly-dark truncate max-w-[120px]">{{ item.name }}</span>
+                    <span class="text-[8px] font-black bg-jolly-sandy/30 text-jolly-dark px-1.5 py-0.5 rounded border border-jolly-sandy/40 uppercase">{{ item.planned_date.split('-W')[1] }}</span>
+                </a>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- 5) Compact Scheduler (Scheduled Spy) -->
         <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5" x-data="schedulerPanel()">
             <div class="flex items-center justify-between mb-4">
                 <h3 class="text-sm font-black text-jolly-dark uppercase tracking-wider">🕵️‍♂️ Scheduled Spy</h3>
@@ -301,74 +374,8 @@
             </div>
         </div>
 
-        <!-- Deals Highlight -->
-        {% if deals %}
-        <div class="bg-gradient-to-br from-jolly/10 to-jolly-lime/10 rounded-2xl border border-jolly/20 p-5 shadow-sm">
-            <h3 class="text-xs font-black text-jolly-dark uppercase tracking-wider mb-3 flex items-center gap-2">
-                <span>🔥</span> Hot Deals
-            </h3>
-            <div class="space-y-2">
-                {% for deal in deals %}
-                <div class="px-3 py-2 bg-white/40 border border-jolly/20 rounded-lg text-[11px] flex justify-between items-center group cursor-default">
-                    <div class="flex flex-col min-w-0">
-                        <span class="font-bold text-jolly-dark/80 truncate mr-2">{{ deal.product_name }}</span>
-                        <span class="text-[8px] font-black uppercase {{ 'text-jolly-lime' if deal.is_target_hit else 'text-emerald-600' }}">
-                            {{ '🎯 Hit' if deal.is_target_hit else '✨ Promo' }}
-                        </span>
-                    </div>
-                    <div class="flex flex-col items-end">
-                        <span class="font-black text-jolly-dark whitespace-nowrap">{{ deal.currency }} {{ "%.2f"|format(deal.price) }}</span>
-                    </div>
-                </div>
-                {% endfor %}
-            </div>
-        </div>
-        {% endif %}
-
-        <!-- Warnings Highlight -->
-        {% if low_stock or price_increases %}
-        <div class="bg-gradient-to-br from-jolly-rose/10 to-jolly-vivid/10 rounded-2xl border border-jolly-rose/20 p-5 shadow-sm">
-            <h3 class="text-xs font-black text-jolly-vivid uppercase tracking-wider mb-3 flex items-center gap-2">
-                <span>⚠️</span> Warnings
-            </h3>
-            <div class="space-y-2">
-                {% for warn in low_stock %}
-                <div class="px-3 py-2 bg-white/40 border border-jolly-rose/20 rounded-lg text-[10px] flex flex-col group cursor-default">
-                    <div class="flex justify-between items-center mb-1">
-                        <span class="font-bold text-jolly-vivid truncate max-w-[100px]">{{ warn.product_name }}</span>
-                        <span class="px-1 py-0.5 rounded bg-jolly-rose/20 text-jolly-vivid text-[8px] font-black uppercase tracking-tighter border border-jolly-rose/30">Low Stock</span>
-                    </div>
-                </div>
-                {% endfor %}
-                
-                {% for warn in price_increases %}
-                <div class="px-3 py-2 bg-white/40 border border-jolly-vivid/20 rounded-lg text-[10px] flex flex-col group cursor-default">
-                    <div class="flex justify-between items-center mb-1">
-                        <span class="font-bold text-jolly-vivid truncate max-w-[100px]">{{ warn.product_name }}</span>
-                        <span class="font-black text-jolly-vivid">↑ {{ warn.currency }} {{ "%.2f"|format(warn.price) }}</span>
-                    </div>
-                </div>
-                {% endfor %}
-            </div>
-        </div>
-        {% endif %}
-
-        <!-- Spying Required Alert -->
-        {% if untracked_planned %}
-        <div class="bg-gradient-to-br from-jolly-sandy/20 to-jolly-lime/10 rounded-2xl border border-jolly-sandy/30 p-5 shadow-sm">
-            <h3 class="text-xs font-black text-jolly-dark uppercase tracking-wider mb-3 flex items-center gap-2">
-                <span>🕒</span> Spying Required
-            </h3>
-            <div class="space-y-2">
-                {% for item in untracked_planned %}
-                <a href="/products" class="px-3 py-2 bg-white/60 border border-jolly-sandy/20 rounded-lg text-[10px] flex items-center justify-between group hover:bg-white hover:shadow-sm transition-all">
-                    <span class="font-bold text-jolly-dark truncate max-w-[120px]">{{ item.name }}</span>
-                    <span class="text-[8px] font-black bg-jolly-sandy/30 text-jolly-dark px-1.5 py-0.5 rounded border border-jolly-sandy/40 uppercase">{{ item.planned_date.split('-W')[1] }}</span>
-                </a>
-                {% endfor %}
-            </div>
-        </div>
-        {% endif %}
+    </div>
+</div>
     </div>
 </div>
 
