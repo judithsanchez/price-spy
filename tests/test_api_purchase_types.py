@@ -7,6 +7,9 @@ from app.api.deps import get_db
 from app.api.main import app
 from app.models.schemas import PurchaseTypeResponse
 
+HTTP_OK = 200
+EXPECTED_COUNT = 2
+
 client = TestClient(app)
 
 
@@ -32,7 +35,7 @@ def test_get_purchase_types(mock_repo, mock_db):
 
     response = client.get("/api/purchase-types")
 
-    assert response.status_code == 200
-    assert len(response.json()) == 2
+    assert response.status_code == HTTP_OK
+    assert len(response.json()) == EXPECTED_COUNT
 
     app.dependency_overrides.clear()

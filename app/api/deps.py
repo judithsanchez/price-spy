@@ -16,6 +16,3 @@ def get_db() -> Database:
 
     db.initialize()
     return db
-
-    db.initialize()
-    return db

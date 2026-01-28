@@ -1,10 +1,11 @@
 from app.models.schemas import Product, Store, TrackedItem
 
 
-def test_product_schema():
-    p = Product(name="Test", category="Cat", target_price=10.0)
+def test_product_basic():
+    target_price = 10.0
+    p = Product(name="Test", category="Cat", target_price=target_price)
     assert p.name == "Test"
-    assert p.target_price == 10.0
+    assert p.target_price == target_price
 
 
 def test_store_schema():
