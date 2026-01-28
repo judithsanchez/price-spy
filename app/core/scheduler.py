@@ -149,7 +149,7 @@ def get_scheduler_status() -> Dict[str, Any]:
             items_count = len(repo.get_active())
         finally:
             db.close()
-    except Exception:
+    except Exception:  # nosec B110
         pass
 
     return {

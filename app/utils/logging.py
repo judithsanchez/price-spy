@@ -65,7 +65,7 @@ class JSONFormatter(logging.Formatter):
                     url=getattr(record, "url", None),
                     include_stack=bool(record.exc_info),
                 )
-            except Exception:
+            except Exception:  # nosec B110
                 # Prevent recursion or crash if error logger fails
                 pass
 

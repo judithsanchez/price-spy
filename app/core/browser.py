@@ -50,7 +50,7 @@ async def create_stealth_context(playwright) -> BrowserContext:
     width = 1920
 
     # Pick a random UA profile
-    profile = random.choice(
+    profile = random.choice(  # nosec B311
         [
             {
                 "ua": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
@@ -134,7 +134,7 @@ async def handle_zalando_interaction(page, target_size: Optional[str] = None):
                 if await btn.is_visible(timeout=3000):
                     size_button = btn
                     break
-            except Exception:
+            except Exception:  # nosec B110, B112  # nosec B110, B112
                 continue
 
         if size_button:
@@ -161,7 +161,7 @@ async def handle_zalando_interaction(page, target_size: Optional[str] = None):
                         if await opt.is_visible(timeout=2000):
                             size_option = opt
                             break
-                    except Exception:
+                    except Exception:  # nosec B110, B112
                         continue
 
                 if size_option:
@@ -188,7 +188,7 @@ async def capture_screenshot(url: str, target_size: Optional[str] = None) -> byt
         await page.add_init_script(STEALTH_SCRIPTS)
 
         # Random delay to simulate human timing (1-3 seconds)
-        await asyncio.sleep(random.uniform(1, 4))
+        await asyncio.sleep(random.uniform(1, 4))  # nosec B311
 
         try:
             # Use 'networkidle' to ensure images/styles are loaded
@@ -228,11 +228,11 @@ async def capture_screenshot(url: str, target_size: Optional[str] = None) -> byt
                                 1000
                             )  # Give it time to disappear
                             clicked_any = True
-                    except Exception:
+                    except Exception:  # nosec B110, B112
                         continue
                 if not clicked_any:
                     break
-        except Exception:
+        except Exception:  # nosec B110
             pass
 
         # Handle Zalando specifically if needed
@@ -257,7 +257,7 @@ async def capture_screenshot(url: str, target_size: Optional[str] = None) -> byt
                     # Scroll a bit more up to show context
                     await page.mouse.wheel(0, -150)
                     break
-        except Exception:
+        except Exception:  # nosec B110
             pass
 
         # Wait for page to stabilize

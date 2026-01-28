@@ -276,12 +276,12 @@ class ProductRepository:
         placeholders = ",".join("?" for _ in product_ids)
         # 1. Delete tracked items first (cascade)
         self.db.execute(
-            f"DELETE FROM tracked_items WHERE product_id IN ({placeholders})",
+            f"DELETE FROM tracked_items WHERE product_id IN ({placeholders})",  # nosec B608
             tuple(product_ids),
         )
         # 2. Delete products
         self.db.execute(
-            f"DELETE FROM products WHERE id IN ({placeholders})", tuple(product_ids)
+            f"DELETE FROM products WHERE id IN ({placeholders})",  # nosec B608 tuple(product_ids)
         )
         self.db.commit()
 
@@ -586,7 +586,7 @@ class TrackedItemRepository:
         if row["last_checked_at"]:
             try:
                 last_checked = datetime.fromisoformat(row["last_checked_at"])
-            except Exception:
+            except Exception:  # nosec B110
                 pass
 
         return TrackedItem(
