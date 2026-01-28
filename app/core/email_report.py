@@ -5,8 +5,8 @@ import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from typing import List, Dict, Any, Optional
-from datetime import datetime
-from jinja2 import Environment, FileSystemLoader
+from datetime import datetime, timedelta
+from jinja2 import Environment, FileSystemLoader, select_autoescape
 
 from app.storage.database import Database
 from app.storage.repositories import (
@@ -217,9 +217,8 @@ def generate_report_data(results: List[Dict[str, Any]], db: Database) -> Dict[st
     error_count = len([r for r in results if r.get("status") == "error"])
 
     # Identify planned but untracked products within 4 weeks (Spying Required)
-    from datetime import datetime as dt, timedelta
 
-    now_dt = dt.now()
+    now_dt = datetime.now()
     four_weeks_later = now_dt + timedelta(days=28)
 
     product_repo = ProductRepository(db)
@@ -229,7 +228,7 @@ def generate_report_data(results: List[Dict[str, Any]], db: Database) -> Dict[st
     for product in all_products:
         if product.planned_date:
             try:
-                planned_dt = dt.strptime(product.planned_date + "-1", "%G-W%V-%u")
+                planned_dt = datetime.strptime(product.planned_date + "-1", "%G-W%V-%u")
                 if planned_dt > four_weeks_later:
                     continue
             except (ValueError, TypeError):
@@ -288,15 +287,12 @@ def build_subject(report_data: Dict[str, Any]) -> str:
     return " ".join(parts)
 
 
-from jinja2 import Environment, FileSystemLoader, select_autoescape
-
 # Initialize Jinja2 environment for email templates
 template_dir = os.path.join(
     os.path.dirname(os.path.dirname(__file__)), "templates", "email"
 )
 env = Environment(
-    loader=FileSystemLoader(template_dir),
-    autoescape=select_autoescape(["html", "xml"])
+    loader=FileSystemLoader(template_dir), autoescape=select_autoescape(["html", "xml"])
 )
 
 
