@@ -10,10 +10,10 @@ import time
 import traceback
 from urllib.parse import urlparse
 
-from app.core.config import settings
 from app.core.browser import capture_screenshot
-from app.core.vision import extract_with_structured_output
+from app.core.config import settings
 from app.core.price_calculator import calculate_volume_price, compare_prices
+from app.core.vision import extract_with_structured_output
 from app.models.schemas import (
     ErrorRecord,
     PriceHistoryRecord,
@@ -21,14 +21,13 @@ from app.models.schemas import (
     Store,
     TrackedItem,
 )
-
 from app.storage.database import get_database
 from app.storage.repositories import (
+    ErrorLogRepository,
+    PriceHistoryRepository,
     ProductRepository,
     StoreRepository,
     TrackedItemRepository,
-    PriceHistoryRepository,
-    ErrorLogRepository,
 )
 from app.utils.logging import get_logger
 
@@ -104,9 +103,7 @@ async def cmd_extract(args) -> int:
             discount_fixed_amount=result.discount_fixed_amount,
             deal_description=result.deal_description,
             available_sizes=(
-                json.dumps(result.available_sizes)
-                if result.available_sizes
-                else None
+                json.dumps(result.available_sizes) if result.available_sizes else None
             ),
         )
         record_id = price_repo.insert(record)
@@ -127,8 +124,7 @@ async def cmd_extract(args) -> int:
                 print(f"  Discount: {result.discount_percentage}% off")
             if result.discount_fixed_amount:
                 print(
-                    f"  Discount: {result.currency} "
-                    f"{result.discount_fixed_amount} off"
+                    f"  Discount: {result.currency} {result.discount_fixed_amount} off"
                 )
             if result.deal_description:
                 print(f"  Details: {result.deal_description}")
@@ -221,11 +217,13 @@ def _ensure_api_key() -> bool:
         return False
     return True
 
+
 def _build_output_path(url: str) -> str:
     os.makedirs("diagnostics", exist_ok=True)
     domain = urlparse(url).netloc.replace(".", "_")
     timestamp = int(time.time())
     return f"diagnostics/check_{domain}_{timestamp}.png"
+
 
 async def _capture_screenshot_to_file(url: str, output_path: str) -> None:
     print(f"Checking URL: {url}")
@@ -234,6 +232,7 @@ async def _capture_screenshot_to_file(url: str, output_path: str) -> None:
     with open(output_path, "wb") as f:
         f.write(screenshot)
     print(f"Screenshot saved to: {output_path}")
+
 
 async def cmd_check(args) -> int:
     """Check if a URL is accessible and visible to the AI."""
@@ -256,8 +255,7 @@ async def cmd_check(args) -> int:
             print("Page appears to be blocked by a modal, captcha, or WAF.")
 
         print(
-            f"Store Detected: "
-            f"{result.store_name if result.store_name else 'Unknown'}"
+            f"Store Detected: {result.store_name if result.store_name else 'Unknown'}"
         )
         print(
             f"Product Detected: "
@@ -427,44 +425,41 @@ def cmd_list(args) -> int:
                 print(f"{p.id:<4} {p.name[:30]:<30} {cat[:15]:<15} {target:<10}")
 
         elif args.what == "stores":
-           stores = store_repo.get_all()
-           if not stores:
-               print("No stores found.")
-               return 0
-           print(f"{'ID':<4} {'Name':<25}")
-           print("-" * 30)
-           for s in stores:
-               print(f"{s.id:<4} {s.name[:25]:<25}")
+            stores = store_repo.get_all()
+            if not stores:
+                print("No stores found.")
+                return 0
+            print(f"{'ID':<4} {'Name':<25}")
+            print("-" * 30)
+            for s in stores:
+                print(f"{s.id:<4} {s.name[:25]:<25}")
 
-       else:  # tracked items (default)
-           items = tracked_repo.get_active()
-           if not items:
-               print("No tracked items found.")
-               return 0
-           print(
-               f"{'ID':<4} {'Product':<20} "
-               f"{'Store':<15} {'Size':<12} {'URL':<40}"
-           )
-           print("-" * 95)
-           for item in items:
-               product = product_repo.get_by_id(item.product_id)
-               store = store_repo.get_by_id(item.store_id)
-               size_str = f"{item.quantity_size}{item.quantity_unit}"
-               if item.items_per_lot > 1:
-                   size_str += f" x{item.items_per_lot}"
-               pname = product.name[:20] if product else "?"
-               sname = store.name[:15] if store else "?"
-               print(
-                   f"{item.id:<4} {pname:<20} {sname:<15} {size_str:<12} "
-                   f"{item.url[:40]}"
-               )
+        else:  # tracked items (default)
+            items = tracked_repo.get_active()
+            if not items:
+                print("No tracked items found.")
+                return 0
+            print(f"{'ID':<4} {'Product':<20} {'Store':<15} {'Size':<12} {'URL':<40}")
+            print("-" * 95)
+            for item in items:
+                product = product_repo.get_by_id(item.product_id)
+                store = store_repo.get_by_id(item.store_id)
+                size_str = f"{item.quantity_size}{item.quantity_unit}"
+                if item.items_per_lot > 1:
+                    size_str += f" x{item.items_per_lot}"
+                pname = product.name[:20] if product else "?"
+                sname = store.name[:15] if store else "?"
+                print(
+                    f"{item.id:<4} {pname:<20} {sname:<15} {size_str:<12} "
+                    f"{item.url[:40]}"
+                )
 
-       return 0
-   except Exception as e:
-       print(f"Error: {e}", file=sys.stderr)
-       return 1
-   finally:
-       db.close()
+        return 0
+    except Exception as e:
+        print(f"Error: {e}", file=sys.stderr)
+        return 1
+    finally:
+        db.close()
 
 
 def main():

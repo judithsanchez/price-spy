@@ -1,17 +1,19 @@
 from typing import List
+
 from fastapi import APIRouter, Depends, HTTPException
+
 from app.api.deps import get_db
-from app.storage.repositories import (
-    TrackedItemRepository,
-    ProductRepository,
-    StoreRepository,
-    CategoryRepository,
-)
 from app.models.schemas import (
     TrackedItem,
     TrackedItemCreate,
-    TrackedItemUpdate,
     TrackedItemResponse,
+    TrackedItemUpdate,
+)
+from app.storage.repositories import (
+    CategoryRepository,
+    ProductRepository,
+    StoreRepository,
+    TrackedItemRepository,
 )
 
 router = APIRouter(prefix="/api/tracked-items", tags=["Tracked Items"])
@@ -75,15 +77,14 @@ async def create_item(item_in: TrackedItemCreate, db=Depends(get_db)):
                             "'target_size' is required."
                         ),
                     )
-            else:
-                if item_in.target_size:
-                    raise HTTPException(
-                        status_code=400,
-                        detail=(
-                            f"Product category '{product.category}' is NOT size-sensitive. "
-                            "'target_size' must be empty."
-                        ),
-                    )
+            elif item_in.target_size:
+                raise HTTPException(
+                    status_code=400,
+                    detail=(
+                        f"Product category '{product.category}' is NOT size-sensitive. "
+                        "'target_size' must be empty."
+                    ),
+                )
 
         store_repo = StoreRepository(db)
         if not store_repo.get_by_id(item_in.store_id):
@@ -159,15 +160,14 @@ async def update_item(
                             f"'target_size' is required."
                         ),
                     )
-            else:
-                if item_in.target_size:
-                    raise HTTPException(
-                        status_code=400,
-                        detail=(
-                            f"Product category '{product.category}' is NOT size-sensitive. "
-                            f"'target_size' must be empty."
-                        ),
-                    )
+            elif item_in.target_size:
+                raise HTTPException(
+                    status_code=400,
+                    detail=(
+                        f"Product category '{product.category}' is NOT size-sensitive. "
+                        f"'target_size' must be empty."
+                    ),
+                )
 
         item_obj = TrackedItem(
             product_id=item_in.product_id,
@@ -188,8 +188,7 @@ async def update_item(
         updated = repo.get_by_id(item_id)
         if not updated:
             raise HTTPException(
-                status_code=404,
-                detail="Tracked item not found after operation"
+                status_code=404, detail="Tracked item not found after operation"
             )
         item_dict = updated.model_dump()
         item_dict["labels"] = repo.get_labels(int(item_id))

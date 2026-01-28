@@ -177,9 +177,7 @@ async def handle_zalando_interaction(page, target_size: Optional[str] = None):
                     'li[data-testid="pdp-size-selector-item"] button:has-text("'
                     + target_size
                     + '")',
-                    'button:has-text("'
-                    + target_size
-                    + '")',
+                    'button:has-text("' + target_size + '")',
                 ]
 
                 size_option = None
@@ -223,7 +221,9 @@ async def capture_screenshot(url: str, target_size: Optional[str] = None) -> byt
             await page.goto(url, wait_until="networkidle", timeout=60000)
         except Exception as e:
             logger.warning(
-                "Networkidle failed for %s, falling back to domcontentloaded: %s", url, e
+                "Networkidle failed for %s, falling back to domcontentloaded: %s",
+                url,
+                e,
             )
             try:
                 await page.goto(url, wait_until="domcontentloaded", timeout=30000)

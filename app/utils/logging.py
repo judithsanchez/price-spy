@@ -13,7 +13,7 @@ class JSONFormatter(logging.Formatter):
     def format(self, record: logging.LogRecord) -> str:
         """
         Format a LogRecord into a JSON string containing timestamp, level, logger name, and message.
-        
+
         :param record: The logging LogRecord to format.
         :return: A JSON-formatted string representation of the log entry.
         """
@@ -79,6 +79,7 @@ class JSONFormatter(logging.Formatter):
 
 
 """Logging utilities providing ExtraFieldsAdapter for merging extra context into log records."""
+
 
 class ExtraFieldsAdapter(logging.LoggerAdapter):
     """Adapter that merges extra fields into log records."""
