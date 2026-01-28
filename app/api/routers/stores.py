@@ -1,16 +1,17 @@
-from typing import List
+from typing import Annotated, List
 
 from fastapi import APIRouter, Depends, HTTPException
 
 from app.api.deps import get_db
 from app.models.schemas import Store, StoreCreate, StoreResponse, StoreUpdate
+from app.storage.database import Database
 from app.storage.repositories import StoreRepository, TrackedItemRepository
 
 router = APIRouter(prefix="/api/stores", tags=["Stores"])
 
 
 @router.get("", response_model=List[StoreResponse])
-async def get_stores(db=Depends(get_db)):
+async def get_stores(db: Annotated[Database, Depends(get_db)]):
     """Get all stores."""
     try:
         repo = StoreRepository(db)
@@ -20,7 +21,7 @@ async def get_stores(db=Depends(get_db)):
 
 
 @router.post("", response_model=StoreResponse, status_code=201)
-async def create_store(store: StoreCreate, db=Depends(get_db)):
+async def create_store(store: StoreCreate, db: Annotated[Database, Depends(get_db)]):
     """Create a new store."""
     try:
         repo = StoreRepository(db)
@@ -38,7 +39,9 @@ async def create_store(store: StoreCreate, db=Depends(get_db)):
 
 
 @router.put("/{store_id}", response_model=StoreResponse)
-async def update_store(store_id: int, store_update: StoreCreate, db=Depends(get_db)):
+async def update_store(
+    store_id: int, store_update: StoreCreate, db: Annotated[Database, Depends(get_db)]
+):
     """Update a store."""
     try:
         repo = StoreRepository(db)
@@ -54,7 +57,9 @@ async def update_store(store_id: int, store_update: StoreCreate, db=Depends(get_
 
 
 @router.patch("/{store_id}", response_model=StoreResponse)
-async def patch_store(store_id: int, store_patch: StoreUpdate, db=Depends(get_db)):
+async def patch_store(
+    store_id: int, store_patch: StoreUpdate, db: Annotated[Database, Depends(get_db)]
+):
     """Partially update a store."""
     try:
         repo = StoreRepository(db)
@@ -80,7 +85,7 @@ async def patch_store(store_id: int, store_patch: StoreUpdate, db=Depends(get_db
 
 
 @router.delete("/{store_id}")
-async def delete_store(store_id: int, db=Depends(get_db)):
+async def delete_store(store_id: int, db: Annotated[Database, Depends(get_db)]):
     """Delete a store. Blocked if used in tracked items."""
     try:
         repo = StoreRepository(db)
@@ -95,7 +100,11 @@ async def delete_store(store_id: int, db=Depends(get_db)):
         if count > 0:
             raise HTTPException(
                 status_code=400,
-                detail=f"Cannot delete store '{store.name}'. It is used by {count} tracked items. Update or delete them first.",
+                detail=(
+                    f"Cannot delete store '{store.name}'. "
+                    f"It is used by {count} tracked items. "
+                    "Update or delete them first."
+                ),
             )
 
         repo.delete(store_id)

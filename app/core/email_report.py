@@ -7,7 +7,11 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from typing import Any, Dict, List, Optional
 
-from jinja2 import Environment, FileSystemLoader, select_autoescape
+from jinja2 import (
+    Environment,
+    FileSystemLoader,
+    select_autoescape,
+)
 
 from app.core.config import settings
 from app.storage.database import Database
@@ -167,7 +171,8 @@ template_dir = os.path.join(
     os.path.dirname(os.path.dirname(__file__)), "templates", "email"
 )
 env = Environment(
-    loader=FileSystemLoader(template_dir), autoescape=select_autoescape(["html", "xml"])
+    loader=FileSystemLoader(template_dir),
+    autoescape=select_autoescape(["html", "xml"]),
 )
 
 
