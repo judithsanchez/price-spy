@@ -35,6 +35,7 @@ select = [
     "PERF",   # Perflint
     "FURB",   # refurb
     "ASYNC",  # flake8-async
+    "PLC0414", # Useless import alias
 ]
 ignore = ["S101", "PLR0913", "PLR0912", "PLR0915", "PLR0911"]
 
