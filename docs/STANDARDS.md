@@ -67,3 +67,23 @@ The CI pipeline enforces the following strict blockers on every Pull Request:
 
 > [!NOTE]
 > Bypass labels (e.g., `skip-all`, `skip-tests`) can be applied to PRs on GitHub to ignore these rules in exceptional cases.
+
+---
+
+## 5. IDE Integration (On-Save Enforcement)
+
+To automate these rules and ensure your code always meets project standards, we have configured the following:
+
+### VS Code / Antigravity IDE
+The project includes `.vscode/settings.json` which enables:
+- **Format on Save**: Automatically runs `ruff format` on every save.
+- **Fix on Save**: Automatically fixes linting errors (unused imports, etc.) and organizes imports.
+- **Linting & Type Checking**: Real-time feedback for Ruff and Mypy.
+
+### Manual Enforcement
+If you are not using an automated IDE, run these before committing:
+```bash
+ruff format .   # Format code
+ruff check .    # Fix linting errors
+mypy .          # Check types
+```
