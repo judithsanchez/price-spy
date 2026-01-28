@@ -1,14 +1,17 @@
+from typing import Annotated
+
 from fastapi import APIRouter, Depends, HTTPException
 
 from app.api.deps import get_db
 from app.models.schemas import Label, LabelCreate, LabelResponse, LabelUpdate
+from app.storage.database import Database
 from app.storage.repositories import LabelRepository
 
 router = APIRouter(prefix="/api/labels", tags=["Labels"])
 
 
 @router.get("", response_model=list[LabelResponse])
-async def get_labels(db=Depends(get_db)):
+async def get_labels(db: Annotated[Database, Depends(get_db)]):
     """Get all labels."""
     try:
         repo = LabelRepository(db)
@@ -18,7 +21,7 @@ async def get_labels(db=Depends(get_db)):
 
 
 @router.get("/search", response_model=list[LabelResponse])
-async def search_labels(q: str, db=Depends(get_db)):
+async def search_labels(q: str, db: Annotated[Database, Depends(get_db)]):
     """Search labels by name."""
     try:
         repo = LabelRepository(db)
@@ -28,7 +31,7 @@ async def search_labels(q: str, db=Depends(get_db)):
 
 
 @router.post("", response_model=LabelResponse, status_code=201)
-async def create_label(label: LabelCreate, db=Depends(get_db)):
+async def create_label(label: LabelCreate, db: Annotated[Database, Depends(get_db)]):
     """Create a new label."""
     try:
         repo = LabelRepository(db)
@@ -45,7 +48,9 @@ async def create_label(label: LabelCreate, db=Depends(get_db)):
 
 
 @router.put("/{label_id}", response_model=LabelResponse)
-async def update_label(label_id: int, label_update: LabelCreate, db=Depends(get_db)):
+async def update_label(
+    label_id: int, label_update: LabelCreate, db: Annotated[Database, Depends(get_db)]
+):
     """Update a label name."""
     try:
         repo = LabelRepository(db)
@@ -60,7 +65,9 @@ async def update_label(label_id: int, label_update: LabelCreate, db=Depends(get_
 
 
 @router.patch("/{label_id}", response_model=LabelResponse)
-async def patch_label(label_id: int, label_patch: LabelUpdate, db=Depends(get_db)):
+async def patch_label(
+    label_id: int, label_patch: LabelUpdate, db: Annotated[Database, Depends(get_db)]
+):
     """Partially update a label."""
     try:
         repo = LabelRepository(db)
@@ -77,7 +84,7 @@ async def patch_label(label_id: int, label_patch: LabelUpdate, db=Depends(get_db
 
 
 @router.delete("/{label_id}")
-async def delete_label(label_id: int, db=Depends(get_db)):
+async def delete_label(label_id: int, db: Annotated[Database, Depends(get_db)]):
     """Delete a label. Automatically removed from tracked items via CASCADE."""
     try:
         repo = LabelRepository(db)
