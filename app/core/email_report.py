@@ -116,8 +116,8 @@ def generate_report_data(results: List[Dict[str, Any]], db: Database) -> Dict[st
             url = None
 
         # Calculate price change
-        price_change = 0
-        price_change_pct = 0
+        price_change: float = 0.0
+        price_change_pct: float = 0.0
         prev_price = None
 
         if status == "success" and url:
@@ -127,9 +127,10 @@ def generate_report_data(results: List[Dict[str, Any]], db: Database) -> Dict[st
                 # history[0] is the current one just saved
                 prev_record = history[1]
                 prev_price = prev_record.price
-                price_change = price - prev_price
-                if prev_price > 0:
-                    price_change_pct = (price_change / prev_price) * 100
+                if price is not None and prev_price is not None:
+                    price_change = float(price) - float(prev_price)
+                    if prev_price > 0:
+                        price_change_pct = (price_change / float(prev_price)) * 100
 
         # Check if it's a target hit vs a promo deal
         original_price = result.get("original_price")
@@ -147,8 +148,8 @@ def generate_report_data(results: List[Dict[str, Any]], db: Database) -> Dict[st
             unit_price, current_unit = calculate_volume_price(
                 price,
                 details["items_per_lot"] if details else 1,
-                details["quantity_size"] if details else 1,
-                details["quantity_unit"] if details else None,
+                details["quantity_size"] if details else 1.0,
+                str(details["quantity_unit"]) if details and details["quantity_unit"] else "",
             )
 
             t_price = details["target_price"] if details else None
@@ -233,7 +234,7 @@ def generate_report_data(results: List[Dict[str, Any]], db: Database) -> Dict[st
                 continue
 
             active_items = [
-                ti for ti in tracked_repo.get_by_product(product.id) if ti.is_active
+                ti for ti in tracked_repo.get_by_product(int(product.id or 0)) if ti.is_active
             ]
             if not active_items:
                 untracked_planned.append(
@@ -244,7 +245,7 @@ def generate_report_data(results: List[Dict[str, Any]], db: Database) -> Dict[st
                     }
                 )
 
-    untracked_planned.sort(key=lambda p: p["planned_date"])
+    untracked_planned.sort(key=lambda p: str(p["planned_date"] or ""))
 
     return {
         "date": datetime.now().strftime("%B %d, %Y"),

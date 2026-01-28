@@ -201,7 +201,6 @@ async def capture_screenshot(url: str, target_size: Optional[str] = None) -> byt
                 await page.goto(url, wait_until="domcontentloaded", timeout=30000)
             except Exception as e2:
                 logger.error(f"Failed to navigate to {url}: {e2}")
-                await context.browser.close()
                 raise
 
         # Try to dismiss cookie consent popups
@@ -269,5 +268,6 @@ async def capture_screenshot(url: str, target_size: Optional[str] = None) -> byt
             type="png", clip={"x": 0, "y": 0, "width": 1280, "height": 960}
         )
 
-        await context.browser.close()
+        if context.browser:
+            await context.browser.close()
         return screenshot_bytes

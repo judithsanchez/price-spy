@@ -9,7 +9,7 @@ class Settings(BaseSettings):
     """
 
     # Core
-    GEMINI_API_KEY: str
+    GEMINI_API_KEY: str = ""
     DATABASE_PATH: str = "data/pricespy.db"
 
     # Scheduler

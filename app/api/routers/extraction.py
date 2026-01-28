@@ -67,12 +67,12 @@ async def run_extraction(item_id: int, db_path: str):
 
         # Build context
         context = ExtractionContext(
-            product_name=product.name if product else "Unknown",
-            category=category.name if category else None,
-            is_size_sensitive=category.is_size_sensitive if category else False,
-            target_size=item.target_size,
-            quantity_size=item.quantity_size,
-            quantity_unit=item.quantity_unit,
+            product_name=str(product.name) if product else "Unknown",
+            category=str(category.name) if category else None,
+            is_size_sensitive=bool(category.is_size_sensitive) if category else False,
+            target_size=str(item.target_size) if item.target_size else None,
+            quantity_size=float(item.quantity_size) if item.quantity_size else None,
+            quantity_unit=str(item.quantity_unit) if item.quantity_unit else None,
         )
 
         api_key = os.getenv("GEMINI_API_KEY")
@@ -160,12 +160,12 @@ async def trigger_extraction(item_id: int, db=Depends(get_db)):
 
         # Build context
         context = ExtractionContext(
-            product_name=product.name if product else "Unknown",
-            category=category.name if category else None,
-            is_size_sensitive=category.is_size_sensitive if category else False,
-            target_size=item.target_size,
-            quantity_size=item.quantity_size,
-            quantity_unit=item.quantity_unit,
+            product_name=str(product.name) if product else "Unknown",
+            category=str(category.name) if category else None,
+            is_size_sensitive=bool(category.is_size_sensitive) if category else False,
+            target_size=str(item.target_size) if item.target_size else None,
+            quantity_size=float(item.quantity_size) if item.quantity_size else None,
+            quantity_unit=str(item.quantity_unit) if item.quantity_unit else None,
         )
 
         api_key = settings.GEMINI_API_KEY

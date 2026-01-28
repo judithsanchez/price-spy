@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Optional
+from typing import Optional, List, Any, cast
 from fastapi import APIRouter, Depends, Request
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
@@ -77,10 +77,10 @@ async def dashboard(request: Request, db=Depends(get_db)):
         price_repo = PriceHistoryRepository(db)
 
         tracked_items = tracked_repo.get_all()
-        products_map = {}
-        low_stock_warnings = []
-        price_increase_warnings = []
-        graph_data = {"labels": [], "datasets": []}
+        products_map: dict[int, dict] = {}
+        low_stock_warnings: list[dict] = []
+        price_increase_warnings: list[dict] = []
+        graph_data: dict[str, list] = {"labels": [], "datasets": []}
 
         all_timestamps = set()
 
@@ -92,8 +92,9 @@ async def dashboard(request: Request, db=Depends(get_db)):
             if not product:
                 continue
 
-            if product.id not in products_map:
-                products_map[product.id] = {
+            pid = int(product.id or 0)
+            if pid not in products_map:
+                products_map[pid] = {
                     "id": product.id,
                     "name": product.name,
                     "category": product.category,
@@ -180,7 +181,8 @@ async def dashboard(request: Request, db=Depends(get_db)):
                 has_deal_type = deal_type is not None and deal_type.lower() != "none"
                 is_deal = has_original_higher or has_deal_type
 
-            products_map[product.id]["tracked_items"].append(
+            pid = int(product.id or 0)
+            products_map[pid]["tracked_items"].append(
                 {
                     "id": item.id,
                     "store_name": store.name if store else "Unknown",
@@ -231,10 +233,10 @@ async def dashboard(request: Request, db=Depends(get_db)):
 
             if history:
                 item_label = f"{product.name} ({store.name if store else '?'})"
-                dataset = {
+                dataset: dict[str, Any] = {
                     "label": item_label,
                     "data": [],
-                    "borderColor": f"hsl({(item.id * 137) % 360}, 70%, 50%)",
+                    "borderColor": f"hsl({(int(item.id or 0) * 137) % 360}, 70%, 50%)",
                     "fill": False,
                     "tension": 0.1,
                 }
@@ -313,7 +315,7 @@ async def dashboard(request: Request, db=Depends(get_db)):
                     continue
 
                 active_items = [
-                    ti for ti in tracked_repo.get_by_product(product.id) if ti.is_active
+                    ti for ti in tracked_repo.get_by_product(int(product.id or 0)) if ti.is_active
                 ]
                 if not active_items:
                     untracked_planned_products.append(
@@ -325,7 +327,7 @@ async def dashboard(request: Request, db=Depends(get_db)):
                     )
 
         # Sort by planned_date (YYYY-Www) which is chronological
-        untracked_planned_products.sort(key=lambda p: p["planned_date"])
+        untracked_planned_products.sort(key=lambda p: str(p["planned_date"] or ""))
 
         return templates.TemplateResponse(
             request,
@@ -371,7 +373,7 @@ async def timeline_page(request: Request, db=Depends(get_db)):
     price_repo = PriceHistoryRepository(db)
 
     products = product_repo.get_all()
-    timeline_data = defaultdict(lambda: defaultdict(list))
+    timeline_data: dict[int, dict[int, list[dict]]] = defaultdict(lambda: defaultdict(list))
 
     # Filter products that have a planned date
     planned_products = [p for p in products if p.planned_date]
@@ -379,15 +381,17 @@ async def timeline_page(request: Request, db=Depends(get_db)):
     for p in planned_products:
         # planned_date is '2026-W05'
         try:
-            year, week_str = p.planned_date.split("-W")
-            year = int(year)
+            if not p.planned_date:
+                continue
+            year_str, week_str = p.planned_date.split("-W")
+            year = int(year_str)
             week = int(week_str)
 
             # Get latest price for the product (best deal among its tracked items)
             from app.storage.repositories import TrackedItemRepository
 
             tracked_repo = TrackedItemRepository(db)
-            tracked_items = tracked_repo.get_by_product(p.id)
+            tracked_items = tracked_repo.get_by_product(int(p.id or 0))
 
             best_price = None
             best_currency = "EUR"
@@ -410,14 +414,14 @@ async def timeline_page(request: Request, db=Depends(get_db)):
                 "tracked_count": len(tracked_items),
             }
 
-            timeline_data[year][week].append(product_card)
+            cast(list, timeline_data[year][week]).append(product_card)
         except (ValueError, AttributeError):
             continue
 
     # Sort years descending, weeks ascending
     sorted_timeline = []
     for year in sorted(timeline_data.keys(), reverse=True):
-        year_data = {"year": year, "weeks": []}
+        year_data: dict[str, Any] = {"year": year, "weeks": []}
         for week in sorted(timeline_data[year].keys()):
             year_data["weeks"].append(
                 {"week": week, "products": timeline_data[year][week]}
