@@ -51,14 +51,9 @@ STEALTH_SCRIPTS = """
 """
 
 
-async def create_stealth_context(playwright) -> BrowserContext:
-    """Create a browser context with stealth settings."""
-    # Standard 1080p viewport is safer than randomized weird dimensions
-    width = 1920
-    width = 1920
-
-    # Pick a random UA profile
-    profile = random.choice(  # nosec B311
+def _get_random_ua_profile():
+    """Pick a random UA profile."""
+    return random.choice(  # noqa: S311
         [
             {
                 "ua": (
@@ -70,8 +65,9 @@ async def create_stealth_context(playwright) -> BrowserContext:
             },
             {
                 "ua": (
-                    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
-                    "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+                    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+                    "AppleWebKit/537.36 (KHTML, like Gecko) "
+                    "Chrome/120.0.0.0 Safari/537.36"
                 ),
                 "platform": '"macOS"',
                 "sec_ch_ua_platform": "macOS",
@@ -86,6 +82,15 @@ async def create_stealth_context(playwright) -> BrowserContext:
             },
         ]
     )
+
+
+async def create_stealth_context(playwright) -> BrowserContext:
+    """Create a browser context with stealth settings."""
+    # Standard 1080p viewport is safer than randomized weird dimensions
+    width = 1920
+
+    # Pick a random UA profile
+    profile = _get_random_ua_profile()
 
     # args to disable automation flags
     launch_args = [
@@ -113,11 +118,14 @@ async def create_stealth_context(playwright) -> BrowserContext:
         # Add extra headers for better stealth
         extra_http_headers={
             "Accept": (
-                "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,"
-                "image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7"
+                "text/html,application/xhtml+xml,application/xml;q=0.9,"
+                "image/avif,image/webp,image/apng,*/*;q=0.8,"
+                "application/signed-exchange;v=b3;q=0.7"
             ),
             "Accept-Language": "nl-NL,nl;q=0.9,en-US;q=0.8,en;q=0.7",
-            "Sec-Ch-Ua": '"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"',
+            "Sec-Ch-Ua": (
+                '"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"'
+            ),
             "Sec-Ch-Ua-Mobile": "?0",
             "Sec-Ch-Ua-Platform": profile["platform"],
             "Sec-Fetch-Dest": "document",
@@ -130,6 +138,53 @@ async def create_stealth_context(playwright) -> BrowserContext:
     return context
 
 
+async def _find_zalando_size_button(page):
+    """Find and click the Zalando size picker button."""
+    selectors = [
+        'button[data-testid="pdp-size-picker-trigger"]',
+        'button[data-testid="pdp-size-selector-trigger"]',
+        'button:has-text("Maat kiezen")',
+        'button:has-text("Select size")',
+        'button:has-text("Maat selecteren")',
+    ]
+
+    for selector in selectors:
+        try:
+            btn = page.locator(selector).first
+            if await btn.is_visible(timeout=3000):
+                await btn.scroll_into_view_if_needed()
+                await btn.click()
+                logger.info("Clicked Zalando size dropdown")
+                await page.wait_for_timeout(1000)
+                return True
+        except Exception:
+            logger.debug("Selector %s not found on Zalando", selector)
+            continue
+    return False
+
+
+async def _select_zalando_size(page, target_size: str):
+    """Try to find and click the specific target size."""
+    size_selectors = [
+        f'button[data-testid="pdp-size-selector-item"]:has-text("{target_size}")',
+        f'button[data-testid="pdp-size-picker-item"]:has-text("{target_size}")',
+        (f'li[data-testid="pdp-size-selector-item"] button:has-text("{target_size}")'),
+        f'button:has-text("{target_size}")',
+    ]
+
+    for selector in size_selectors:
+        try:
+            opt = page.locator(selector).first
+            if await opt.is_visible(timeout=2000):
+                await opt.click()
+                logger.info("Clicked Zalando size option: %s", target_size)
+                await page.wait_for_timeout(2000)
+                return True
+        except Exception:  # noqa: S112
+            continue
+    return False
+
+
 async def handle_zalando_interaction(page, target_size: Optional[str] = None):
     """Specilized interaction for Zalando to handle size selection."""
     if "zalando" not in page.url:
@@ -138,70 +193,71 @@ async def handle_zalando_interaction(page, target_size: Optional[str] = None):
     logger.info("Handling Zalando interaction (target_size: %s)", target_size)
     try:
         # 1. Look for the "Maat kiezen" button
-        # Try both role-based and testid-based selectors
-        selectors = [
-            'button[data-testid="pdp-size-picker-trigger"]',
-            'button[data-testid="pdp-size-selector-trigger"]',
-            'button:has-text("Maat kiezen")',
-            'button:has-text("Select size")',
-            'button:has-text("Maat selecteren")',
-        ]
+        button_clicked = await _find_zalando_size_button(page)
 
-        size_button = None
-        for selector in selectors:
-            try:
-                btn = page.locator(selector).first
-                if await btn.is_visible(timeout=3000):
-                    size_button = btn
-                    break
-            except Exception:  # nosec B110, B112  # nosec B110, B112
-                continue
-
-        if size_button:
-            await size_button.scroll_into_view_if_needed()
-            await size_button.click()
-            logger.info("Clicked Zalando size dropdown")
-            await page.wait_for_timeout(1000)
-
-            # 2. If target_size provided, try to click it
-            if target_size:
-                # Zalando sizes are often in a list or grid
-                # Try specific data-testid first, then generic buttons
-                size_selectors = [
-                    'button[data-testid="pdp-size-selector-item"]:has-text("'
-                    + target_size
-                    + '")',
-                    'button[data-testid="pdp-size-picker-item"]:has-text("'
-                    + target_size
-                    + '")',
-                    'li[data-testid="pdp-size-selector-item"] button:has-text("'
-                    + target_size
-                    + '")',
-                    'button:has-text("' + target_size + '")',
-                ]
-
-                size_option = None
-                for selector in size_selectors:
-                    try:
-                        opt = page.locator(selector).first
-                        if await opt.is_visible(timeout=2000):
-                            size_option = opt
-                            break
-                    except Exception:  # nosec B110, B112
-                        continue
-
-                if size_option:
-                    await size_option.click()
-                    logger.info("Clicked Zalando size option: %s", target_size)
-                    await page.wait_for_timeout(2000)  # Wait for price update
-                else:
-                    logger.warning(
-                        "Zalando size option '%s' not found or not visible", target_size
-                    )
-        else:
+        if button_clicked and target_size:
+            # 2. Try to click the specific size
+            size_selected = await _select_zalando_size(page, target_size)
+            if not size_selected:
+                logger.warning("Zalando size option '%s' not found", target_size)
+        elif not button_clicked:
             logger.warning("Zalando size button not found")
     except Exception as e:
         logger.error("Error during Zalando interaction: %s", e)
+
+
+async def _dismiss_cookie_consent(page):
+    """Try to dismiss cookie consent popups."""
+    selectors = [
+        "#sp-cc-accept",
+        "#js-first-screen-accept-all-button",
+        '[data-test="consent-modal-ofc-confirm-btn"]',
+        'button:has-text("Alles accepteren")',
+        "#onetrust-accept-btn-handler",
+        "#onetrust-banner-sdk",
+        'button:has-text("Accepteren")',
+        'button:has-text("Accept All")',
+        ".uc-btn-accept",
+    ]
+
+    try:
+        for _ in range(3):
+            clicked_any = False
+            for selector in selectors:
+                try:
+                    btn = page.locator(selector).first
+                    if await btn.is_visible(timeout=500):
+                        await btn.click()
+                        await page.wait_for_timeout(1000)
+                        clicked_any = True
+                except Exception:  # noqa: S112
+                    continue
+            if not clicked_any:
+                break
+    except Exception as e:
+        logger.debug("Cookie consent handling failed: %s", e)
+
+
+async def _scroll_to_product(page):
+    """Try to find a product image or main title to scroll to."""
+    product_selectors = [
+        "h1",
+        'img[data-testid="pdp-main-image"]',
+        ".product-title",
+        ".pdp-info",
+        "#productTitle",
+        ".pdp__name",
+        ".pdp__price",
+    ]
+    try:
+        for selector in product_selectors:
+            el = page.locator(selector).first
+            if await el.is_visible(timeout=2000):
+                await el.scroll_into_view_if_needed()
+                await page.mouse.wheel(0, -150)
+                break
+    except Exception as e:
+        logger.debug("Scrolling to product failed: %s", e)
 
 
 async def capture_screenshot(url: str, target_size: Optional[str] = None) -> bytes:
@@ -210,21 +266,13 @@ async def capture_screenshot(url: str, target_size: Optional[str] = None) -> byt
         context = await create_stealth_context(p)
         page = await context.new_page()
 
-        # Inject manual stealth scripts
         await page.add_init_script(STEALTH_SCRIPTS)
-
-        # Random delay to simulate human timing (1-3 seconds)
-        await asyncio.sleep(random.uniform(1, 4))  # nosec B311
+        await asyncio.sleep(random.uniform(1, 4))  # noqa: S311
 
         try:
-            # Use 'networkidle' to ensure images/styles are loaded
             await page.goto(url, wait_until="networkidle", timeout=60000)
         except Exception as e:
-            logger.warning(
-                "Networkidle failed for %s, falling back to domcontentloaded: %s",
-                url,
-                e,
-            )
+            logger.warning("Networkidle failed for %s, falling back: %s", url, e)
             try:
                 await page.goto(url, wait_until="domcontentloaded", timeout=30000)
             except Exception as e2:
@@ -232,66 +280,19 @@ async def capture_screenshot(url: str, target_size: Optional[str] = None) -> byt
                 raise
 
         # Try to dismiss cookie consent popups
-        try:
-            selectors = [
-                "#sp-cc-accept",
-                "#js-first-screen-accept-all-button",
-                '[data-test="consent-modal-ofc-confirm-btn"]',
-                'button:has-text("Alles accepteren")',
-                "#onetrust-accept-btn-handler",
-                "#onetrust-banner-sdk",
-                'button:has-text("Accepteren")',
-                'button:has-text("Accept All")',
-                ".uc-btn-accept",
-            ]
-
-            for _ in range(3):
-                clicked_any = False
-                for selector in selectors:
-                    try:
-                        btn = page.locator(selector).first
-                        if await btn.is_visible(timeout=500):
-                            await btn.click()
-                            await page.wait_for_timeout(
-                                1000
-                            )  # Give it time to disappear
-                            clicked_any = True
-                    except Exception:  # nosec B110, B112
-                        continue
-                if not clicked_any:
-                    break
-        except Exception:  # nosec B110
-            pass
+        await _dismiss_cookie_consent(page)
 
         # Handle Zalando specifically if needed
         if "zalando" in url:
             await handle_zalando_interaction(page, target_size)
 
         # Try to find a product image or main title to scroll to
-        try:
-            product_selectors = [
-                "h1",
-                'img[data-testid="pdp-main-image"]',
-                ".product-title",
-                ".pdp-info",
-                "#productTitle",
-                ".pdp__name",
-                ".pdp__price",
-            ]
-            for selector in product_selectors:
-                el = page.locator(selector).first
-                if await el.is_visible(timeout=2000):
-                    await el.scroll_into_view_if_needed()
-                    # Scroll a bit more up to show context
-                    await page.mouse.wheel(0, -150)
-                    break
-        except Exception:  # nosec B110
-            pass
+        await _scroll_to_product(page)
 
         # Wait for page to stabilize
         await page.wait_for_timeout(3000)
 
-        # Capture screenshot - using 1280x960 to get a better thumbnail aspect ratio
+        # Capture screenshot
         screenshot_bytes = await page.screenshot(
             type="png", clip={"x": 0, "y": 0, "width": 1280, "height": 960}
         )
