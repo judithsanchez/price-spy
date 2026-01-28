@@ -4,10 +4,11 @@
 import argparse
 import asyncio
 import json
-import os
+import logging
 import sys
 import time
 import traceback
+from pathlib import Path
 from urllib.parse import urlparse
 
 from app.core.browser import capture_screenshot
@@ -174,7 +175,20 @@ async def cmd_extract(args) -> int:
         )
         record_id = price_repo.insert(record)
         logger.info("Price saved to database", extra={"record_id": record_id})
-
+    except Exception as e:
+        logger.exception("Price extraction failed", extra={"url": args.url})
+        if db:
+            ErrorLogRepository(db).insert(
+                ErrorRecord(
+                    error_type="extraction_error",
+                    message=str(e)[:2000],
+                    url=args.url,
+                    stack_trace=traceback.format_exc(),
+                )
+            )
+        print(f"Error: {e}", file=sys.stderr)
+        return 1
+    else:
         _print_product_details(result, model_used)
         _print_tracked_info(result, tracked)
 
@@ -188,26 +202,7 @@ async def cmd_extract(args) -> int:
             deal_description=result.deal_description,
         )
         _print_comparison_info(result, previous, comparison)
-
         return 0
-
-    except Exception as e:
-        error_msg = str(e)
-        logger.error(
-            "Price extraction failed", extra={"url": args.url, "error": error_msg}
-        )
-        if db:
-            ErrorLogRepository(db).insert(
-                ErrorRecord(
-                    error_type="extraction_error",
-                    message=error_msg[:2000],
-                    url=args.url,
-                    stack_trace=traceback.format_exc(),
-                )
-            )
-        print(f"Error: {e}", file=sys.stderr)
-        return 1
-
     finally:
         if db:
             db.close()
@@ -220,19 +215,22 @@ def _ensure_api_key() -> bool:
     return True
 
 
-def _build_output_path(url: str) -> str:
-    os.makedirs("diagnostics", exist_ok=True)
+def _build_output_path(url: str) -> Path:
+    diag_dir = Path("diagnostics")
+    diag_dir.mkdir(parents=True, exist_ok=True)
     domain = urlparse(url).netloc.replace(".", "_")
     timestamp = int(time.time())
-    return f"diagnostics/check_{domain}_{timestamp}.png"
+    return diag_dir / f"check_{domain}_{timestamp}.png"
 
 
-async def _capture_screenshot_to_file(url: str, output_path: str) -> bytes:
+async def _capture_screenshot_to_file(url: str, output_path: Path) -> bytes:
     print(f"Checking URL: {url}")
     print("Capturing screenshot...")
     screenshot = await capture_screenshot(url)
-    with open(output_path, "wb") as f:
-        f.write(screenshot)
+
+    # Run blocking file I/O in executor
+    await asyncio.to_thread(output_path.write_bytes, screenshot)
+
     print(f"Screenshot saved to: {output_path}")
     return screenshot
 
@@ -253,7 +251,10 @@ async def cmd_check(args) -> int:
         result, model_used = await extract_with_structured_output(
             screenshot, settings.GEMINI_API_KEY
         )
-
+    except Exception as e:
+        print(f"Error during check: {e}", file=sys.stderr)
+        return 1
+    else:
         print("\n--- Diagnostic Results ---")
         print(f"Detection Status: {'BLOCKED' if result.is_blocked else 'CLEAR'}")
         if result.is_blocked:
@@ -297,9 +298,6 @@ async def cmd_check(args) -> int:
             )
 
         return 0
-    except Exception as e:
-        print(f"Error during check: {e}", file=sys.stderr)
-        return 1
 
 
 def cmd_add_product(args) -> int:
@@ -315,6 +313,10 @@ def cmd_add_product(args) -> int:
             target_unit=args.unit_size,
         )
         product_id = repo.insert(product)
+    except Exception:
+        logging.exception("Error adding product")
+        return 1
+    else:
         print(f"Product added with ID: {product_id}")
         print(f"  Name: {args.name}")
         if args.category:
@@ -322,9 +324,6 @@ def cmd_add_product(args) -> int:
         if args.target_price:
             print(f"  Target price: {args.target_price}")
         return 0
-    except Exception as e:
-        print(f"Error: {e}", file=sys.stderr)
-        return 1
     finally:
         if db:
             db.close()
@@ -340,6 +339,10 @@ def cmd_add_store(args) -> int:
             name=args.name,
         )
         store_id = repo.insert(store)
+    except Exception:
+        logging.exception("Error adding store")
+        return 1
+    else:
         print(f"Store added with ID: {store_id}")
         print(f"  Name: {args.name}")
         if args.shipping:
@@ -347,9 +350,6 @@ def cmd_add_store(args) -> int:
         if args.free_threshold:
             print(f"  Free shipping above: {args.free_threshold}")
         return 0
-    except Exception as e:
-        print(f"Error: {e}", file=sys.stderr)
-        return 1
     finally:
         if db:
             db.close()
@@ -398,6 +398,10 @@ def cmd_track(args) -> int:
         )
         item_id = tracked_repo.insert(item)
 
+    except Exception:
+        logging.exception("Error tracking URL")
+        return 1
+    else:
         print(f"Tracking URL with ID: {item_id}")
         print(f"  Product: {product.name}")
         print(f"  Store: {store.name}")
@@ -405,9 +409,6 @@ def cmd_track(args) -> int:
         if args.lot and args.lot > 1:
             print(f"  Items per lot: {args.lot}")
         return 0
-    except Exception as e:
-        print(f"Error: {e}", file=sys.stderr)
-        return 1
     finally:
         if db:
             db.close()
@@ -473,10 +474,11 @@ def cmd_list(args) -> int:
                 ProductRepository(db),
                 StoreRepository(db),
             )
-        return 0
-    except Exception as e:
-        print(f"Error: {e}", file=sys.stderr)
+    except Exception:
+        logging.exception("Error listing items")
         return 1
+    else:
+        return 0
     finally:
         if db:
             db.close()
