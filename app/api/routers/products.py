@@ -1,4 +1,4 @@
-from typing import List, Literal, cast
+from typing import Literal, cast
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
@@ -28,7 +28,7 @@ class MergeRequest(BaseModel):
 router = APIRouter(prefix="/api/products", tags=["Products"])
 
 
-@router.get("", response_model=List[ProductResponse])
+@router.get("", response_model=list[ProductResponse])
 async def get_products(db=Depends(get_db)):
     """Get all products."""
     try:
@@ -149,7 +149,7 @@ async def delete_product(product_id: int, db=Depends(get_db)):
         db.close()
 
 
-@router.get("/search", response_model=List[ProductResponse])
+@router.get("/search", response_model=list[ProductResponse])
 async def search_products(q: str, db=Depends(get_db)):
     """Search products by name."""
     try:
@@ -251,7 +251,7 @@ async def merge_products(request: MergeRequest, db=Depends(get_db)):
 
 
 @router.post("/bulk-delete")
-async def bulk_delete_products(product_ids: List[int], db=Depends(get_db)):
+async def bulk_delete_products(product_ids: list[int], db=Depends(get_db)):
     """Delete multiple products at once."""
     try:
         repo = ProductRepository(db)

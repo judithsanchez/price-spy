@@ -1,5 +1,3 @@
-from typing import Optional
-
 from fastapi import APIRouter
 from pydantic import BaseModel
 
@@ -13,7 +11,7 @@ class EmailTestResponse(BaseModel):
 
     success: bool
     message: str
-    recipient: Optional[str] = None
+    recipient: str | None = None
 
 
 class EmailStatusResponse(BaseModel):
@@ -21,7 +19,7 @@ class EmailStatusResponse(BaseModel):
 
     enabled: bool
     configured: bool
-    recipient: Optional[str] = None
+    recipient: str | None = None
 
 
 @router.get("/status", response_model=EmailStatusResponse)
@@ -87,8 +85,7 @@ If you received this, your daily reports will work!
             message="Test email sent successfully!",
             recipient=config["recipient"],
         )
-    else:
-        return EmailTestResponse(
-            success=False,
-            message="Failed to send email. Check SMTP settings and credentials.",
-        )
+    return EmailTestResponse(
+        success=False,
+        message="Failed to send email. Check SMTP settings and credentials.",
+    )

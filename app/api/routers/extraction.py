@@ -1,7 +1,7 @@
 import os
 import time
 from pathlib import Path
-from typing import Annotated, Optional
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
@@ -31,9 +31,9 @@ class ExtractResponse(BaseModel):
 
     status: str  # "success", "error"
     item_id: int
-    message: Optional[str] = None
-    price: Optional[float] = None
-    error: Optional[str] = None
+    message: str | None = None
+    price: float | None = None
+    error: str | None = None
 
 
 class BatchExtractResponse(BaseModel):

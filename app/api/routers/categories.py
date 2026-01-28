@@ -1,4 +1,4 @@
-from typing import Annotated, List
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException
 
@@ -15,7 +15,7 @@ from app.storage.repositories import CategoryRepository, ProductRepository
 router = APIRouter(prefix="/api/categories", tags=["Categories"])
 
 
-@router.get("", response_model=List[CategoryResponse])
+@router.get("", response_model=list[CategoryResponse])
 async def get_categories(db: Annotated[Database, Depends(get_db)]):
     """Get all categories."""
     try:
@@ -26,7 +26,7 @@ async def get_categories(db: Annotated[Database, Depends(get_db)]):
         db.close()
 
 
-@router.get("/search", response_model=List[CategoryResponse])
+@router.get("/search", response_model=list[CategoryResponse])
 async def search_categories(q: str, db: Annotated[Database, Depends(get_db)]):
     """Search categories by name."""
     try:

@@ -1,5 +1,3 @@
-from typing import Optional
-
 from fastapi import APIRouter, BackgroundTasks
 from pydantic import BaseModel
 
@@ -19,8 +17,8 @@ class SchedulerStatusResponse(BaseModel):
     running: bool
     enabled: bool
     paused: bool
-    next_run: Optional[str] = None
-    last_run: Optional[dict] = None
+    next_run: str | None = None
+    last_run: dict | None = None
     items_count: int
     config: dict
 
@@ -29,7 +27,7 @@ class SchedulerRunResponse(BaseModel):
     """Response model for scheduler run trigger."""
 
     status: str
-    message: Optional[str] = None
+    message: str | None = None
 
 
 @router.get("/status", response_model=SchedulerStatusResponse)

@@ -1,5 +1,3 @@
-from typing import List
-
 from fastapi import APIRouter, Depends, HTTPException
 
 from app.api.deps import get_db
@@ -19,7 +17,7 @@ from app.storage.repositories import (
 router = APIRouter(prefix="/api/tracked-items", tags=["Tracked Items"])
 
 
-@router.get("", response_model=List[TrackedItemResponse])
+@router.get("", response_model=list[TrackedItemResponse])
 async def get_items(db=Depends(get_db)):
     """Get all tracked items with their labels."""
     try:

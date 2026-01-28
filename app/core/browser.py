@@ -1,7 +1,6 @@
 import asyncio
 import logging
 import random
-from typing import Optional
 
 from playwright.async_api import BrowserContext, async_playwright
 
@@ -185,7 +184,7 @@ async def _select_zalando_size(page, target_size: str):
     return False
 
 
-async def handle_zalando_interaction(page, target_size: Optional[str] = None):
+async def handle_zalando_interaction(page, target_size: str | None = None):
     """Specilized interaction for Zalando to handle size selection."""
     if "zalando" not in page.url:
         return
@@ -260,7 +259,7 @@ async def _scroll_to_product(page):
         logger.debug("Scrolling to product failed: %s", e)
 
 
-async def capture_screenshot(url: str, target_size: Optional[str] = None) -> bytes:
+async def capture_screenshot(url: str, target_size: str | None = None) -> bytes:
     """Navigate to URL and capture screenshot as PNG bytes."""
     async with async_playwright() as p:
         context = await create_stealth_context(p)

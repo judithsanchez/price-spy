@@ -1,8 +1,7 @@
 """Rate limit tracking and provider fallback for AI APIs."""
 
 from dataclasses import dataclass
-from datetime import datetime, timezone
-from typing import List, Optional
+from datetime import UTC, datetime
 
 import pytz
 
@@ -72,7 +71,7 @@ class RateLimitTracker:
         now_pacific = datetime.now(PACIFIC_TZ)
         return now_pacific.strftime("%Y-%m-%d")
 
-    def get_usage(self, model: GeminiModel) -> Optional[UsageRecord]:
+    def get_usage(self, model: GeminiModel) -> UsageRecord | None:
         """Get today's usage for a model."""
         today = self._get_pacific_date()
         cursor = self.db.execute(
@@ -89,14 +88,14 @@ class RateLimitTracker:
             request_count=row[2],
             last_request_at=datetime.fromisoformat(row[3])
             if row[3]
-            else datetime.now(timezone.utc),
+            else datetime.now(UTC),
             is_exhausted=bool(row[4]),
         )
 
     def record_usage(self, config: ModelConfig):
         """Record a successful API request."""
         today = self._get_pacific_date()
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(UTC).isoformat()
 
         params: tuple = (config.model.value, today, now, now)
         self.db.execute(
@@ -127,7 +126,7 @@ class RateLimitTracker:
     def mark_exhausted(self, config: ModelConfig):
         """Mark a model as exhausted for today."""
         today = self._get_pacific_date()
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(UTC).isoformat()
 
         params: tuple = (config.model.value, today, now, now)
         self.db.execute(
@@ -162,7 +161,7 @@ class RateLimitTracker:
         limit = int(config.rate_limits.rpd * 0.9)
         return usage.request_count < limit
 
-    def get_available_model(self, models: List[ModelConfig]) -> Optional[ModelConfig]:
+    def get_available_model(self, models: list[ModelConfig]) -> ModelConfig | None:
         """Get first available model from list (sorted by priority).
 
         Args:

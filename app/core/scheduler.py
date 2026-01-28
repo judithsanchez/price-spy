@@ -3,8 +3,8 @@
 import logging
 import os
 from contextlib import asynccontextmanager
-from datetime import datetime, timezone
-from typing import Any, Dict, Optional
+from datetime import UTC, datetime
+from typing import Any
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
@@ -20,13 +20,13 @@ from app.storage.repositories import (
 
 # Global scheduler instance
 # Global scheduler state
-_state: Dict[str, Any] = {
+_state: dict[str, Any] = {
     "scheduler": None,
     "last_run_result": {},
 }
 
 
-def get_scheduler_config() -> Dict[str, Any]:
+def get_scheduler_config() -> dict[str, Any]:
     """Get scheduler configuration from environment."""
     return {
         "enabled": settings.SCHEDULER_ENABLED,
@@ -36,7 +36,7 @@ def get_scheduler_config() -> Dict[str, Any]:
     }
 
 
-async def run_scheduled_extraction() -> Dict[str, Any]:
+async def run_scheduled_extraction() -> dict[str, Any]:
     """Run the scheduled extraction job."""
 
     db = Database(settings.DATABASE_PATH)
@@ -51,8 +51,8 @@ async def run_scheduled_extraction() -> Dict[str, Any]:
 
         if not items:
             _state["last_run_result"] = {
-                "started_at": datetime.now(timezone.utc).isoformat(),
-                "completed_at": datetime.now(timezone.utc).isoformat(),
+                "started_at": datetime.now(UTC).isoformat(),
+                "completed_at": datetime.now(UTC).isoformat(),
                 "status": "completed",
                 "items_total": 0,
                 "items_success": 0,
@@ -83,8 +83,8 @@ async def run_scheduled_extraction() -> Dict[str, Any]:
             print(f"Failed to send email report: {e}")
 
         _state["last_run_result"] = {
-            "started_at": datetime.now(timezone.utc).isoformat(),
-            "completed_at": datetime.now(timezone.utc).isoformat(),
+            "started_at": datetime.now(UTC).isoformat(),
+            "completed_at": datetime.now(UTC).isoformat(),
             "status": "completed",
             "items_total": summary["total"],
             "items_success": summary["success_count"],
@@ -95,8 +95,8 @@ async def run_scheduled_extraction() -> Dict[str, Any]:
 
     except Exception as e:
         _state["last_run_result"] = {
-            "started_at": datetime.now(timezone.utc).isoformat(),
-            "completed_at": datetime.now(timezone.utc).isoformat(),
+            "started_at": datetime.now(UTC).isoformat(),
+            "completed_at": datetime.now(UTC).isoformat(),
             "status": "failed",
             "error": str(e),
         }
@@ -105,12 +105,12 @@ async def run_scheduled_extraction() -> Dict[str, Any]:
         db.close()
 
 
-def get_scheduler() -> Optional[AsyncIOScheduler]:
+def get_scheduler() -> AsyncIOScheduler | None:
     """Get the global scheduler instance."""
     return _state["scheduler"]
 
 
-def get_scheduler_status() -> Dict[str, Any]:
+def get_scheduler_status() -> dict[str, Any]:
     """Get current scheduler status."""
 
     config = get_scheduler_config()

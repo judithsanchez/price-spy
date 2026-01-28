@@ -1,6 +1,5 @@
 import os
 import sqlite3
-from typing import Optional
 
 from app.core.config import settings
 
@@ -178,7 +177,7 @@ class Database:
 
     def __init__(self, db_path: str = "data/pricespy.db"):
         self.db_path = db_path
-        self._conn: Optional[sqlite3.Connection] = None
+        self._conn: sqlite3.Connection | None = None
 
     def _connect(self) -> sqlite3.Connection:
         """Create database connection with safety check."""
@@ -758,7 +757,7 @@ class Database:
             self._conn = None
 
 
-def get_database(db_path: Optional[str] = None) -> Database:
+def get_database(db_path: str | None = None) -> Database:
     """Get a database instance."""
     path = db_path or settings.DATABASE_PATH
     db = Database(path)

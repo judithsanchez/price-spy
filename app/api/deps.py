@@ -1,10 +1,8 @@
-from typing import Optional
-
 from app.core.config import settings
 from app.storage.database import Database
 
 # Test database path override (used in tests)
-_test_db_path: Optional[str] = None
+_test_db_path: str | None = None
 
 
 def get_db() -> Database:
