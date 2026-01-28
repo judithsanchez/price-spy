@@ -360,12 +360,6 @@ async def products_page(request: Request):
     return templates.TemplateResponse(request, "products.html", {})
 
 
-@router.get("/stores")
-async def stores_page(request: Request):
-    """Render stores management page."""
-    return templates.TemplateResponse(request, "stores.html", {})
-
-
 @router.get("/timeline")
 async def timeline_page(request: Request, db=Depends(get_db)):
     """Render the vertical wishlist timeline."""
@@ -442,20 +436,3 @@ async def tracked_items_page(request: Request):
     """Render tracked items management page."""
     return templates.TemplateResponse(request, "tracked-items.html", {})
 
-
-@router.get("/logs")
-async def logs_page(request: Request):
-    """Render logs page."""
-    return templates.TemplateResponse(request, "logs.html", {})
-
-
-@router.get("/categories")
-async def categories_page(request: Request):
-    """Render categories management page."""
-    return templates.TemplateResponse(request, "categories.html", {})
-
-
-@router.get("/labels")
-async def labels_page(request: Request):
-    """Render labels management page."""
-    return templates.TemplateResponse(request, "labels.html", {})
