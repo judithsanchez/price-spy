@@ -325,9 +325,9 @@ class ProductRepository:
             # 2. Delete the source product
             self.db.execute("DELETE FROM products WHERE id = ?", (source_id,))
             self.db.commit()
-        except Exception as e:
+        except Exception:
             self.db.rollback()
-            raise e
+            raise
 
     def update(self, product_id: int, product: Product) -> None:
         """Update a product."""
@@ -616,8 +616,8 @@ class TrackedItemRepository:
         if row["last_checked_at"]:
             try:
                 last_checked = datetime.fromisoformat(row["last_checked_at"])
-            except Exception as e:
-                logger.debug("Failed to parse last_checked_at: %s", e)
+            except Exception:
+                logger.debug("Failed to parse last_checked_at")
                 pass
 
         return TrackedItem(
