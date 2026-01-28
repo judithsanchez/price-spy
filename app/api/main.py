@@ -21,6 +21,7 @@ from app.api.routers import (
     ui,
     units,
 )
+from app.core.error_logger import log_error_to_db
 from app.core.scheduler import lifespan_scheduler
 
 app = FastAPI(
@@ -55,7 +56,6 @@ if screenshots_dir.exists():
 @app.exception_handler(ValidationError)
 async def pydantic_validation_exception_handler(request: Request, exc: ValidationError):
     """Handle Pydantic validation errors by returning a 422 JSON response."""
-    from app.core.error_logger import log_error_to_db
 
     log_error_to_db(
         error_type="validation_error",
@@ -70,7 +70,6 @@ async def pydantic_validation_exception_handler(request: Request, exc: Validatio
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
     """Global catch-all for unhandled exceptions."""
-    from app.core.error_logger import log_error_to_db
 
     log_error_to_db(
         error_type="unhandled_exception", message=str(exc), url=str(request.url)
