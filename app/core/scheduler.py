@@ -76,21 +76,11 @@ async def run_scheduled_extraction() -> dict[str, Any]:
         )
 
         # Send daily email report
-        email_sent = False
         try:
-            email_sent = send_daily_report(summary["results"], db)
+            send_daily_report(summary["results"], db)
         except Exception as e:
             print(f"Failed to send email report: {e}")
 
-        _state["last_run_result"] = {
-            "started_at": datetime.now(UTC).isoformat(),
-            "completed_at": datetime.now(UTC).isoformat(),
-            "status": "completed",
-            "items_total": summary["total"],
-            "items_success": summary["success_count"],
-            "items_failed": summary["error_count"],
-            "email_sent": email_sent,
-        }
         return _state["last_run_result"]
 
     except Exception as e:

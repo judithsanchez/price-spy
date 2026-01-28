@@ -1,5 +1,6 @@
 import os
 import sqlite3
+from pathlib import Path
 
 from app.core.config import settings
 
@@ -187,17 +188,19 @@ class Database:
             os.environ.get("PYTEST_CURRENT_TEST")
             or os.environ.get("PRICESPY_ENV") == "test"
         )
-        is_prod_path = self.db_path == "data/pricespy.db" or os.path.abspath(
-            self.db_path
-        ) == os.path.abspath("data/pricespy.db")
+        is_prod_path = (
+            self.db_path == "data/pricespy.db"
+            or Path(self.db_path).resolve() == Path("data/pricespy.db").resolve()
+        )
 
         if is_test and is_prod_path:
-            raise RuntimeError(
+            msg = (
                 f"SAFETY BLOCK: Attempted to connect to production database "
                 f"'{self.db_path}' while running tests. "
                 "Please ensure DATABASE_PATH is correctly overridden "
                 "in your test environment."
             )
+            raise RuntimeError(msg)
 
         if self._conn is None:
             self._conn = sqlite3.connect(self.db_path, check_same_thread=False)
