@@ -1,4 +1,5 @@
 from typing import Optional
+
 from app.storage.database import Database
 
 # Test database path override (used in tests)

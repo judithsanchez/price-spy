@@ -1,6 +1,6 @@
-import sqlite3
-import shutil
 import os
+import shutil
+import sqlite3
 from datetime import datetime
 
 DB_PATH = "data/pricespy.db"

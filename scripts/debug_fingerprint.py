@@ -1,8 +1,9 @@
 import asyncio
 import logging
+import sys
+
 from playwright.async_api import async_playwright
 from playwright_stealth import Stealth
-import sys
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)

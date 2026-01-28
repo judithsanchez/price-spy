@@ -1,7 +1,8 @@
+import io
 import json
 import logging
-import io
-from app.utils.logging import get_logger, JSONFormatter
+
+from app.utils.logging import JSONFormatter, get_logger
 
 
 def test_json_formatter_basic():

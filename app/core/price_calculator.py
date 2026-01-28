@@ -4,7 +4,6 @@ from typing import Optional, Tuple
 
 from app.models.schemas import PriceComparison
 
-
 # Unit conversion constants
 UNIT_CONVERSIONS = {
     "ml": ("L", 1000),  # 1000ml = 1L

@@ -1,5 +1,5 @@
+from app.core.gemini import GeminiModel, GeminiModels
 from app.core.rate_limiter import RateLimitTracker
-from app.core.gemini import GeminiModels, GeminiModel
 
 
 def test_rate_limiter_available_logic(test_db):

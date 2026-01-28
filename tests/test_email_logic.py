@@ -1,8 +1,10 @@
-import pytest
+from datetime import datetime, timezone
 from unittest.mock import MagicMock, patch
+
+import pytest
+
 from app.core.email_report import generate_report_data, render_html_email
 from app.models.schemas import PriceHistoryRecord
-from datetime import datetime, timezone
 
 
 @pytest.fixture

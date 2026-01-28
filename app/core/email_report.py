@@ -2,22 +2,21 @@
 
 import os
 import smtplib
+from datetime import datetime, timedelta
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
-from typing import List, Dict, Any, Optional
-from datetime import datetime, timedelta
+from typing import Any, Dict, List, Optional
+
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
+from app.core.config import settings
 from app.storage.database import Database
 from app.storage.repositories import (
-    TrackedItemRepository,
+    PriceHistoryRepository,
     ProductRepository,
     StoreRepository,
-    PriceHistoryRepository,
+    TrackedItemRepository,
 )
-
-
-from app.core.config import settings
 
 
 def get_email_config() -> Dict[str, Any]:
@@ -143,177 +142,6 @@ def generate_report_data(results: List[Dict[str, Any]], db: Database) -> Dict[st
         "errors": errors,
         "next_run": "Tomorrow 23:00",
     }
-        item_id = result.get("item_id")
-        status = result.get("status")
-        price = result.get("price")
-        currency = result.get("currency", "EUR")
-        error_msg = result.get("error")
-
-        # Get item details from database
-        details = get_item_details(item_id, db) if item_id else None
-
-        if details:
-            product_name = details["product_name"]
-            store_name = details["store_name"]
-            target_price = details["target_price"]
-            url = details["url"]
-        else:
-            product_name = f"Item #{item_id}"
-            store_name = "Unknown"
-            target_price = None
-            url = None
-
-        # Calculate price change
-        price_change: float = 0.0
-        price_change_pct: float = 0.0
-        prev_price = None
-
-        if status == "success" and url:
-            # Get previous price
-            history = price_repo.get_by_url(url)
-            if len(history) > 1:
-                # history[0] is the current one just saved
-                prev_record = history[1]
-                prev_price = prev_record.price
-                if price is not None and prev_price is not None:
-                    price_change = float(price) - float(prev_price)
-                    if prev_price > 0:
-                        price_change_pct = (price_change / float(prev_price)) * 100
-
-        # Check if it's a target hit vs a promo deal
-        original_price = result.get("original_price")
-        deal_type = result.get("deal_type")
-        deal_description = result.get("deal_description")
-
-        # Calculate if it's a target hit (unit-price aware)
-        from app.core.price_calculator import calculate_volume_price, normalize_unit
-
-        is_target_hit = False
-        unit_price = None
-        current_unit = None
-
-        if status == "success" and price is not None:
-            unit_price, current_unit = calculate_volume_price(
-                price,
-                details["items_per_lot"] if details else 1,
-                details["quantity_size"] if details else 1.0,
-                str(details["quantity_unit"])
-                if details and details["quantity_unit"]
-                else "",
-            )
-
-            t_price = details["target_price"] if details else None
-            t_unit = details["target_unit"] if details else None
-
-            if t_price is not None:
-                if t_unit:
-                    norm_target_unit = normalize_unit(t_unit)
-                    norm_curr_unit = (
-                        normalize_unit(current_unit) if current_unit else None
-                    )
-                    if norm_target_unit == norm_curr_unit:
-                        is_target_hit = unit_price <= t_price
-                else:
-                    is_target_hit = price <= t_price
-
-        is_promo_deal = False
-        if status == "success" and price is not None:
-            has_original_higher = original_price is not None and original_price > price
-            has_deal_type = deal_type is not None and deal_type.lower() != "none"
-            is_promo_deal = has_original_higher or has_deal_type
-
-        is_price_drop = status == "success" and price_change < -0.01
-
-        item_data = {
-            "item_id": item_id,
-            "product_name": product_name,
-            "store_name": store_name,
-            "price": price,
-            "prev_price": prev_price,
-            "price_change": price_change,
-            "price_change_pct": price_change_pct,
-            "currency": currency,
-            "target_price": target_price,
-            "url": url,
-            "status": status,
-            "is_deal": is_promo_deal,
-            "is_target_hit": is_target_hit,
-            "is_price_drop": is_price_drop,
-            "deal_type": deal_type,
-            "deal_description": deal_description,
-            "original_price": original_price,
-            "error": error_msg,
-        }
-
-        if status == "success":
-            items.append(item_data)
-            if is_target_hit or is_promo_deal:
-                deals.append(item_data)
-
-            # Categorize changes
-            if is_price_drop:
-                price_drops.append(item_data)
-            elif price_change > 0.01:
-                price_increases.append(item_data)
-        else:
-            errors.append(item_data)
-
-    # Sort price drops by most significant drop
-    price_drops.sort(key=lambda x: x["price_change_pct"])
-
-    success_count = len([r for r in results if r.get("status") == "success"])
-    error_count = len([r for r in results if r.get("status") == "error"])
-
-    # Identify planned but untracked products within 4 weeks (Spying Required)
-
-    now_dt = datetime.now()
-    four_weeks_later = now_dt + timedelta(days=28)
-
-    product_repo = ProductRepository(db)
-    tracked_repo = TrackedItemRepository(db)
-    all_products = product_repo.get_all()
-    untracked_planned = []
-    for product in all_products:
-        if product.planned_date:
-            try:
-                planned_dt = datetime.strptime(product.planned_date + "-1", "%G-W%V-%u")
-                if planned_dt > four_weeks_later:
-                    continue
-            except (ValueError, TypeError):
-                continue
-
-            active_items = [
-                ti
-                for ti in tracked_repo.get_by_product(int(product.id or 0))
-                if ti.is_active
-            ]
-            if not active_items:
-                untracked_planned.append(
-                    {
-                        "id": product.id,
-                        "name": product.name,
-                        "planned_date": product.planned_date,
-                    }
-                )
-
-    untracked_planned.sort(key=lambda p: str(p["planned_date"] or ""))
-
-    return {
-        "date": datetime.now().strftime("%B %d, %Y"),
-        "total": len(results),
-        "success_count": success_count,
-        "error_count": error_count,
-        "deals_count": len(deals),
-        "deals": deals,
-        "price_drops": price_drops,
-        "price_increases": price_increases,
-        "untracked_planned": untracked_planned,
-        "all_items": items,
-        "errors": errors,
-        "next_run": "Tomorrow 23:00",
-    }
-
-
 def build_subject(report_data: Dict[str, Any]) -> str:
     """Build email subject line."""
     total = report_data["total"]

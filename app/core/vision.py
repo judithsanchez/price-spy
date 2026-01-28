@@ -2,13 +2,14 @@
 
 import base64
 import json
-import aiohttp
-from typing import Union, Optional, Tuple
-
-from app.models.schemas import ProductInfo, ExtractionResult, ExtractionContext
-from app.utils.logging import get_logger
-from app.core.gemini import GeminiModels, ModelConfig, is_rate_limit_error
 import re
+from typing import Optional, Tuple, Union
+
+import aiohttp
+
+from app.core.gemini import GeminiModels, ModelConfig, is_rate_limit_error
+from app.models.schemas import ExtractionContext, ExtractionResult, ProductInfo
+from app.utils.logging import get_logger
 
 logger = get_logger(__name__)
 

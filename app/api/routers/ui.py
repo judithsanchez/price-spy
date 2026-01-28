@@ -1,15 +1,16 @@
 from pathlib import Path
-from typing import Optional, Any, cast
+from typing import Any, Optional, cast
+
 from fastapi import APIRouter, Depends, Request
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
 
 from app.api.deps import get_db
 from app.storage.repositories import (
+    PriceHistoryRepository,
     ProductRepository,
     StoreRepository,
     TrackedItemRepository,
-    PriceHistoryRepository,
 )
 
 router = APIRouter(tags=["UI"])
@@ -65,8 +66,9 @@ def _get_chart_color(index: int) -> str:
 @router.get("/")
 async def dashboard(request: Request, db=Depends(get_db)):
     """Render dashboard page."""
-    from app.core.price_calculator import calculate_volume_price
     from datetime import datetime, timedelta
+
+    from app.core.price_calculator import calculate_volume_price
 
     cutoff = datetime.now() - timedelta(days=7)
 

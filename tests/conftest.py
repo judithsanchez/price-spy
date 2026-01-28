@@ -1,9 +1,11 @@
 import os
+import tempfile
+
 import pytest
 from fastapi.testclient import TestClient
-from app.api.main import app
+
 from app.api import deps
-import tempfile
+from app.api.main import app
 
 
 @pytest.fixture(scope="function", autouse=True)

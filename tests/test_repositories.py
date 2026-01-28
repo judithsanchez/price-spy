@@ -1,11 +1,11 @@
+from app.models.schemas import Category, Label
 from app.storage.database import Database
 from app.storage.repositories import (
-    UnitRepository,
-    PurchaseTypeRepository,
     CategoryRepository,
     LabelRepository,
+    PurchaseTypeRepository,
+    UnitRepository,
 )
-from app.models.schemas import Category, Label
 
 
 def test_metadata_repositories(test_db):

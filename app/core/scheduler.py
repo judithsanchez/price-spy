@@ -1,18 +1,18 @@
 """Scheduler for automated price extraction."""
 
 import os
-from datetime import datetime, timezone
-from typing import Dict, Any, Optional
 from contextlib import asynccontextmanager
+from datetime import datetime, timezone
+from typing import Any, Dict, Optional
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 
 from app.core.config import settings
 
-
 # Global scheduler instance
 _scheduler: Optional[AsyncIOScheduler] = None
+_last_run_result: Dict[str, Any] = {}
 
 
 def get_scheduler_config() -> Dict[str, Any]:
@@ -27,9 +27,10 @@ def get_scheduler_config() -> Dict[str, Any]:
 
 async def run_scheduled_extraction() -> Dict[str, Any]:
     """Run the scheduled extraction job."""
+    global _last_run_result
+    from app.core.extraction_queue import get_queue_summary, process_extraction_queue
     from app.storage.database import Database
-    from app.storage.repositories import TrackedItemRepository, SchedulerRunRepository
-    from app.core.extraction_queue import process_extraction_queue, get_queue_summary
+    from app.storage.repositories import SchedulerRunRepository, TrackedItemRepository
 
     db = Database(settings.DATABASE_PATH)
     db.initialize()
@@ -42,7 +43,7 @@ async def run_scheduled_extraction() -> Dict[str, Any]:
         items = tracked_repo.get_due_for_check()
 
         if not items:
-            last_run_result = {
+            _last_run_result = {
                 "started_at": datetime.now(timezone.utc).isoformat(),
                 "completed_at": datetime.now(timezone.utc).isoformat(),
                 "status": "completed",
@@ -51,24 +52,6 @@ async def run_scheduled_extraction() -> Dict[str, Any]:
                 "items_failed": 0,
                 "message": "No items due for check (all already checked today)",
             }
-            return last_run_result
-
-        # Continue processing when items are due for check
-        extraction_summary = get_queue_summary(items)
-        process_extraction_queue(items)
-
-        last_run_result = {
-            "started_at": extraction_summary["started_at"],
-            "completed_at": extraction_summary["completed_at"],
-            "status": extraction_summary["status"],
-            "items_total": extraction_summary["items_total"],
-            "items_success": extraction_summary["items_success"],
-            "items_failed": extraction_summary["items_failed"],
-            "message": extraction_summary.get("message", "Extraction completed"),
-        }
-        return last_run_result
-    finally:
-        db.close()
             return _last_run_result
 
         # Start run log
@@ -103,7 +86,6 @@ async def run_scheduled_extraction() -> Dict[str, Any]:
             "items_failed": summary["error_count"],
             "email_sent": email_sent,
         }
-
         return _last_run_result
 
     except Exception as e:
@@ -114,7 +96,6 @@ async def run_scheduled_extraction() -> Dict[str, Any]:
             "error": str(e),
         }
         return _last_run_result
-
     finally:
         db.close()
 
@@ -201,12 +182,11 @@ def start_scheduler():
     return scheduler
 
 
-def stop_scheduler(scheduler):
+def stop_scheduler():
     """Stop the scheduler."""
-
-    if scheduler and scheduler.running:
-        scheduler.shutdown()
-    return None
+    global _scheduler
+    if _scheduler and _scheduler.running:
+        _scheduler.shutdown()
 
 
 def pause_scheduler():

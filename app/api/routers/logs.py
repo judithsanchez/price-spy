@@ -1,11 +1,12 @@
 from typing import List, Optional
+
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 
 from app.api.deps import get_db
-from app.core.rate_limiter import RateLimitTracker
 from app.core.gemini import GeminiModels
-from app.storage.repositories import ExtractionLogRepository, ErrorLogRepository
+from app.core.rate_limiter import RateLimitTracker
+from app.storage.repositories import ErrorLogRepository, ExtractionLogRepository
 
 router = APIRouter(prefix="/api", tags=["Logs"])
 

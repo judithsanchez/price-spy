@@ -2,25 +2,25 @@
 
 import asyncio
 import time
-from typing import Optional, List, Dict, Any, cast
-from app.core.config import settings
 from pathlib import Path
+from typing import Any, Dict, List, Optional, cast
 
+from app.core.config import settings
+from app.core.rate_limiter import RateLimitTracker
+from app.models.schemas import (
+    ExtractionContext,
+    ExtractionLog,
+    PriceHistoryRecord,
+    TrackedItem,
+)
 from app.storage.database import Database
 from app.storage.repositories import (
-    TrackedItemRepository,
-    PriceHistoryRepository,
-    ExtractionLogRepository,
-    ProductRepository,
     CategoryRepository,
+    ExtractionLogRepository,
+    PriceHistoryRepository,
+    ProductRepository,
+    TrackedItemRepository,
 )
-from app.models.schemas import (
-    PriceHistoryRecord,
-    ExtractionLog,
-    TrackedItem,
-    ExtractionContext,
-)
-from app.core.rate_limiter import RateLimitTracker
 
 # Maximum concurrent extractions (respects Gemini's 15 RPM limit)
 MAX_CONCURRENT = 10

@@ -1,13 +1,15 @@
 from typing import List
+
 from fastapi import APIRouter, Depends, HTTPException
+
 from app.api.deps import get_db
-from app.storage.repositories import PurchaseTypeRepository
 from app.models.schemas import (
     PurchaseType,
     PurchaseTypeCreate,
-    PurchaseTypeUpdate,
     PurchaseTypeResponse,
+    PurchaseTypeUpdate,
 )
+from app.storage.repositories import PurchaseTypeRepository
 
 router = APIRouter(prefix="/api/purchase-types", tags=["Purchase Types"])
 

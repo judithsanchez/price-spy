@@ -1,8 +1,10 @@
-import pytest
 from unittest.mock import MagicMock, patch
+
+import pytest
 from fastapi.testclient import TestClient
-from app.api.main import app
+
 from app.api.deps import get_db
+from app.api.main import app
 from app.models.schemas import UnitResponse
 
 client = TestClient(app)

@@ -1,21 +1,21 @@
 """Repository classes for database operations."""
 
 from datetime import datetime
-from typing import List, Optional, Any
+from typing import Any, List, Optional
 
-from app.storage.database import Database
 from app.models.schemas import (
-    PriceHistoryRecord,
+    Category,
     ErrorRecord,
+    ExtractionLog,
+    Label,
+    PriceHistoryRecord,
     Product,
+    PurchaseType,
     Store,
     TrackedItem,
-    ExtractionLog,
-    Category,
-    Label,
     Unit,
-    PurchaseType,
 )
+from app.storage.database import Database
 
 
 class PriceHistoryRepository:
@@ -378,8 +378,7 @@ class StoreRepository:
     def __init__(self, db: Database):
         self.db = db
 
-    @staticmethod
-    def normalize_name(name: str) -> str:
+    def normalize_name(self, name: str) -> str:
         """Normalize store name: case-insensitive check against DB, else capitalize."""
         clean_name = name.strip()
         if not clean_name:
@@ -596,7 +595,7 @@ class TrackedItemRepository:
         for label_id in label_ids:
             self.add_label(tracked_item_id, label_id)
 
-    def get_labels(self, tracked_item_id: int) -> List[LABEL]:
+    def get_labels(self, tracked_item_id: int) -> List[Label]:
         """Get all labels associated with a tracked item."""
         cursor = self.db.execute(
             """
@@ -607,7 +606,7 @@ class TrackedItemRepository:
             (tracked_item_id,),
         )
 
-        return [LABEL(id=row["id"], name=row["name"]) for row in cursor.fetchall()]
+        return [Label(id=row["id"], name=row["name"]) for row in cursor.fetchall()]
 
     @staticmethod
     def _row_to_record(row) -> TrackedItem:
@@ -786,7 +785,7 @@ class SchedulerRunRepository:
         """Start a new scheduler run and return its ID."""
         cursor = self.db.execute(
             """
-            INSERT INTO scheduler_runs (items_total, status)"""
+            INSERT INTO scheduler_runs (items_total, status)
             VALUES (?, 'running')
             """,
             (items_total,),
