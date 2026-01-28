@@ -150,20 +150,19 @@ async def extract_single_item(
             "duration_ms": duration_ms,
         }
 
-    else:
-        return {
-            "item_id": item_id,
-            "status": "success",
-            "price": result.price,
-            "currency": result.currency,
-            "original_price": result.original_price,
-            "deal_type": result.deal_type,
-            "discount_percentage": result.discount_percentage,
-            "discount_fixed_amount": result.discount_fixed_amount,
-            "deal_description": result.deal_description,
-            "model_used": model_used,
-            "duration_ms": duration_ms,
-        }
+    return {
+        "item_id": item_id,
+        "status": "success",
+        "price": result.price,
+        "currency": result.currency,
+        "original_price": result.original_price,
+        "deal_type": result.deal_type,
+        "discount_percentage": result.discount_percentage,
+        "discount_fixed_amount": result.discount_fixed_amount,
+        "deal_description": result.deal_description,
+        "model_used": model_used,
+        "duration_ms": duration_ms,
+    }
 
 
 # ...
