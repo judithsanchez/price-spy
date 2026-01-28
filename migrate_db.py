@@ -1,10 +1,12 @@
-import os
 import sqlite3
+import sys
+from contextlib import suppress
+from pathlib import Path
 
-db_path = "data/pricespy.db"
-if not os.path.exists(db_path):
+db_path = Path("data/pricespy.db")
+if not db_path.exists():
     print(f"Database not found at {db_path}")
-    exit(1)
+    sys.exit(1)
 
 conn = sqlite3.connect(db_path)
 cursor = conn.cursor()
@@ -36,10 +38,8 @@ try:
         );
     """)
     # Ensure label column exists if table already existed without it
-    try:
+    with suppress(sqlite3.OperationalError):
         cursor.execute("ALTER TABLE brand_sizes ADD COLUMN label TEXT;")
-    except sqlite3.OperationalError:
-        pass  # Already exists
 except sqlite3.OperationalError as e:
     print(f"Error creating table: {e}")
 

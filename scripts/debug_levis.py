@@ -1,10 +1,10 @@
 import asyncio
 import logging
-import os
 import sys
+from pathlib import Path
 
 # Add app to path
-sys.path.append(os.getcwd())
+sys.path.append(str(Path.cwd()))
 
 from app.core.browser import capture_screenshot
 
@@ -21,14 +21,14 @@ async def main():
     try:
         screenshot_data = await capture_screenshot(URL)
 
-        with open(OUTPUT_FILE, "wb") as f:
-            f.write(screenshot_data)
+        # Use async file writing
+        await asyncio.to_thread(Path(OUTPUT_FILE).write_bytes, screenshot_data)
 
         logger.info(f"Screenshot saved to {OUTPUT_FILE}")
         logger.info(f"Size: {len(screenshot_data)} bytes")
 
-    except Exception as e:
-        logger.error(f"Failed to capture screenshot: {e}")
+    except Exception:
+        logger.exception("Failed to capture screenshot")
 
 
 if __name__ == "__main__":
