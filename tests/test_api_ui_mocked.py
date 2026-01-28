@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -41,7 +41,7 @@ def test_dashboard_full_rendering(mock_db):
             quantity_unit="ml",
             is_active=True,
             alerts_enabled=True,
-            created_at=datetime.now(timezone.utc),
+            created_at=datetime.now(UTC),
             labels=[],
         )
         mock_tracked_repo.return_value.get_all.return_value = [item]
@@ -54,19 +54,17 @@ def test_dashboard_full_rendering(mock_db):
             target_price=2.0,
             target_unit="ml",
             planned_date="2026-W05",
-            created_at=datetime.now(timezone.utc),
+            created_at=datetime.now(UTC),
         )
         mock_prod_repo.return_value.get_by_id.return_value = product
         mock_prod_repo.return_value.get_all.return_value = [product]
 
         # Mock store
-        store = StoreResponse(
-            id=1, name="Test Store", created_at=datetime.now(timezone.utc)
-        )
+        store = StoreResponse(id=1, name="Test Store", created_at=datetime.now(UTC))
         mock_store_repo.return_value.get_by_id.return_value = store
 
         # Mock price history (a drop)
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         history = [
             PriceHistoryRecord(
                 id=1,
@@ -102,13 +100,13 @@ def test_dashboard_full_rendering(mock_db):
         app.dependency_overrides.clear()
 
 
-def test_admin_page(mock_db):
+def test_admin_page():
     response = client.get("/admin")
     assert response.status_code == HTTP_OK
     assert "Admin" in response.text
 
 
-def test_products_page(mock_db):
+def test_products_page():
     response = client.get("/products")
     assert response.status_code == HTTP_OK
     assert "Products" in response.text
@@ -126,7 +124,7 @@ def test_timeline_page_full(mock_db):
             category="Dairy",
             target_price=2.0,
             planned_date="2026-W05",
-            created_at=datetime.now(timezone.utc),
+            created_at=datetime.now(UTC),
         )
         mock_prod_repo.return_value.get_all.return_value = [product]
         mock_tracked_repo.return_value.get_by_product.return_value = []
@@ -140,7 +138,7 @@ def test_timeline_page_full(mock_db):
         app.dependency_overrides.clear()
 
 
-def test_tracked_items_page(mock_db):
+def test_tracked_items_page():
     response = client.get("/tracked-items")
     assert response.status_code == HTTP_OK
     assert "Tracked Items" in response.text
