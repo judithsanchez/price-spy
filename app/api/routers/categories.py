@@ -1,4 +1,4 @@
-from typing import List
+from typing import Annotated, List
 
 from fastapi import APIRouter, Depends, HTTPException
 
@@ -9,13 +9,14 @@ from app.models.schemas import (
     CategoryResponse,
     CategoryUpdate,
 )
+from app.storage.database import Database
 from app.storage.repositories import CategoryRepository, ProductRepository
 
 router = APIRouter(prefix="/api/categories", tags=["Categories"])
 
 
 @router.get("", response_model=List[CategoryResponse])
-async def get_categories(db=Depends(get_db)):
+async def get_categories(db: Annotated[Database, Depends(get_db)]):
     """Get all categories."""
     try:
         repo = CategoryRepository(db)
@@ -26,7 +27,7 @@ async def get_categories(db=Depends(get_db)):
 
 
 @router.get("/search", response_model=List[CategoryResponse])
-async def search_categories(q: str, db=Depends(get_db)):
+async def search_categories(q: str, db: Annotated[Database, Depends(get_db)]):
     """Search categories by name."""
     try:
         repo = CategoryRepository(db)
@@ -37,7 +38,9 @@ async def search_categories(q: str, db=Depends(get_db)):
 
 
 @router.post("", response_model=CategoryResponse, status_code=201)
-async def create_category(category: CategoryCreate, db=Depends(get_db)):
+async def create_category(
+    category: CategoryCreate, db: Annotated[Database, Depends(get_db)]
+):
     """Create a new category with mandatory initial capitalization."""
     try:
         repo = CategoryRepository(db)
@@ -60,7 +63,7 @@ async def create_category(category: CategoryCreate, db=Depends(get_db)):
 
 @router.put("/{category_id}", response_model=CategoryResponse)
 async def update_category(
-    category_id: int, category: CategoryCreate, db=Depends(get_db)
+    category_id: int, category: CategoryCreate, db: Annotated[Database, Depends(get_db)]
 ):
     """Update a category with mandatory initial capitalization."""
     try:
@@ -92,7 +95,9 @@ async def update_category(
 
 @router.patch("/{category_id}", response_model=CategoryResponse)
 async def patch_category(
-    category_id: int, category_update: CategoryUpdate, db=Depends(get_db)
+    category_id: int,
+    category_update: CategoryUpdate,
+    db: Annotated[Database, Depends(get_db)],
 ):
     """Partially update a category with super granular control."""
     try:
@@ -129,7 +134,7 @@ async def patch_category(
 
 
 @router.delete("/{category_id}")
-async def delete_category(category_id: int, db=Depends(get_db)):
+async def delete_category(category_id: int, db: Annotated[Database, Depends(get_db)]):
     """Delete a category. Blocked if assigned to any products."""
     try:
         repo = CategoryRepository(db)
@@ -143,7 +148,11 @@ async def delete_category(category_id: int, db=Depends(get_db)):
         if products:
             raise HTTPException(
                 status_code=400,
-                detail=f"Cannot delete category '{category.name}'. It is assigned to {len(products)} products. Please update those products first.",
+                detail=(
+                    f"Cannot delete category '{category.name}'. "
+                    f"It is assigned to {len(products)} products. "
+                    "Please update those products first."
+                ),
             )
 
         repo.delete(category_id)

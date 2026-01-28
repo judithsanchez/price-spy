@@ -1,7 +1,7 @@
 import os
 import time
 from pathlib import Path
-from typing import Optional
+from typing import Annotated, Optional
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
@@ -10,6 +10,7 @@ from app.api.deps import get_db
 from app.core.batch_extraction import extract_all_items, get_batch_summary
 from app.core.browser import capture_screenshot
 from app.core.config import settings
+from app.core.error_logger import log_error_to_db
 from app.core.rate_limiter import RateLimitTracker
 from app.core.vision import extract_with_structured_output
 from app.models.schemas import ExtractionContext, ExtractionLog, PriceHistoryRecord
@@ -121,7 +122,7 @@ async def run_extraction(item_id: int, db_path: str):
 
 
 @router.post("/all", response_model=BatchExtractResponse)
-async def trigger_batch_extraction(db=Depends(get_db)):
+async def trigger_batch_extraction(db: Annotated[Database, Depends(get_db)]):
     """Run price extraction for all active tracked items."""
     try:
         # Use shorter delay in API context (configurable)
@@ -134,7 +135,7 @@ async def trigger_batch_extraction(db=Depends(get_db)):
 
 
 @router.post("/{item_id}", response_model=ExtractResponse)
-async def trigger_extraction(item_id: int, db=Depends(get_db)):
+async def trigger_extraction(item_id: int, db: Annotated[Database, Depends(get_db)]):
     """Run price extraction for a tracked item with rate limiting and logging."""
     start_time = time.time()
     model_used = None
@@ -171,8 +172,6 @@ async def trigger_extraction(item_id: int, db=Depends(get_db)):
 
         api_key = settings.GEMINI_API_KEY
         if not api_key:
-            from app.core.error_logger import log_error_to_db
-
             log_error_to_db(
                 error_type="config_error",
                 message="GEMINI_API_KEY not configured",
