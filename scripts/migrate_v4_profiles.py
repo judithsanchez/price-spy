@@ -1,19 +1,23 @@
-import os
+import logging
 import shutil
 import sqlite3
 from datetime import datetime
+from pathlib import Path
 
 DB_PATH = "data/pricespy.db"
 BACKUP_PATH = f"data/pricespy.db.backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
 
 
 def migrate():
-    if not os.path.exists(DB_PATH):
+    db_path = Path(DB_PATH)
+    backup_path = Path(BACKUP_PATH)
+
+    if not db_path.exists():
         print(f"Database not found at {DB_PATH}")
         return
 
     print(f"Backing up database to {BACKUP_PATH}...")
-    shutil.copy2(DB_PATH, BACKUP_PATH)
+    shutil.copy2(db_path, backup_path)
 
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
@@ -31,7 +35,8 @@ def migrate():
         print("Migrating unique labels to profiles...")
         # Get all distinct labels from brand_sizes where label is not null/empty
         cursor.execute(
-            "SELECT DISTINCT label FROM brand_sizes WHERE label IS NOT NULL AND label != ''"
+            "SELECT DISTINCT label FROM brand_sizes "
+            "WHERE label IS NOT NULL AND label != ''"
         )
         labels = cursor.fetchall()
 
@@ -50,7 +55,8 @@ def migrate():
         if "profile_id" not in columns:
             print("  - Adding profile_id column")
             cursor.execute(
-                "ALTER TABLE brand_sizes ADD COLUMN profile_id INTEGER REFERENCES profiles(id)"
+                "ALTER TABLE brand_sizes ADD COLUMN profile_id INTEGER "
+                "REFERENCES profiles(id)"
             )
 
         if "item_type" not in columns:
@@ -60,14 +66,21 @@ def migrate():
         print("Linking existing preferences to profiles...")
         # Update profile_id based on label
         cursor.execute("""
-            UPDATE brand_sizes 
-            SET profile_id = (SELECT id FROM profiles WHERE profiles.name = brand_sizes.label)
-            WHERE label IS NOT NULL AND label != '' AND profile_id IS NULL
+            UPDATE brand_sizes
+            SET profile_id = (
+                SELECT id FROM profiles
+                WHERE profiles.name = brand_sizes.label
+            )
+            WHERE label IS NOT NULL
+            AND label != ''
+            AND profile_id IS NULL
         """)
 
         # Verify migration
+        # Verify migration
         cursor.execute(
-            "SELECT COUNT(*) FROM brand_sizes WHERE label IS NOT NULL AND label != '' AND profile_id IS NULL"
+            "SELECT COUNT(*) FROM brand_sizes "
+            "WHERE label IS NOT NULL AND label != '' AND profile_id IS NULL"
         )
         orphans = cursor.fetchone()[0]
         if orphans > 0:
@@ -76,8 +89,8 @@ def migrate():
         conn.commit()
         print("Migration completed successfully!")
 
-    except Exception as e:
-        print(f"Migration failed: {e}")
+    except Exception:
+        logging.exception("Migration failed")
         conn.rollback()
         print("Rolled back changes. Restoring backup is manual if needed.")
     finally:
