@@ -12,6 +12,11 @@ logger = logging.getLogger(__name__)
 # Check input args to decide mode
 HEADFUL = True
 
+try:
+    from pyvirtualdisplay import Display
+except ImportError:
+    Display = None
+
 
 async def main():
     logger.info(f"Starting Fingerprint Diagnostic (Headful={HEADFUL})...")
@@ -22,7 +27,10 @@ async def main():
     async with async_playwright() as p:
         # Replicate the Exact startup logic from browser.py (Headful mode)
         profile = {
-            "ua": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            "ua": (
+                "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
+                "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+            ),
             "platform": '"Linux"',
         }
 
@@ -34,10 +42,8 @@ async def main():
             f"--user-agent={profile['ua']}",
         ]
 
-        if HEADFUL and sys.platform.startswith("linux"):
+        if HEADFUL and sys.platform.startswith("linux") and Display:
             try:
-                from pyvirtualdisplay import Display
-
                 display = Display(visible=0, size=(1920, 1080))
                 display.start()
                 logger.info("Virtual Display Started")
