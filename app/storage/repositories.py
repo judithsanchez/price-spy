@@ -1,5 +1,6 @@
 """Repository classes for database operations."""
 
+import logging
 from datetime import datetime
 from typing import Any, List, Optional
 
@@ -16,6 +17,8 @@ from app.models.schemas import (
     Unit,
 )
 from app.storage.database import Database
+
+logger = logging.getLogger(__name__)
 
 
 class PriceHistoryRepository:
@@ -182,9 +185,7 @@ class ErrorLogRepository:
 
     def get_all_filtered(
         self,
-        error_type: Optional[str] = None,
-        start_date: Optional[str] = None,
-        end_date: Optional[str] = None,
+        filters: Optional[dict] = None,
         limit: int = 100,
         offset: int = 0,
     ) -> List[ErrorRecord]:
@@ -193,15 +194,16 @@ class ErrorLogRepository:
         conditions = []
         params: List[Any] = []
 
-        if error_type:
-            conditions.append("error_type = ?")
-            params.append(error_type)
-        if start_date:
-            conditions.append("date(created_at) >= ?")
-            params.append(start_date)
-        if end_date:
-            conditions.append("date(created_at) <= ?")
-            params.append(end_date)
+        if filters:
+            if filters.get("error_type"):
+                conditions.append("error_type = ?")
+                params.append(filters["error_type"])
+            if filters.get("start_date"):
+                conditions.append("date(created_at) >= ?")
+                params.append(filters["start_date"])
+            if filters.get("end_date"):
+                conditions.append("date(created_at) <= ?")
+                params.append(filters["end_date"])
 
         if conditions:
             query += " WHERE " + " AND ".join(conditions)
@@ -299,14 +301,13 @@ class ProductRepository:
         placeholders = ",".join("?" for _ in product_ids)
         # 1. Delete tracked items first (cascade)
         self.db.execute(
-            # nosec B608
-            f"DELETE FROM tracked_items WHERE product_id IN ({placeholders})",
+            f"DELETE FROM tracked_items WHERE product_id IN ({placeholders})",  # noqa: S608
             tuple(product_ids),
         )
         # 2. Delete products
         self.db.execute(
-            # nosec B608 tuple(product_ids)
-            f"DELETE FROM products WHERE id IN ({placeholders})",
+            f"DELETE FROM products WHERE id IN ({placeholders})",  # noqa: S608
+            tuple(product_ids),
         )
         self.db.commit()
 
@@ -615,7 +616,8 @@ class TrackedItemRepository:
         if row["last_checked_at"]:
             try:
                 last_checked = datetime.fromisoformat(row["last_checked_at"])
-            except Exception:  # nosec B110
+            except Exception as e:
+                logger.debug("Failed to parse last_checked_at: %s", e)
                 pass
 
         return TrackedItem(
@@ -725,10 +727,7 @@ class ExtractionLogRepository:
 
     def get_all_filtered(
         self,
-        status: Optional[str] = None,
-        item_id: Optional[int] = None,
-        start_date: Optional[str] = None,
-        end_date: Optional[str] = None,
+        filters: Optional[dict] = None,
         limit: int = 100,
         offset: int = 0,
     ) -> List[ExtractionLog]:
@@ -737,18 +736,19 @@ class ExtractionLogRepository:
         conditions = []
         params: List[Any] = []
 
-        if status:
-            conditions.append("status = ?")
-            params.append(status)
-        if item_id:
-            conditions.append("tracked_item_id = ?")
-            params.append(item_id)
-        if start_date:
-            conditions.append("date(created_at) >= ?")
-            params.append(start_date)
-        if end_date:
-            conditions.append("date(created_at) <= ?")
-            params.append(end_date)
+        if filters:
+            if filters.get("status"):
+                conditions.append("status = ?")
+                params.append(filters["status"])
+            if filters.get("item_id"):
+                conditions.append("tracked_item_id = ?")
+                params.append(filters["item_id"])
+            if filters.get("start_date"):
+                conditions.append("date(created_at) >= ?")
+                params.append(filters["start_date"])
+            if filters.get("end_date"):
+                conditions.append("date(created_at) <= ?")
+                params.append(filters["end_date"])
 
         if conditions:
             query += " WHERE " + " AND ".join(conditions)
