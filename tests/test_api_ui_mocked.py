@@ -13,6 +13,8 @@ from app.models.schemas import (
     TrackedItemResponse,
 )
 
+HTTP_OK = 200
+
 client = TestClient(app)
 
 
@@ -93,7 +95,7 @@ def test_dashboard_full_rendering(mock_db):
         app.dependency_overrides[get_db] = lambda: mock_db
 
         response = client.get("/")
-        assert response.status_code == 200
+        assert response.status_code == HTTP_OK
         assert "Test Product" in response.text
         assert "Test Store" in response.text
 
@@ -102,13 +104,13 @@ def test_dashboard_full_rendering(mock_db):
 
 def test_admin_page(mock_db):
     response = client.get("/admin")
-    assert response.status_code == 200
+    assert response.status_code == HTTP_OK
     assert "Admin" in response.text
 
 
 def test_products_page(mock_db):
     response = client.get("/products")
-    assert response.status_code == 200
+    assert response.status_code == HTTP_OK
     assert "Products" in response.text
 
 
@@ -131,7 +133,7 @@ def test_timeline_page_full(mock_db):
 
         app.dependency_overrides[get_db] = lambda: mock_db
         response = client.get("/timeline")
-        assert response.status_code == 200
+        assert response.status_code == HTTP_OK
         assert "Timeline" in response.text
         assert "2026" in response.text
         assert "W5" in response.text or "W05" in response.text
@@ -140,5 +142,5 @@ def test_timeline_page_full(mock_db):
 
 def test_tracked_items_page(mock_db):
     response = client.get("/tracked-items")
-    assert response.status_code == 200
+    assert response.status_code == HTTP_OK
     assert "Tracked Items" in response.text

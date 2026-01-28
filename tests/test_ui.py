@@ -1,36 +1,38 @@
 from fastapi.testclient import TestClient
 
+HTTP_OK = 200
+
 # --- UI Pages (Integration) ---
 
 
 def test_dashboard_loads(client: TestClient):
     response = client.get("/")
-    assert response.status_code == 200
+    assert response.status_code == HTTP_OK
     assert "Dashboard" in response.text or "Price Spy" in response.text
 
 
 def test_admin_page_loads(client: TestClient):
     response = client.get("/admin")
-    assert response.status_code == 200
+    assert response.status_code == HTTP_OK
     assert "Admin Hub" in response.text
 
 
 def test_products_page_loads(client: TestClient):
     response = client.get("/products")
-    assert response.status_code == 200
+    assert response.status_code == HTTP_OK
     assert "Products" in response.text
 
 
 def test_timeline_page_loads(client: TestClient):
     response = client.get("/timeline")
     # Timeline might depend on DB data but should load empty state fine
-    assert response.status_code == 200
+    assert response.status_code == HTTP_OK
     assert "Timeline" in response.text
 
 
 def test_tracked_items_page_loads(client: TestClient):
     response = client.get("/tracked-items")
-    assert response.status_code == 200
+    assert response.status_code == HTTP_OK
     assert "Tracked Items" in response.text
 
 
@@ -39,35 +41,35 @@ def test_tracked_items_page_loads(client: TestClient):
 
 def test_health_api(client: TestClient):
     response = client.get("/api/health")
-    assert response.status_code == 200
+    assert response.status_code == HTTP_OK
     assert response.json()["status"] == "ok"
 
 
 def test_api_products_list(client: TestClient):
     response = client.get("/api/products")
-    assert response.status_code == 200
+    assert response.status_code == HTTP_OK
     assert isinstance(response.json(), list)
 
 
 def test_api_stores_list(client: TestClient):
     response = client.get("/api/stores")
-    assert response.status_code == 200
+    assert response.status_code == HTTP_OK
     assert isinstance(response.json(), list)
 
 
 def test_api_categories_list(client: TestClient):
     response = client.get("/api/categories")
-    assert response.status_code == 200
+    assert response.status_code == HTTP_OK
     assert isinstance(response.json(), list)
 
 
 def test_api_labels_list(client: TestClient):
     response = client.get("/api/labels")
-    assert response.status_code == 200
+    assert response.status_code == HTTP_OK
     assert isinstance(response.json(), list)
 
 
 def test_api_purchase_types_list(client: TestClient):
     response = client.get("/api/purchase-types")
-    assert response.status_code == 200
+    assert response.status_code == HTTP_OK
     assert isinstance(response.json(), list)
