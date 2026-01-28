@@ -1,6 +1,7 @@
 from app.api import deps
 import os
 
+
 def test_get_db_test_path(test_db):
     # This should already be set by conftest
     assert deps._test_db_path == test_db

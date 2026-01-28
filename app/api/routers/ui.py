@@ -435,4 +435,3 @@ async def timeline_page(request: Request, db=Depends(get_db)):
 async def tracked_items_page(request: Request):
     """Render tracked items management page."""
     return templates.TemplateResponse(request, "tracked-items.html", {})
-
