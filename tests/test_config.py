@@ -1,16 +1,17 @@
 from app.core.config import Settings
-import os
+
 
 def test_settings_explicit_values():
     # Pass values directly to bypass .env for this test
     settings = Settings(
         DATABASE_PATH="test_explicit.db",
         MAX_CONCURRENT_EXTRACTIONS=7,
-        GEMINI_API_KEY="test_key"
+        GEMINI_API_KEY="test_key",
     )
     assert settings.DATABASE_PATH == "test_explicit.db"
     assert settings.MAX_CONCURRENT_EXTRACTIONS == 7
     assert settings.GEMINI_API_KEY == "test_key"
+
 
 def test_settings_env_override(monkeypatch):
     monkeypatch.setenv("DATABASE_PATH", "test_env.db")
