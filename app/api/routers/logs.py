@@ -1,7 +1,8 @@
-from typing import List, Optional
+import sqlite3
+from typing import Annotated, List, Optional
 
-from fastapi import APIRouter, Depends
-from pydantic import BaseModel
+from fastapi import APIRouter, Depends, Query
+from pydantic import BaseModel, Field
 
 from app.api.deps import get_db
 from app.core.gemini import GeminiModels
@@ -56,26 +57,29 @@ class ApiUsageResponse(BaseModel):
     exhausted: bool
 
 
+class ExtractionLogFilters(BaseModel):
+    """Filters for extraction logs."""
+
+    status: Optional[str] = None
+    item_id: Optional[int] = None
+    start_date: Optional[str] = Field(None, pattern=r"^\d{4}-\d{2}-\d{2}$")
+    end_date: Optional[str] = Field(None, pattern=r"^\d{4}-\d{2}-\d{2}$")
+    limit: int = Query(100, ge=1, le=1000)
+    offset: int = Query(0, ge=0)
+
+
 @router.get("/logs", response_model=List[ExtractionLogResponse])
 async def get_extraction_logs(
-    status: Optional[str] = None,
-    item_id: Optional[int] = None,
-    start_date: Optional[str] = None,
-    end_date: Optional[str] = None,
-    limit: int = 100,
-    offset: int = 0,
-    db=Depends(get_db),
+    filters: Annotated[ExtractionLogFilters, Query()],
+    db: Annotated[sqlite3.Connection, Depends(get_db)],
 ):
     """Get recent extraction logs with optional filters."""
     try:
         repo = ExtractionLogRepository(db)
         logs = repo.get_all_filtered(
-            status=status,
-            item_id=item_id,
-            start_date=start_date,
-            end_date=end_date,
-            limit=limit,
-            offset=offset,
+            filters=filters.model_dump(),
+            limit=filters.limit,
+            offset=filters.offset,
         )
         return [
             ExtractionLogResponse(
@@ -95,24 +99,28 @@ async def get_extraction_logs(
         db.close()
 
 
+class ErrorLogFilters(BaseModel):
+    """Filters for error logs."""
+
+    error_type: Optional[str] = None
+    start_date: Optional[str] = Field(None, pattern=r"^\d{4}-\d{2}-\d{2}$")
+    end_date: Optional[str] = Field(None, pattern=r"^\d{4}-\d{2}-\d{2}$")
+    limit: int = Query(100, ge=1, le=1000)
+    offset: int = Query(0, ge=0)
+
+
 @router.get("/errors", response_model=List[ErrorLogResponse])
 async def get_error_logs(
-    error_type: Optional[str] = None,
-    start_date: Optional[str] = None,
-    end_date: Optional[str] = None,
-    limit: int = 100,
-    offset: int = 0,
-    db=Depends(get_db),
+    filters: Annotated[ErrorLogFilters, Query()],
+    db: Annotated[sqlite3.Connection, Depends(get_db)],
 ):
     """Get recent error logs with optional filters."""
     try:
         repo = ErrorLogRepository(db)
         logs = repo.get_all_filtered(
-            error_type=error_type,
-            start_date=start_date,
-            end_date=end_date,
-            limit=limit,
-            offset=offset,
+            filters=filters.model_dump(),
+            limit=filters.limit,
+            offset=filters.offset,
         )
         return [
             ErrorLogResponse(
@@ -131,7 +139,9 @@ async def get_error_logs(
 
 
 @router.get("/logs/stats", response_model=ExtractionStatsResponse)
-async def get_extraction_stats(db=Depends(get_db)):
+async def get_extraction_stats(
+    db: Annotated[sqlite3.Connection, Depends(get_db)],
+):
     """Get extraction statistics for today."""
     try:
         repo = ExtractionLogRepository(db)
@@ -142,7 +152,9 @@ async def get_extraction_stats(db=Depends(get_db)):
 
 
 @router.get("/usage", response_model=List[ApiUsageResponse])
-async def get_api_usage(db=Depends(get_db)):
+async def get_api_usage(
+    db: Annotated[sqlite3.Connection, Depends(get_db)],
+):
     """Get API usage for all models today."""
     try:
         tracker = RateLimitTracker(db)

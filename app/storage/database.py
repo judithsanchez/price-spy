@@ -1,7 +1,8 @@
-"""SQLite database connection management."""
-
+import os
 import sqlite3
 from typing import Optional
+
+from app.core.config import settings
 
 SCHEMA = """
 -- Purchase Types Table (Seeded)
@@ -139,7 +140,8 @@ CREATE TABLE IF NOT EXISTS scheduler_runs (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     started_at TEXT NOT NULL DEFAULT (datetime('now')),
     completed_at TEXT,
-    status TEXT CHECK(status IN ('running', 'completed', 'failed')) NOT NULL DEFAULT 'running',
+    status TEXT CHECK(status IN ('running', 'completed', 'failed'))
+        NOT NULL DEFAULT 'running',
     items_total INTEGER NOT NULL DEFAULT 0,
     items_success INTEGER NOT NULL DEFAULT 0,
     items_failed INTEGER NOT NULL DEFAULT 0,
@@ -180,7 +182,6 @@ class Database:
 
     def _connect(self) -> sqlite3.Connection:
         """Create database connection with safety check."""
-        import os
 
         # SAFETY GUARD: Prevent accidental production database modification during tests
         is_test = (
@@ -222,35 +223,16 @@ class Database:
             conn.execute("ALTER TABLE products RENAME TO products_old")
             conn.executescript(SCHEMA)
             conn.execute(
-                f"INSERT INTO products ({keep_csv}) SELECT {keep_csv} FROM products_old"  # nosec B608
+                f"INSERT INTO products ({keep_csv}) SELECT {keep_csv} FROM products_old"  # noqa: S608
             )
             conn.execute("DROP TABLE products_old")
             conn.commit()
-        except:
+        except Exception:
             conn.rollback()
             raise
 
-    def initialize(self) -> None:
-        """Initialize database schema and perform migrations."""
-        conn = self._connect()
-        conn.executescript(SCHEMA)
-
-        cursor = conn.cursor()
-        if self._needs_products_migration(cursor):
-            try:
-                self._migrate_products_table(conn)
-                conn.commit()
-            except Exception as e:
-                conn.rollback()
-                print(f"Migration failed (products): {e}")
-
-        # 1.1. Ensure planned_date exists (for cases where other migrations already ran)
-        cursor.execute("PRAGMA table_info(products)")
-        columns = [row["name"] for row in cursor.fetchall()]
-        if "planned_date" not in columns:
-            cursor.execute("ALTER TABLE products ADD COLUMN planned_date TEXT")
-
-        # 2. Handle stores table migration
+    def _migrate_stores_table(self, conn, cursor) -> None:
+        """Handle stores table migration."""
         cursor.execute("PRAGMA table_info(stores)")
         columns = [row["name"] for row in cursor.fetchall()]
         unwanted_stores = [
@@ -276,7 +258,74 @@ class Database:
                 conn.rollback()
                 print(f"Migration failed (stores): {e}")
 
-        # 2. Seed purchase_types if empty
+    def _migrate_tracked_items_table(self, conn, cursor) -> None:
+        """Handle tracked_items table migration."""
+        cursor.execute("PRAGMA table_info(tracked_items)")
+        columns = [row["name"] for row in cursor.fetchall()]
+        unwanted_ti = ["item_name_on_site", "preferred_model", "target_size_label"]
+
+        if any(col in columns for col in unwanted_ti):
+            keep = [c for c in columns if c not in unwanted_ti]
+            keep_csv = ", ".join(keep)
+
+            conn.execute("BEGIN TRANSACTION")
+            try:
+                conn.execute("ALTER TABLE tracked_items RENAME TO tracked_items_old")
+                conn.executescript(SCHEMA)
+                conn.execute(
+                    f"INSERT INTO tracked_items ({keep_csv}) "  # noqa: S608
+                    f"SELECT {keep_csv} FROM tracked_items_old"
+                )
+                conn.execute("DROP TABLE tracked_items_old")
+                conn.commit()
+                print("Tracked items migration successful.")
+            except Exception as e:
+                conn.rollback()
+                print(f"Migration failed (tracked_items): {e}")
+
+    def _migrate_labels_table(self, conn, cursor) -> None:
+        """Handle labels table migration."""
+        cursor.execute("PRAGMA table_info(labels)")
+        columns = [row["name"] for row in cursor.fetchall()]
+        if "is_size_sensitive" in columns:
+            conn.execute("BEGIN TRANSACTION")
+            try:
+                conn.execute("ALTER TABLE labels RENAME TO labels_old")
+                conn.executescript(SCHEMA)
+                conn.execute(
+                    "INSERT INTO labels (id, name, created_at) "
+                    "SELECT id, name, created_at FROM labels_old"
+                )
+                conn.execute("DROP TABLE labels_old")
+                conn.commit()
+                print("Labels table simplified.")
+            except Exception as e:
+                conn.rollback()
+                print(f"Migration failed (labels): {e}")
+
+    def _ensure_schema_evolutions(self, cursor) -> None:
+        """Handle other small schema evolutions."""
+        cursor.execute("PRAGMA table_info(price_history)")
+        columns = [row["name"] for row in cursor.fetchall()]
+        evolutions = [
+            ("is_available", "INTEGER DEFAULT 1"),
+            ("notes", "TEXT"),
+            ("item_id", "INTEGER"),
+            ("original_price", "REAL"),
+            ("deal_type", "TEXT"),
+            ("discount_percentage", "REAL"),
+            ("discount_fixed_amount", "REAL"),
+            ("deal_description", "TEXT"),
+            ("available_sizes", "TEXT"),
+            ("is_size_matched", "INTEGER DEFAULT 1"),
+        ]
+        for col, col_type in evolutions:
+            if col not in columns:
+                cursor.execute(f"ALTER TABLE price_history ADD COLUMN {col} {col_type}")
+
+    def _seed_base_data(self, conn, cursor) -> None:
+        """Seed base data if tables are empty."""
+        # Purchase Types
         cursor.execute("SELECT COUNT(*) FROM purchase_types")
         if cursor.fetchone()[0] == 0:
             purchase_types = ["recurring", "one_time"]
@@ -285,7 +334,7 @@ class Database:
                 [(p,) for p in purchase_types],
             )
 
-        # 3. Seed units if empty
+        # Units
         cursor.execute("SELECT COUNT(*) FROM units")
         if cursor.fetchone()[0] == 0:
             units = [
@@ -315,88 +364,12 @@ class Database:
                 "INSERT INTO units (name) VALUES (?)", [(u,) for u in units]
             )
 
-        # 3. Handle tracked_items table migration
-        cursor.execute("PRAGMA table_info(tracked_items)")
-        columns = [row["name"] for row in cursor.fetchall()]
-        unwanted_ti = ["item_name_on_site", "preferred_model", "target_size_label"]
-
-        if any(col in columns for col in unwanted_ti):
-            # Identify columns we want to KEEP
-            keep = [c for c in columns if c not in unwanted_ti]
-            keep_csv = ", ".join(keep)
-
-            conn.execute("BEGIN TRANSACTION")
-            try:
-                conn.execute("ALTER TABLE tracked_items RENAME TO tracked_items_old")
-                conn.executescript(SCHEMA)
-                # Copy data intersection
-                conn.execute(
-                    f"INSERT INTO tracked_items ({keep_csv}) "
-                    f"SELECT {keep_csv} FROM tracked_items_old"  # nosec B608
-                )
-                conn.execute("DROP TABLE tracked_items_old")
-                conn.commit()
-                print("Tracked items migration successful.")
-            except Exception as e:
-                conn.rollback()
-                print(f"Migration failed (tracked_items): {e}")
-
-        # 4. Handle labels table migration (Remove is_size_sensitive)
-        cursor.execute("PRAGMA table_info(labels)")
-        columns = [row["name"] for row in cursor.fetchall()]
-        if "is_size_sensitive" in columns:
-            conn.execute("BEGIN TRANSACTION")
-            try:
-                conn.execute("ALTER TABLE labels RENAME TO labels_old")
-                conn.executescript(SCHEMA)
-                conn.execute(
-                    "INSERT INTO labels (id, name, created_at) "
-                    "SELECT id, name, created_at FROM labels_old"
-                )
-                conn.execute("DROP TABLE labels_old")
-                conn.commit()
-                print("Labels table simplified.")
-            except Exception as e:
-                conn.rollback()
-                print(f"Migration failed (labels): {e}")
-
-        # 5. Handle other schema evolutions (if any)
-        cursor.execute("PRAGMA table_info(price_history)")
-        columns = [row["name"] for row in cursor.fetchall()]
-        if "is_available" not in columns:
-            cursor.execute(
-                "ALTER TABLE price_history ADD COLUMN is_available INTEGER DEFAULT 1"
-            )
-        if "notes" not in columns:
-            cursor.execute("ALTER TABLE price_history ADD COLUMN notes TEXT")
-        if "item_id" not in columns:
-            cursor.execute("ALTER TABLE price_history ADD COLUMN item_id INTEGER")
-        if "original_price" not in columns:
-            cursor.execute("ALTER TABLE price_history ADD COLUMN original_price REAL")
-        if "deal_type" not in columns:
-            cursor.execute("ALTER TABLE price_history ADD COLUMN deal_type TEXT")
-        if "discount_percentage" not in columns:
-            cursor.execute(
-                "ALTER TABLE price_history ADD COLUMN discount_percentage REAL"
-            )
-        if "discount_fixed_amount" not in columns:
-            cursor.execute(
-                "ALTER TABLE price_history ADD COLUMN discount_fixed_amount REAL"
-            )
-        if "deal_description" not in columns:
-            cursor.execute("ALTER TABLE price_history ADD COLUMN deal_description TEXT")
-        if "available_sizes" not in columns:
-            cursor.execute("ALTER TABLE price_history ADD COLUMN available_sizes TEXT")
-        if "is_size_matched" not in columns:
-            cursor.execute(
-                "ALTER TABLE price_history ADD COLUMN is_size_matched INTEGER DEFAULT 1"
-            )
-
-        # 5. Seed categories if table is empty
+    def _seed_categories_and_labels(self, conn, cursor) -> None:
+        """Seed categories and labels if empty."""
         cursor.execute("SELECT COUNT(*) FROM categories")
         if cursor.fetchone()[0] == 0:
-            # Categories where physical size/fit is the tracking factor (Clothing, Footwear, Bedding)
-            size_sensitive = [
+            # Physical size/fit (Clothing, Footwear, Bedding)
+            size_sensitive = {
                 "Clothing",
                 "Footwear",
                 "Bedding",
@@ -404,8 +377,7 @@ class Database:
                 "Accessories",
                 "Jewelry",
                 "Luggage & Bags",
-            ]
-
+            }
             categories = [
                 "Dairy",
                 "Bakery",
@@ -558,19 +530,15 @@ class Database:
                 "Massage & Relaxation",
                 "Aromatherapy & Essential Oils",
             ]
-
-            # Use INSERT OR IGNORE to handle duplicates if schema exists
             for cat in categories:
                 is_sensitive = 1 if cat in size_sensitive else 0
                 conn.execute(
                     "INSERT OR IGNORE INTO categories "
-                    "(name, is_size_sensitive) "
-                    "VALUES (?, ?)",
+                    "(name, is_size_sensitive) VALUES (?, ?)",
                     (cat, is_sensitive),
                 )
             conn.commit()
 
-        # 6. Seed labels if table is empty
         cursor.execute("SELECT COUNT(*) FROM labels")
         if cursor.fetchone()[0] == 0:
             labels = [
@@ -728,6 +696,43 @@ class Database:
             conn.executemany(
                 "INSERT INTO labels (name) VALUES (?)", [(label,) for label in labels]
             )
+            conn.commit()
+
+    def initialize(self) -> None:
+        """Initialize database schema and perform migrations."""
+        conn = self._connect()
+        conn.executescript(SCHEMA)
+
+        cursor = conn.cursor()
+        if self._needs_products_migration(cursor):
+            try:
+                self._migrate_products_table(conn)
+                conn.commit()
+            except Exception as e:
+                conn.rollback()
+                print(f"Migration failed (products): {e}")
+
+        # 1.1. Ensure planned_date exists
+        cursor.execute("PRAGMA table_info(products)")
+        columns = [row["name"] for row in cursor.fetchall()]
+        if "planned_date" not in columns:
+            cursor.execute("ALTER TABLE products ADD COLUMN planned_date TEXT")
+
+        # 2. Handle stores table migration
+        self._migrate_stores_table(conn, cursor)
+
+        # 3. Handle tracked_items table migration
+        self._migrate_tracked_items_table(conn, cursor)
+
+        # 4. Handle labels table migration
+        self._migrate_labels_table(conn, cursor)
+
+        # 5. Handle other schema evolutions
+        self._ensure_schema_evolutions(cursor)
+
+        # 6. Seed data
+        self._seed_base_data(conn, cursor)
+        self._seed_categories_and_labels(conn, cursor)
 
         conn.commit()
 
@@ -755,8 +760,6 @@ class Database:
 
 def get_database(db_path: Optional[str] = None) -> Database:
     """Get a database instance."""
-    from app.core.config import settings
-
     path = db_path or settings.DATABASE_PATH
     db = Database(path)
     db.initialize()

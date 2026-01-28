@@ -13,6 +13,11 @@ from app.utils.logging import get_logger
 
 logger = get_logger(__name__)
 
+# Constants for magic values
+HTTP_OK = 200
+PROMPT_PREVIEW_LEN = 500
+MAX_ERROR_PREVIEW = 200
+
 
 # JSON Schema for Gemini structured outputs
 EXTRACTION_SCHEMA = {
@@ -89,7 +94,8 @@ EXTRACTION_SCHEMA = {
 }
 
 
-STRUCTURED_PROMPT = """Act as a price extraction expert. Analyze this screenshot of a webpage.
+STRUCTURED_PROMPT = """Act as a price extraction expert.
+Analyze this screenshot of a webpage.
 
 Your task:
 1. Identify if this is a Single Product Page or a Search Result List
@@ -118,7 +124,8 @@ the requested size)
 Important for Clothing:
 - Look for size selectors (labeled as 'Maat', 'Size', 'Mate', etc.).
 - List only the sizes that appear to be IN STOCK (not greyed out or struck through).
-- If multiple prices exist for different sizes, use the most prominent or 'starting at' price.
+- If multiple prices exist for different sizes, use the most prominent
+  or 'starting at' price.
 
 Important:
 - If is_blocked is true, still try to extract what you can, but set is_blocked: true.
@@ -157,11 +164,14 @@ async def extract_product_info(
     async with aiohttp.ClientSession() as session:
         timeout = aiohttp.ClientTimeout(total=60)
         async with session.post(url, json=payload, timeout=timeout) as response:
-            if response.status != 200:
+            if response.status != HTTP_OK:
                 error_text = await response.text()
                 logger.error(
                     "Gemini API error",
-                    extra={"status": response.status, "error": error_text[:200]},
+                    extra={
+                        "status": response.status,
+                        "error": error_text[:MAX_ERROR_PREVIEW],
+                    },
                 )
                 raise Exception(f"Gemini API error {response.status}: {error_text}")
 
@@ -207,20 +217,28 @@ def get_extraction_prompt(context: Optional[ExtractionContext] = None) -> str:
     size_guidance = ""
 
     if context:
-        target_info = f"\nTARGET PRODUCT: {context.product_name} | CATEGORY: {context.category or 'General'}\n"
+        target_info = (
+            f"\nTARGET PRODUCT: {context.product_name} | "
+            f"CATEGORY: {context.category or 'General'}\n"
+        )
 
         if context.is_size_sensitive and context.target_size:
             target_info += (
                 f"TARGET SIZE: {context.target_size} (This is a CLOTHING/SHOE item)\n"
             )
             size_guidance = (
-                f"- This item is SIZE-SENSITIVE. You are looking for size '{context.target_size}'.\n"
-                f"- If size '{context.target_size}' is NOT selectable, is greyed out, or explicitly marked "
+                f"- This item is SIZE-SENSITIVE. You are looking for size "
+                f"'{context.target_size}'.\n"
+                f"- If size '{context.target_size}' is NOT selectable, is greyed out, "
+                "or explicitly marked "
                 "as 'Out of Stock', set is_available to false.\n"
-                f"- If you see the price but cannot confirm it is for size '{context.target_size}',\n"
-                "set is_size_matched to false but still report the price and is_available=true\n"
+                f"- If you see the price but cannot confirm it is for size "
+                f"'{context.target_size}',\n"
+                "set is_size_matched to false but still report the price and "
+                "is_available=true\n"
                 "if it looks like a general sale.\n"
-                "- ALWAYS favor reporting a price with is_size_matched=false over reporting 'Out of Stock'\n"
+                "- ALWAYS favor reporting a price with is_size_matched=false over "
+                "reporting 'Out of Stock'\n"
                 "if a discount is visible.\n"
             )
         elif context.quantity_size and context.quantity_unit:
@@ -228,7 +246,8 @@ def get_extraction_prompt(context: Optional[ExtractionContext] = None) -> str:
                 f"TARGET VOLUME/SIZE: {context.quantity_size} {context.quantity_unit}\n"
             )
             size_guidance = (
-                f"- Verify the product matches the volume/size '{context.quantity_size} {context.quantity_unit}'.\n"
+                "- Verify the product matches the volume/size "
+                f"'{context.quantity_size} {context.quantity_unit}'.\n"
                 "- If the page shows a different size (e.g., in a list of results),\n"
                 "prioritize finding the exact match.\n"
             )
@@ -243,8 +262,8 @@ Analyze this webpage screenshot to extract pricing and availability information.
 
 RULES:
 - THE CURRENT PRICE: numeric value only.
-  If multiple prices exist for different sizes and yours isn't selected, use the 'starting at'
-  price or the most prominent price.
+  If multiple prices exist for different sizes and yours isn't selected,
+  use the 'starting at' price or the most prominent price.
 - Currency code: 3-letter ISO (EUR, USD, etc.).
 - is_available: Boolean.
 {size_guidance}- product_name: The name as shown on the site.
@@ -265,8 +284,6 @@ Return ONLY valid JSON. If is_blocked is true, provide your best guess.
 If fields are missing, use 0.0 for price and "N/A" for currency.
 """
     return base_prompt
-
-    # Imports moved to top of file
 
 
 def _extract_json(text: str) -> str:
@@ -299,8 +316,8 @@ async def _call_gemini_api(
         "Sending request to Gemini API",
         extra={
             **log_extras,
-            "prompt_sample": prompt_text[:500] + "..."
-            if len(prompt_text) > 500
+            "prompt_sample": prompt_text[:PROMPT_PREVIEW_LEN] + "..."
+            if len(prompt_text) > PROMPT_PREVIEW_LEN
             else prompt_text,
         },
     )
@@ -323,7 +340,7 @@ async def _call_gemini_api(
     async with aiohttp.ClientSession() as session:
         timeout = aiohttp.ClientTimeout(total=60)
         async with session.post(url, json=payload, timeout=timeout) as response:
-            if response.status != 200:
+            if response.status != HTTP_OK:
                 error_text = await response.text()
                 logger.error(
                     "Gemini API error",
