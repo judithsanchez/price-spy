@@ -276,7 +276,7 @@ async def dashboard(request: Request, db: Annotated[Database, Depends(get_db)]):
             key=lambda p: (not p["has_target_hit"], not p["has_deal"], p["name"])
         )
 
-        all_deals = []
+        all_deals: list[dict[str, Any]] = []
         for p in sorted_products:
             all_deals.extend(
                 {

@@ -1,4 +1,3 @@
-import sqlite3
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query
@@ -7,6 +6,7 @@ from pydantic import BaseModel, Field
 from app.api.deps import get_db
 from app.core.gemini import GeminiModels
 from app.core.rate_limiter import RateLimitTracker
+from app.storage.database import Database
 from app.storage.repositories import ErrorLogRepository, ExtractionLogRepository
 
 router = APIRouter(prefix="/api", tags=["Logs"])
@@ -71,7 +71,7 @@ class ExtractionLogFilters(BaseModel):
 @router.get("/logs", response_model=list[ExtractionLogResponse])
 async def get_extraction_logs(
     filters: Annotated[ExtractionLogFilters, Query()],
-    db: Annotated[sqlite3.Connection, Depends(get_db)],
+    db: Annotated[Database, Depends(get_db)],
 ):
     """Get recent extraction logs with optional filters."""
     try:
@@ -112,7 +112,7 @@ class ErrorLogFilters(BaseModel):
 @router.get("/errors", response_model=list[ErrorLogResponse])
 async def get_error_logs(
     filters: Annotated[ErrorLogFilters, Query()],
-    db: Annotated[sqlite3.Connection, Depends(get_db)],
+    db: Annotated[Database, Depends(get_db)],
 ):
     """Get recent error logs with optional filters."""
     try:
@@ -140,7 +140,7 @@ async def get_error_logs(
 
 @router.get("/logs/stats", response_model=ExtractionStatsResponse)
 async def get_extraction_stats(
-    db: Annotated[sqlite3.Connection, Depends(get_db)],
+    db: Annotated[Database, Depends(get_db)],
 ):
     """Get extraction statistics for today."""
     try:
@@ -153,7 +153,7 @@ async def get_extraction_stats(
 
 @router.get("/usage", response_model=list[ApiUsageResponse])
 async def get_api_usage(
-    db: Annotated[sqlite3.Connection, Depends(get_db)],
+    db: Annotated[Database, Depends(get_db)],
 ):
     """Get API usage for all models today."""
     try:

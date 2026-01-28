@@ -115,6 +115,14 @@ class PriceHistoryRepository:
         )
         return [self._row_to_record(row) for row in cursor.fetchall()]
 
+    def get_by_item(self, item_id: int) -> list[PriceHistoryRecord]:
+        """Get all price history records for a tracked item."""
+        cursor = self.db.execute(
+            "SELECT * FROM price_history WHERE item_id = ? ORDER BY created_at DESC",
+            (item_id,),
+        )
+        return [self._row_to_record(row) for row in cursor.fetchall()]
+
     def get_history_since(self, url: str, since: datetime) -> list[PriceHistoryRecord]:
         """Get price history records for a URL since a specific date."""
         cursor = self.db.execute(
