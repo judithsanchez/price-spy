@@ -288,11 +288,16 @@ def build_subject(report_data: Dict[str, Any]) -> str:
     return " ".join(parts)
 
 
+from jinja2 import Environment, FileSystemLoader, select_autoescape
+
 # Initialize Jinja2 environment for email templates
 template_dir = os.path.join(
     os.path.dirname(os.path.dirname(__file__)), "templates", "email"
 )
-env = Environment(loader=FileSystemLoader(template_dir))
+env = Environment(
+    loader=FileSystemLoader(template_dir),
+    autoescape=select_autoescape(["html", "xml"])
+)
 
 
 def render_html_email(report_data: Dict[str, Any], config: Dict[str, Any]) -> str:

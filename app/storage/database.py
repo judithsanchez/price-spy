@@ -224,7 +224,7 @@ class Database:
                 conn.execute("ALTER TABLE products RENAME TO products_old")
                 conn.executescript(SCHEMA)
                 conn.execute(
-                    f"INSERT INTO products ({keep_csv}) SELECT {keep_csv} FROM products_old"
+                    f"INSERT INTO products ({keep_csv}) SELECT {keep_csv} FROM products_old"  # nosec B608
                 )
                 conn.execute("DROP TABLE products_old")
                 conn.commit()
@@ -319,7 +319,7 @@ class Database:
                 conn.executescript(SCHEMA)
                 # Copy data intersection
                 conn.execute(
-                    f"INSERT INTO tracked_items ({keep_csv}) SELECT {keep_csv} FROM tracked_items_old"
+                    f"INSERT INTO tracked_items ({keep_csv}) SELECT {keep_csv} FROM tracked_items_old"  # nosec B608
                 )
                 conn.execute("DROP TABLE tracked_items_old")
                 conn.commit()
