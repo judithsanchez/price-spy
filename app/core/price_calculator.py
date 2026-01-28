@@ -60,9 +60,7 @@ def calculate_volume_price(
         total_quantity = quantity_size * items_per_lot
 
     # Calculate price per standard unit
-    volume_price = page_price / total_quantity
-
-    return volume_price, standard_unit
+    return page_price / total_quantity, standard_unit
 
 
 def compare_prices(

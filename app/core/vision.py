@@ -18,6 +18,12 @@ PROMPT_PREVIEW_LEN = 500
 MAX_ERROR_PREVIEW = 200
 
 
+class GeminiAPIError(Exception):
+    """Exception raised for Gemini API errors."""
+
+    pass
+
+
 # JSON Schema for Gemini structured outputs
 EXTRACTION_SCHEMA = {
     "type": "object",
@@ -170,22 +176,29 @@ async def extract_product_info(image_bytes: bytes, api_key: str) -> ProductInfo 
                         "error": error_text[:MAX_ERROR_PREVIEW],
                     },
                 )
-                raise Exception(f"Gemini API error {response.status}: {error_text}")
+                msg = f"Gemini API error {response.status}: {error_text}"
+                raise GeminiAPIError(msg)
 
             data = await response.json()
 
     text = data["candidates"][0]["content"]["parts"][0]["text"].strip()
 
-    # Try to parse as JSON and validate with Pydantic
     try:
         # Clean up markdown code blocks if present
         text = text.removeprefix("```json")
         text = text.removeprefix("```")
+        text = text.strip()
         text = text.removesuffix("```")
         text = text.strip()
         parsed = json.loads(text)
         product_info = ProductInfo(**parsed)
-
+    except Exception as e:
+        logger.warning(
+            "Failed to parse structured response, returning raw text",
+            extra={"error": str(e)},
+        )
+        return text
+    else:
         logger.info(
             "Price extracted successfully",
             extra={
@@ -194,15 +207,7 @@ async def extract_product_info(image_bytes: bytes, api_key: str) -> ProductInfo 
                 "confidence": product_info.confidence,
             },
         )
-
         return product_info
-
-    except Exception as e:
-        logger.warning(
-            "Failed to parse structured response, returning raw text",
-            extra={"error": str(e)},
-        )
-        return text
 
 
 def get_extraction_prompt(context: ExtractionContext | None = None) -> str:
@@ -251,7 +256,7 @@ def get_extraction_prompt(context: ExtractionContext | None = None) -> str:
                 f"- Look specifically for the version/size '{context.target_size}'.\n"
             )
 
-    base_prompt = f"""Act as a professional Personal Shopping Assistant. {target_info}
+    return f"""Act as a professional Personal Shopping Assistant. {target_info}
 Analyze this webpage screenshot to extract pricing and availability information.
 
 RULES:
@@ -277,7 +282,6 @@ RULES:
 Return ONLY valid JSON. If is_blocked is true, provide your best guess.
 If fields are missing, use 0.0 for price and "N/A" for currency.
 """
-    return base_prompt
 
 
 def _extract_json(text: str) -> str:
@@ -340,7 +344,8 @@ async def _call_gemini_api(
                     "Gemini API error",
                     extra={"status": response.status, "model": config.model.value},
                 )
-                raise Exception(f"Gemini API error {response.status}: {error_text}")
+                msg = f"Gemini API error {response.status}: {error_text}"
+                raise GeminiAPIError(msg)
 
             data = await response.json()
 
@@ -399,22 +404,14 @@ async def extract_with_structured_output(
             # Reorder to put available first, but maintain priority
             models_to_try = [available] + [m for m in models_to_try if m != available]
         else:
-            raise Exception(
-                "All Gemini models exhausted for today. Try again tomorrow."
-            )
+            msg = "All Gemini models exhausted for today. Try again tomorrow."
+            raise GeminiAPIError(msg)
 
     last_error = None
 
     for config in models_to_try:
         try:
             result = await _call_gemini_api(image_bytes, api_key, config, context)
-
-            # Record successful usage
-            if tracker:
-                tracker.record_usage(config)
-
-            return result, config.model.value
-
         except Exception as e:
             last_error = e
             error_msg = str(e)
@@ -431,6 +428,12 @@ async def extract_with_structured_output(
 
             # Non-rate-limit error, don't try fallback
             raise
+        else:
+            # Record successful usage
+            if tracker:
+                tracker.record_usage(config)
+
+            return result, config.model.value
 
     # All models failed
     raise last_error or Exception("All models failed")

@@ -1,10 +1,13 @@
 """Structured JSON logging for Price Spy."""
 
+import contextlib
 import json
 import logging
 import sys
 from datetime import UTC, datetime
 from typing import Any
+
+from app.core.error_logger import log_error_to_db
 
 
 class JSONFormatter(logging.Formatter):
@@ -12,7 +15,8 @@ class JSONFormatter(logging.Formatter):
 
     def format(self, record: logging.LogRecord) -> str:
         """
-        Format a LogRecord into a JSON string containing timestamp, level, logger name, and message.
+        Format a LogRecord into a JSON string containing timestamp, level, logger name,
+        and message.
 
         :param record: The logging LogRecord to format.
         :return: A JSON-formatted string representation of the log entry.
@@ -51,10 +55,14 @@ class JSONFormatter(logging.Formatter):
             "db_error_type",
         }
 
-        # Add all extra fields dynamically
-        for key, value in record.__dict__.items():
-            if key not in standard_attrs and not key.startswith("_"):
-                log_entry[key] = value
+        # Add all extra fields dynamically via dict comprehension
+        log_entry.update(
+            {
+                k: v
+                for k, v in record.__dict__.items()
+                if k not in standard_attrs and not k.startswith("_")
+            }
+        )
 
         # Add exception info if present
         if record.exc_info:
@@ -62,30 +70,31 @@ class JSONFormatter(logging.Formatter):
 
         # Persist to database if requested
         if getattr(record, "persist_to_db", False) or record.levelno >= logging.ERROR:
-            try:
-                from app.core.error_logger import log_error_to_db
-
+            with contextlib.suppress(Exception):
                 log_error_to_db(
                     error_type=getattr(record, "db_error_type", "application_error"),
                     message=record.getMessage(),
                     url=getattr(record, "url", None),
                     include_stack=bool(record.exc_info),
                 )
-            except Exception:  # nosec B110
-                # Prevent recursion or crash if error logger fails
-                pass
 
         return json.dumps(log_entry, default=str)
 
 
-"""Logging utilities providing ExtraFieldsAdapter for merging extra context into log records."""
+"""
+Logging utilities providing ExtraFieldsAdapter for merging extra context into
+log records.
+"""
 
 
 class ExtraFieldsAdapter(logging.LoggerAdapter):
     """Adapter that merges extra fields into log records."""
 
     def process(self, msg, kwargs):
-        """Merge adapter extra fields with provided kwargs extra and return updated message and kwargs."""
+        """
+        Merge adapter extra fields with provided kwargs extra and return updated
+        message.
+        """
         extra = kwargs.get("extra", {})
         kwargs["extra"] = {**self.extra, **extra}
         return msg, kwargs
