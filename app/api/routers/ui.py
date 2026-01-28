@@ -1,11 +1,18 @@
+from collections import defaultdict
+from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Any, cast
+from typing import Annotated, Any, cast
 
 from fastapi import APIRouter, Depends, Request
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
 
 from app.api.deps import get_db
+from app.core.price_calculator import (
+    calculate_volume_price,
+    normalize_unit,
+)
+from app.storage.database import Database
 from app.storage.repositories import (
     PriceHistoryRepository,
     ProductRepository,
@@ -18,6 +25,8 @@ router = APIRouter(tags=["UI"])
 # Templates directory (assuming it's in app/templates)
 templates_dir = Path(__file__).parent.parent.parent / "templates"
 templates = Jinja2Templates(directory=str(templates_dir))
+
+MIN_HISTORY_FOR_TREND = 2
 
 
 class DashboardItem(BaseModel):
@@ -64,11 +73,8 @@ def _get_chart_color(index: int) -> str:
 
 
 @router.get("/")
-async def dashboard(request: Request, db=Depends(get_db)):
+async def dashboard(request: Request, db: Annotated[Database, Depends(get_db)]):
     """Render dashboard page."""
-    from datetime import datetime, timedelta
-
-    from app.core.price_calculator import calculate_volume_price
 
     cutoff = datetime.now() - timedelta(days=7)
 
@@ -110,7 +116,7 @@ async def dashboard(request: Request, db=Depends(get_db)):
             history = price_repo.get_history_since(item.url, cutoff)
 
             trend = "stable"
-            if len(history) >= 2:
+            if len(history) >= MIN_HISTORY_FOR_TREND:
                 prev_price = history[1].price
                 curr_price = history[0].price
                 if curr_price and prev_price:
@@ -156,11 +162,8 @@ async def dashboard(request: Request, db=Depends(get_db)):
                 latest_price_rec.deal_description if latest_price_rec else None
             )
 
-            is_target_hit = False
             if price is not None and product.target_price is not None:
                 if product.target_unit:
-                    from app.core.price_calculator import normalize_unit
-
                     normalized_target_unit = normalize_unit(product.target_unit)
                     normalized_current_unit = normalize_unit(unit) if unit else None
 
@@ -246,7 +249,7 @@ async def dashboard(request: Request, db=Depends(get_db)):
                     dataset["data"].append({"x": ts, "y": h.price})
                 graph_data["datasets"].append(dataset)
 
-        sorted_labels = sorted(list(all_timestamps))
+        sorted_labels = sorted(all_timestamps)
         graph_data["labels"] = sorted_labels
         sorted_products = sorted(products_map.values(), key=lambda p: p["name"])
 
@@ -275,20 +278,20 @@ async def dashboard(request: Request, db=Depends(get_db)):
 
         all_deals = []
         for p in sorted_products:
-            for item in p["tracked_items"]:
-                if item["is_target_hit"] or item["is_deal"]:
-                    all_deals.append(
-                        {
-                            "product_name": p["name"],
-                            "price": item["price"],
-                            "currency": item["currency"],
-                            "unit_price": item["unit_price"],
-                            "unit": item["unit"],
-                            "target_price": p["target_price"],
-                            "target_unit": p["target_unit"],
-                            "is_target_hit": item["is_target_hit"],
-                        }
-                    )
+            all_deals.extend(
+                {
+                    "product_name": p["name"],
+                    "price": item["price"],
+                    "currency": item["currency"],
+                    "unit_price": item["unit_price"],
+                    "unit": item["unit"],
+                    "target_price": p["target_price"],
+                    "target_unit": p["target_unit"],
+                    "is_target_hit": item["is_target_hit"],
+                }
+                for item in p["tracked_items"]
+                if item["is_target_hit"] or item["is_deal"]
+            )
 
         # Identify planned but untracked products within 4 weeks
 
@@ -360,9 +363,8 @@ async def products_page(request: Request):
 
 
 @router.get("/timeline")
-async def timeline_page(request: Request, db=Depends(get_db)):
+async def timeline_page(request: Request, db: Annotated[Database, Depends(get_db)]):
     """Render the vertical wishlist timeline."""
-    from collections import defaultdict
 
     product_repo = ProductRepository(db)
     price_repo = PriceHistoryRepository(db)
