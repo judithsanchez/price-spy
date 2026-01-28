@@ -28,9 +28,24 @@ class PriceHistoryRepository:
         """Insert a price history record and return its ID."""
         cursor = self.db.execute(
             """
-            INSERT INTO price_history
-            (product_name, price, currency, is_available, is_size_matched, confidence, url, store_name, page_type, notes,
-             original_price, deal_type, discount_percentage, discount_fixed_amount, deal_description, available_sizes)
+            INSERT INTO price_history (
+                product_name,
+                price,
+                currency,
+                is_available,
+                is_size_matched,
+                confidence,
+                url,
+                store_name,
+                page_type,
+                notes,
+                original_price,
+                deal_type,
+                discount_percentage,
+                discount_fixed_amount,
+                deal_description,
+                available_sizes
+            )
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
@@ -75,7 +90,8 @@ class PriceHistoryRepository:
     def get_latest_by_url(self, url: str) -> Optional[PriceHistoryRecord]:
         """Get the most recent price history record for a URL."""
         cursor = self.db.execute(
-            "SELECT * FROM price_history WHERE url = ? ORDER BY created_at DESC, id DESC LIMIT 1",
+            "SELECT * FROM price_history WHERE url = ? "
+            "ORDER BY created_at DESC, id DESC LIMIT 1",
             (url,),
         )
         row = cursor.fetchone()
@@ -84,11 +100,14 @@ class PriceHistoryRepository:
         return self._row_to_record(row)
 
     def get_recent_history_by_url(
-        self, url: str, limit: int = 30
+        self,
+        url: str,
+        limit: int = 30,
     ) -> List[PriceHistoryRecord]:
         """Get the recent price history records for a URL."""
         cursor = self.db.execute(
-            "SELECT * FROM price_history WHERE url = ? ORDER BY created_at DESC LIMIT ?",
+            "SELECT * FROM price_history WHERE url = ? "
+            "ORDER BY created_at DESC LIMIT ?",
             (url, limit),
         )
         return [self._row_to_record(row) for row in cursor.fetchall()]
@@ -96,12 +115,15 @@ class PriceHistoryRepository:
     def get_history_since(self, url: str, since: datetime) -> List[PriceHistoryRecord]:
         """Get price history records for a URL since a specific date."""
         cursor = self.db.execute(
-            "SELECT * FROM price_history WHERE url = ? AND created_at >= ? ORDER BY created_at DESC",
+            "SELECT * FROM price_history WHERE url = ? "
+            "AND created_at >= ? "
+            "ORDER BY created_at DESC",
             (url, since.isoformat()),
         )
         return [self._row_to_record(row) for row in cursor.fetchall()]
 
-    def _row_to_record(self, row) -> PriceHistoryRecord:
+    @staticmethod
+    def _row_to_record(row) -> PriceHistoryRecord:
         """Convert a database row to a PriceHistoryRecord."""
         return PriceHistoryRecord(
             id=row["id"],
@@ -190,7 +212,8 @@ class ErrorLogRepository:
         cursor = self.db.execute(query, tuple(params))
         return [self._row_to_record(row) for row in cursor.fetchall()]
 
-    def _row_to_record(self, row) -> ErrorRecord:
+    @staticmethod
+    def _row_to_record(row) -> ErrorRecord:
         """Convert a database row to an ErrorRecord."""
         return ErrorRecord(
             id=row["id"],
@@ -276,12 +299,14 @@ class ProductRepository:
         placeholders = ",".join("?" for _ in product_ids)
         # 1. Delete tracked items first (cascade)
         self.db.execute(
-            f"DELETE FROM tracked_items WHERE product_id IN ({placeholders})",  # nosec B608
+            # nosec B608
+            f"DELETE FROM tracked_items WHERE product_id IN ({placeholders})",
             tuple(product_ids),
         )
         # 2. Delete products
         self.db.execute(
-            f"DELETE FROM products WHERE id IN ({placeholders})",  # nosec B608 tuple(product_ids)
+            # nosec B608 tuple(product_ids)
+            f"DELETE FROM products WHERE id IN ({placeholders})",
         )
         self.db.commit()
 
@@ -353,7 +378,8 @@ class StoreRepository:
     def __init__(self, db: Database):
         self.db = db
 
-    def normalize_name(self, name: str) -> str:
+    @staticmethod
+    def normalize_name(name: str) -> str:
         """Normalize store name: case-insensitive check against DB, else capitalize."""
         clean_name = name.strip()
         if not clean_name:
@@ -407,7 +433,8 @@ class StoreRepository:
         self.db.execute("DELETE FROM stores WHERE id = ?", (store_id,))
         self.db.commit()
 
-    def _row_to_record(self, row) -> Store:
+    @staticmethod
+    def _row_to_record(row) -> Store:
         """Convert a database row to a Store."""
         return Store(id=row["id"], name=row["name"])
 
@@ -423,7 +450,9 @@ class TrackedItemRepository:
         cursor = self.db.execute(
             """
             INSERT INTO tracked_items
-            (product_id, store_id, url, target_size, quantity_size, quantity_unit, items_per_lot, is_active, alerts_enabled)
+            (product_id, store_id, url,
+             target_size, quantity_size, quantity_unit,
+             items_per_lot, is_active, alerts_enabled)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
@@ -547,7 +576,8 @@ class TrackedItemRepository:
     def add_label(self, tracked_item_id: int, label_id: int) -> None:
         """Associate a label with a tracked item."""
         self.db.execute(
-            "INSERT OR IGNORE INTO tracked_item_labels (tracked_item_id, label_id) VALUES (?, ?)",
+            "INSERT OR IGNORE INTO tracked_item_labels "
+            "(tracked_item_id, label_id) VALUES (?, ?)",
             (tracked_item_id, label_id),
         )
         self.db.commit()
@@ -566,7 +596,7 @@ class TrackedItemRepository:
         for label_id in label_ids:
             self.add_label(tracked_item_id, label_id)
 
-    def get_labels(self, tracked_item_id: int) -> List[Label]:
+    def get_labels(self, tracked_item_id: int) -> List[LABEL]:
         """Get all labels associated with a tracked item."""
         cursor = self.db.execute(
             """
@@ -576,11 +606,11 @@ class TrackedItemRepository:
             """,
             (tracked_item_id,),
         )
-        from app.models.schemas import Label
 
-        return [Label(id=row["id"], name=row["name"]) for row in cursor.fetchall()]
+        return [LABEL(id=row["id"], name=row["name"]) for row in cursor.fetchall()]
 
-    def _row_to_record(self, row) -> TrackedItem:
+    @staticmethod
+    def _row_to_record(row) -> TrackedItem:
         """Convert a database row to a TrackedItem."""
         last_checked = None
         if row["last_checked_at"]:
@@ -615,7 +645,8 @@ class ExtractionLogRepository:
         cursor = self.db.execute(
             """
             INSERT INTO extraction_logs
-            (tracked_item_id, status, model_used, price, currency, error_message, duration_ms)
+            (tracked_item_id, status, model_used, price, currency,
+             error_message, duration_ms)
             VALUES (?, ?, ?, ?, ?, ?, ?)
             """,
             (
@@ -663,15 +694,26 @@ class ExtractionLogRepository:
 
     def get_stats(self) -> dict:
         """Get extraction statistics."""
-        cursor = self.db.execute("""
+        cursor = self.db.execute(
+            """
             SELECT
                 COUNT(*) as total,
-                SUM(CASE WHEN status = 'success' THEN 1 ELSE 0 END) as success_count,
-                SUM(CASE WHEN status = 'error' THEN 1 ELSE 0 END) as error_count,
-                AVG(CASE WHEN status = 'success' THEN duration_ms END) as avg_duration_ms
+                SUM(
+                    CASE WHEN status = 'success' THEN 1
+                    ELSE 0 END
+                ) as success_count,
+                SUM(
+                    CASE WHEN status = 'error' THEN 1
+                    ELSE 0 END
+                ) as error_count,
+                AVG(
+                    CASE WHEN status = 'success' THEN duration_ms
+                    END
+                ) as avg_duration_ms
             FROM extraction_logs
             WHERE date(created_at) = date('now')
-        """)
+            """
+        )
         row = cursor.fetchone()
         return {
             "total_today": row["total"] or 0,
@@ -718,7 +760,8 @@ class ExtractionLogRepository:
         cursor = self.db.execute(query, tuple(params))
         return [self._row_to_record(row) for row in cursor.fetchall()]
 
-    def _row_to_record(self, row) -> ExtractionLog:
+    @staticmethod
+    def _row_to_record(row) -> ExtractionLog:
         """Convert a database row to an ExtractionLog."""
         return ExtractionLog(
             id=row["id"],
@@ -743,7 +786,7 @@ class SchedulerRunRepository:
         """Start a new scheduler run and return its ID."""
         cursor = self.db.execute(
             """
-            INSERT INTO scheduler_runs (items_total, status)
+            INSERT INTO scheduler_runs (items_total, status)"""
             VALUES (?, 'running')
             """,
             (items_total,),
@@ -821,7 +864,8 @@ class CategoryRepository:
         self.db = db
 
     def normalize_name(self, name: str) -> str:
-        """Normalize category name: case-insensitive check against DB, else capitalize."""
+        """Normalize category name: case-insensitive check against DB,
+        else capitalize."""
         clean_name = name.strip()
         if not clean_name:
             return clean_name
@@ -887,7 +931,8 @@ class CategoryRepository:
         self.db.execute("DELETE FROM categories WHERE id = ?", (category_id,))
         self.db.commit()
 
-    def _row_to_record(self, row) -> Category:
+    @staticmethod
+    def _row_to_record(row) -> Category:
         """Convert a database row to a Category."""
         return Category(
             id=row["id"],
@@ -947,7 +992,8 @@ class LabelRepository:
         self.db.execute("DELETE FROM labels WHERE id = ?", (label_id,))
         self.db.commit()
 
-    def _row_to_record(self, row) -> Label:
+    @staticmethod
+    def _row_to_record(row) -> Label:
         """Convert a database row to a Label."""
         return Label(
             id=row["id"],
@@ -1016,7 +1062,8 @@ class UnitRepository:
         self.db.execute("DELETE FROM units WHERE id = ?", (unit_id,))
         self.db.commit()
 
-    def _row_to_record(self, row) -> Unit:
+    @staticmethod
+    def _row_to_record(row) -> Unit:
         """Convert a database row to a Unit."""
         return Unit(id=row["id"], name=row["name"])
 
@@ -1079,6 +1126,7 @@ class PurchaseTypeRepository:
         self.db.execute("DELETE FROM purchase_types WHERE id = ?", (pt_id,))
         self.db.commit()
 
-    def _row_to_record(self, row) -> PurchaseType:
+    @staticmethod
+    def _row_to_record(row) -> PurchaseType:
         """Convert a database row to a PurchaseType."""
         return PurchaseType(id=row["id"], name=row["name"])

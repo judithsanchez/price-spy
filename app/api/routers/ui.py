@@ -132,9 +132,7 @@ async def dashboard(request: Request, db=Depends(get_db)):
             # In a real environment we would check if Path(screenshot_path).exists()
             # But the logic from main.py assumes it can be checked or just passed.
             # I will keep it consistent with main.py.
-            from pathlib import Path as OSPath
-
-            has_screenshot = OSPath(screenshot_path).exists()
+            has_screenshot = Path(screenshot_path).exists()
 
             unit_price = None
             unit = None
@@ -291,7 +289,6 @@ async def dashboard(request: Request, db=Depends(get_db)):
                     )
 
         # Identify planned but untracked products within 4 weeks
-        from datetime import datetime, timedelta
 
         now = datetime.now()
         four_weeks_later = now + timedelta(days=28)
@@ -386,20 +383,18 @@ async def timeline_page(request: Request, db=Depends(get_db)):
             week = int(week_str)
 
             # Get latest price for the product (best deal among its tracked items)
-            from app.storage.repositories import TrackedItemRepository
 
-            tracked_repo = TrackedItemRepository(db)
-            tracked_items = tracked_repo.get_by_product(int(p.id or 0))
+            tracked_item_repo = TrackedItemRepository(db)
+            tracked_items = tracked_item_repo.get_by_product(int(p.id or 0))
 
             best_price = None
             best_currency = "EUR"
 
             for item in tracked_items:
                 latest = price_repo.get_latest_by_url(item.url)
-                if latest and latest.price:
-                    if best_price is None or latest.price < best_price:
-                        best_price = latest.price
-                        best_currency = latest.currency
+                if latest and latest.price and (best_price is None or latest.price < best_price):
+                    best_price = latest.price
+                    best_currency = latest.currency
 
             product_card = {
                 "id": p.id,

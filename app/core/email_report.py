@@ -69,32 +69,80 @@ def get_item_details(item_id: int, db: Database) -> Optional[Dict[str, Any]]:
     }
 
 
+def _initialize_empty_report() -> Dict[str, Any]:
+    return {
+        "date": datetime.now().strftime("%B %d, %Y"),
+        "total": 0,
+        "success_count": 0,
+        "error_count": 0,
+        "deals_count": 0,
+        "deals": [],
+        "price_drops": [],
+        "price_increases": [],
+        "items": [],
+        "errors": [],
+        "next_run": "Tomorrow 23:00",
+    }
+
+
+def _process_single_result(
+    result: Dict[str, Any],
+    price_repo: PriceHistoryRepository,
+    db: Database,
+) -> Dict[str, Any]:
+    item_id = result.get("item_id")
+    item_details = get_item_details(item_id, db)
+    if not item_details:
+        return {"error": {"item_id": item_id, "message": "Item not found"}}
+
+    history = price_repo.get_history(item_id)
+    if not history:
+        return {"error": {"item_id": item_id, "message": "No price history"}}
+
+    current_price = result.get("price")
+    target_price = item_details.get("target_price")
+    last_price = history[-1].price
+
+    entry = {"item": {**item_details, "current_price": current_price}}
+    if target_price is not None and current_price <= target_price:
+        entry["deal"] = entry["item"]
+    if last_price > current_price:
+        entry["drop"] = entry["item"]
+    if last_price < current_price:
+        entry["increase"] = entry["item"]
+    return entry
+
+
 def generate_report_data(results: List[Dict[str, Any]], db: Database) -> Dict[str, Any]:
     """Generate report data from extraction results."""
-
     if not results:
-        return {
-            "date": datetime.now().strftime("%B %d, %Y"),
-            "total": 0,
-            "success_count": 0,
-            "error_count": 0,
-            "deals_count": 0,
-            "deals": [],
-            "price_drops": [],
-            "price_increases": [],
-            "items": [],
-            "errors": [],
-            "next_run": "Tomorrow 23:00",
-        }
+        return _initialize_empty_report()
 
     price_repo = PriceHistoryRepository(db)
-    items = []
-    deals = []
-    price_drops = []
-    price_increases = []
-    errors = []
+    processed = [
+        _process_single_result(result, price_repo, db)
+        for result in results
+    ]
 
-    for result in results:
+    items = [p["item"] for p in processed if "item" in p]
+    deals = [p["deal"] for p in processed if "deal" in p]
+    price_drops = [p["drop"] for p in processed if "drop" in p]
+    price_increases = [p["increase"] for p in processed if "increase" in p]
+    errors = [p["error"] for p in processed if "error" in p]
+
+    return {
+        "date": datetime.now().strftime("%B %d, %Y"),
+        "total": len(results),
+        "success_count": len(items),
+        "error_count": len(errors),
+        "deals_count": len(deals),
+        "deals": deals,
+        "price_drops": price_drops,
+        "price_increases": price_increases,
+        "items": items,
+        "errors": errors,
+        "next_run": "Tomorrow 23:00",
+    }
         item_id = result.get("item_id")
         status = result.get("status")
         price = result.get("price")

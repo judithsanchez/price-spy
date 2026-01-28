@@ -13,7 +13,6 @@ from app.core.config import settings
 
 # Global scheduler instance
 _scheduler: Optional[AsyncIOScheduler] = None
-_last_run_result: Optional[Dict[str, Any]] = None
 
 
 def get_scheduler_config() -> Dict[str, Any]:
@@ -26,10 +25,8 @@ def get_scheduler_config() -> Dict[str, Any]:
     }
 
 
-async def run_scheduled_extraction():
+async def run_scheduled_extraction() -> Dict[str, Any]:
     """Run the scheduled extraction job."""
-    global _last_run_result
-
     from app.storage.database import Database
     from app.storage.repositories import TrackedItemRepository, SchedulerRunRepository
     from app.core.extraction_queue import process_extraction_queue, get_queue_summary
@@ -45,7 +42,7 @@ async def run_scheduled_extraction():
         items = tracked_repo.get_due_for_check()
 
         if not items:
-            _last_run_result = {
+            last_run_result = {
                 "started_at": datetime.now(timezone.utc).isoformat(),
                 "completed_at": datetime.now(timezone.utc).isoformat(),
                 "status": "completed",
@@ -54,6 +51,24 @@ async def run_scheduled_extraction():
                 "items_failed": 0,
                 "message": "No items due for check (all already checked today)",
             }
+            return last_run_result
+
+        # Continue processing when items are due for check
+        extraction_summary = get_queue_summary(items)
+        process_extraction_queue(items)
+
+        last_run_result = {
+            "started_at": extraction_summary["started_at"],
+            "completed_at": extraction_summary["completed_at"],
+            "status": extraction_summary["status"],
+            "items_total": extraction_summary["items_total"],
+            "items_success": extraction_summary["items_success"],
+            "items_failed": extraction_summary["items_failed"],
+            "message": extraction_summary.get("message", "Extraction completed"),
+        }
+        return last_run_result
+    finally:
+        db.close()
             return _last_run_result
 
         # Start run log
@@ -111,7 +126,6 @@ def get_scheduler() -> Optional[AsyncIOScheduler]:
 
 def get_scheduler_status() -> Dict[str, Any]:
     """Get current scheduler status."""
-    global _scheduler, _last_run_result
 
     config = get_scheduler_config()
 
@@ -165,17 +179,16 @@ def get_scheduler_status() -> Dict[str, Any]:
 
 def start_scheduler():
     """Start the scheduler."""
-    global _scheduler
-
     config = get_scheduler_config()
 
     if not config["enabled"]:
-        return
+        return None
 
-    _scheduler = AsyncIOScheduler()
+    global _scheduler
+    scheduler = AsyncIOScheduler()
 
     # Add daily extraction job
-    _scheduler.add_job(
+    scheduler.add_job(
         run_scheduled_extraction,
         CronTrigger(hour=config["hour"], minute=config["minute"]),
         id="daily_extraction",
@@ -183,16 +196,17 @@ def start_scheduler():
         name="Daily Price Extraction",
     )
 
-    _scheduler.start()
+    scheduler.start()
+    _scheduler = scheduler
+    return scheduler
 
 
-def stop_scheduler():
+def stop_scheduler(scheduler):
     """Stop the scheduler."""
-    global _scheduler
 
-    if _scheduler and _scheduler.running:
-        _scheduler.shutdown()
-        _scheduler = None
+    if scheduler and scheduler.running:
+        scheduler.shutdown()
+    return None
 
 
 def pause_scheduler():
@@ -215,7 +229,7 @@ async def trigger_run_now():
 
 
 @asynccontextmanager
-async def lifespan_scheduler(app):
+async def lifespan_scheduler(_app):
     """FastAPI lifespan context manager for scheduler."""
     start_scheduler()
     yield

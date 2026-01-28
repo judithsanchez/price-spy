@@ -118,7 +118,8 @@ CREATE TABLE IF NOT EXISTS extraction_logs (
 );
 
 CREATE INDEX IF NOT EXISTS idx_extraction_logs_item ON extraction_logs(tracked_item_id);
-CREATE INDEX IF NOT EXISTS idx_extraction_logs_created_at ON extraction_logs(created_at);
+CREATE INDEX IF NOT EXISTS idx_extraction_logs_created_at
+    ON extraction_logs(created_at);
 CREATE INDEX IF NOT EXISTS idx_extraction_logs_status ON extraction_logs(status);
 
 -- API Usage Table (tracks rate limits per model per day)
@@ -146,7 +147,8 @@ CREATE TABLE IF NOT EXISTS scheduler_runs (
     error_message TEXT
 );
 
-CREATE INDEX IF NOT EXISTS idx_scheduler_runs_started_at ON scheduler_runs(started_at);
+CREATE INDEX IF NOT EXISTS idx_scheduler_runs_started_at
+    ON scheduler_runs(started_at);
 
 -- Categories Table
 CREATE TABLE IF NOT EXISTS categories (
@@ -192,8 +194,10 @@ class Database:
 
         if is_test and is_prod_path:
             raise RuntimeError(
-                f"SAFETY BLOCK: Attempted to connect to production database '{self.db_path}' "
-                "while running tests. Please ensure DATABASE_PATH is correctly overridden in your test environment."
+                f"SAFETY BLOCK: Attempted to connect to production database "
+                f"'{self.db_path}' while running tests. "
+                "Please ensure DATABASE_PATH is correctly overridden "
+                "in your test environment."
             )
 
         if self._conn is None:
@@ -201,32 +205,41 @@ class Database:
             self._conn.row_factory = sqlite3.Row
         return self._conn
 
+    def _needs_products_migration(self, cursor) -> bool:
+        cursor.execute("PRAGMA table_info(products)")
+        columns = [row["name"] for row in cursor.fetchall()]
+        unwanted = ["labels", "brand", "preferred_unit_size", "current_stock"]
+        return any(col in columns for col in unwanted)
+
+    def _migrate_products_table(self, conn) -> None:
+        cursor = conn.cursor()
+        cursor.execute("PRAGMA table_info(products)")
+        columns = [row["name"] for row in cursor.fetchall()]
+        unwanted = ["labels", "brand", "preferred_unit_size", "current_stock"]
+        keep = [c for c in columns if c not in unwanted]
+        keep_csv = ", ".join(keep)
+        conn.execute("BEGIN TRANSACTION")
+        try:
+            conn.execute("ALTER TABLE products RENAME TO products_old")
+            conn.executescript(SCHEMA)
+            conn.execute(
+                f"INSERT INTO products ({keep_csv}) "
+                f"SELECT {keep_csv} FROM products_old"  # nosec B608
+            )
+            conn.execute("DROP TABLE products_old")
+            conn.commit()
+        except:
+            conn.rollback()
+            raise
+
     def initialize(self) -> None:
         """Initialize database schema and perform migrations."""
         conn = self._connect()
         conn.executescript(SCHEMA)
 
         cursor = conn.cursor()
-
-        # 1. Handle products table migration (Removing columns in SQLite is a multi-step process)
-        cursor.execute("PRAGMA table_info(products)")
-        columns = [row["name"] for row in cursor.fetchall()]
-        unwanted = ["labels", "brand", "preferred_unit_size", "current_stock"]
-
-        if any(col in columns for col in unwanted):
-            # Identify columns we want to KEEP
-            keep = [c for c in columns if c not in unwanted]
-            keep_csv = ", ".join(keep)
-
-            # Create a backup/rebuild table
-            conn.execute("BEGIN TRANSACTION")
-            try:
-                conn.execute("ALTER TABLE products RENAME TO products_old")
-                conn.executescript(SCHEMA)
-                conn.execute(
-                    f"INSERT INTO products ({keep_csv}) SELECT {keep_csv} FROM products_old"  # nosec B608
-                )
-                conn.execute("DROP TABLE products_old")
+        if self._needs_products_migration(cursor):
+            self._migrate_products_table(conn)
                 conn.commit()
             except Exception as e:
                 conn.rollback()
@@ -319,7 +332,8 @@ class Database:
                 conn.executescript(SCHEMA)
                 # Copy data intersection
                 conn.execute(
-                    f"INSERT INTO tracked_items ({keep_csv}) SELECT {keep_csv} FROM tracked_items_old"  # nosec B608
+                    f"INSERT INTO tracked_items ({keep_csv}) "
+                    f"SELECT {keep_csv} FROM tracked_items_old"  # nosec B608
                 )
                 conn.execute("DROP TABLE tracked_items_old")
                 conn.commit()
@@ -337,7 +351,8 @@ class Database:
                 conn.execute("ALTER TABLE labels RENAME TO labels_old")
                 conn.executescript(SCHEMA)
                 conn.execute(
-                    "INSERT INTO labels (id, name, created_at) SELECT id, name, created_at FROM labels_old"
+                    "INSERT INTO labels (id, name, created_at) "
+                    "SELECT id, name, created_at FROM labels_old"
                 )
                 conn.execute("DROP TABLE labels_old")
                 conn.commit()
@@ -549,7 +564,9 @@ class Database:
             for cat in categories:
                 is_sensitive = 1 if cat in size_sensitive else 0
                 conn.execute(
-                    "INSERT OR IGNORE INTO categories (name, is_size_sensitive) VALUES (?, ?)",
+                    "INSERT OR IGNORE INTO categories "
+                    "(name, is_size_sensitive) "
+                    "VALUES (?, ?)",
                     (cat, is_sensitive),
                 )
             conn.commit()
@@ -558,7 +575,6 @@ class Database:
         cursor.execute("SELECT COUNT(*) FROM labels")
         if cursor.fetchone()[0] == 0:
             labels = [
-                # Sustainability & Ethics (30)
                 "Eco-friendly",
                 "Sustainable",
                 "Recyclable",
@@ -589,7 +605,6 @@ class Database:
                 "Forest-friendly",
                 "Oceans-safe",
                 "Low-impact",
-                # Food & Diet (30)
                 "Gluten-free",
                 "Dairy-free",
                 "Nut-free",
@@ -620,7 +635,6 @@ class Database:
                 "Grass-fed",
                 "Free-range",
                 "Pasture-raised",
-                # Electronics & Tech (25)
                 "Energy-star",
                 "Wifi-enabled",
                 "Bluetooth",
@@ -646,7 +660,6 @@ class Database:
                 "LED",
                 "Long-battery-life",
                 "Portable",
-                # Home & Living (25)
                 "Hypoallergenic",
                 "Antibacterial",
                 "Non-toxic",
@@ -672,7 +685,6 @@ class Database:
                 "Designer",
                 "Limited-edition",
                 "Bestseller",
-                # Health & Beauty (20)
                 "Dermatologist-tested",
                 "Paraben-free",
                 "Sulfate-free",
@@ -693,7 +705,6 @@ class Database:
                 "Water-resistant",
                 "SPF-protection",
                 "Professional-use",
-                # General/Marketing (20)
                 "Buy-1-Get-1",
                 "Discounted",
                 "On-sale",

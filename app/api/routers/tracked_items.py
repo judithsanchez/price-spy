@@ -70,13 +70,19 @@ async def create_item(item_in: TrackedItemCreate, db=Depends(get_db)):
                 if not item_in.target_size:
                     raise HTTPException(
                         status_code=400,
-                        detail=f"Product category '{product.category}' is size-sensitive. 'target_size' is required.",
+                        detail=(
+                            f"Product category '{product.category}' is size-sensitive. "
+                            "'target_size' is required."
+                        ),
                     )
             else:
                 if item_in.target_size:
                     raise HTTPException(
                         status_code=400,
-                        detail=f"Product category '{product.category}' is NOT size-sensitive. 'target_size' must be empty.",
+                        detail=(
+                            f"Product category '{product.category}' is NOT size-sensitive. "
+                            "'target_size' must be empty."
+                        ),
                     )
 
         store_repo = StoreRepository(db)
@@ -121,7 +127,11 @@ async def create_item(item_in: TrackedItemCreate, db=Depends(get_db)):
 
 
 @router.put("/{item_id}", response_model=TrackedItemResponse)
-async def update_item(item_id: int, item_in: TrackedItemCreate, db=Depends(get_db)):
+async def update_item(
+    item_id: int,
+    item_in: TrackedItemCreate,
+    db=Depends(get_db),
+):
     """Update a tracked item and replace its labels."""
     try:
         repo = TrackedItemRepository(db)
@@ -144,13 +154,19 @@ async def update_item(item_id: int, item_in: TrackedItemCreate, db=Depends(get_d
                 if not item_in.target_size:
                     raise HTTPException(
                         status_code=400,
-                        detail=f"Product category '{product.category}' is size-sensitive. 'target_size' is required.",
+                        detail=(
+                            f"Product category '{product.category}' is size-sensitive. "
+                            f"'target_size' is required."
+                        ),
                     )
             else:
                 if item_in.target_size:
                     raise HTTPException(
                         status_code=400,
-                        detail=f"Product category '{product.category}' is NOT size-sensitive. 'target_size' must be empty.",
+                        detail=(
+                            f"Product category '{product.category}' is NOT size-sensitive. "
+                            f"'target_size' must be empty."
+                        ),
                     )
 
         item_obj = TrackedItem(
@@ -172,7 +188,8 @@ async def update_item(item_id: int, item_in: TrackedItemCreate, db=Depends(get_d
         updated = repo.get_by_id(item_id)
         if not updated:
             raise HTTPException(
-                status_code=404, detail="Tracked item not found after operation"
+                status_code=404,
+                detail="Tracked item not found after operation"
             )
         item_dict = updated.model_dump()
         item_dict["labels"] = repo.get_labels(int(item_id))
@@ -218,7 +235,10 @@ async def patch_item(item_id: int, item_patch: TrackedItemUpdate, db=Depends(get
 
 @router.delete("/{item_id}")
 async def delete_item(item_id: int, db=Depends(get_db)):
-    """Delete a tracked item. Labels remain but association is removed via labels CASCADE or repository cleanup."""
+    """
+    Delete a tracked item. Labels remain but association is removed via
+    labels CASCADE or repository cleanup.
+    """
     try:
         repo = TrackedItemRepository(db)
         if not repo.get_by_id(item_id):
