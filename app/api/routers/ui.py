@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Optional, List, Any, cast
+from typing import Optional, Any, cast
 from fastapi import APIRouter, Depends, Request
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
