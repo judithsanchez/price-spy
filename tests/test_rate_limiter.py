@@ -1,10 +1,9 @@
 from app.core.gemini import GeminiModel, GeminiModels
 from app.core.rate_limiter import RateLimitTracker
+from app.storage.database import Database
 
 
 def test_rate_limiter_available_logic(test_db):
-    from app.storage.database import Database
-
     db = Database(test_db)
     tracker = RateLimitTracker(db)
 
@@ -23,8 +22,6 @@ def test_rate_limiter_available_logic(test_db):
 
 
 def test_get_available_model_logic(test_db):
-    from app.storage.database import Database
-
     db = Database(test_db)
     tracker = RateLimitTracker(db)
 

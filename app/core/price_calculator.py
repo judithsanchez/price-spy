@@ -1,5 +1,7 @@
 """Price calculation and comparison logic."""
 
+import json
+
 from app.models.schemas import PriceComparison
 
 # Unit conversion constants
@@ -159,8 +161,6 @@ def determine_effective_availability(
     if not target_size or not available_sizes_json:
         # Sensitive but no target or no sizes extracted, fall back to raw
         return raw_is_available
-
-    import json
 
     try:
         extracted_sizes = json.loads(available_sizes_json)

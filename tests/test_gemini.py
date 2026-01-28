@@ -6,7 +6,7 @@ def test_gemini_models_retrieval():
     assert config is not None
     assert config.model == GeminiModel.FLASH_1_5
     # Flash 1.5 should have rpd of 1500
-    assert config.rate_limits.rpd == 1500
+    assert config.rate_limits.rpd == 1500  # noqa: PLR2004
 
 
 def test_vision_models_list():

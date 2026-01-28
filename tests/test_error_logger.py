@@ -1,11 +1,10 @@
+from app.core.config import settings
 from app.core.error_logger import log_error_to_db
 from app.storage.database import Database
 from app.storage.repositories import ErrorLogRepository
 
 
 def test_log_error_to_db_integration(test_db, monkeypatch):
-    from app.core.config import settings
-
     # Redirect error logger to test database
     monkeypatch.setattr(settings, "DATABASE_PATH", test_db)
 

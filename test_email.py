@@ -101,13 +101,6 @@ If you received this, your daily reports will work!
     try:
         _send_smtp_email(config, msg.as_string())
 
-        print()
-        print("=" * 50)
-        print("SUCCESS! Test email sent.")
-        print(f"Check your inbox at: {config['recipient']}")
-        print("=" * 50)
-        return True
-
     except smtplib.SMTPAuthenticationError as e:
         print()
         print("=" * 50)
@@ -137,6 +130,14 @@ If you received this, your daily reports will work!
         print("=" * 50)
         print(f"Error: {type(e).__name__}: {e}")
         return False
+
+    else:
+        print()
+        print("=" * 50)
+        print("SUCCESS! Test email sent.")
+        print(f"Check your inbox at: {config['recipient']}")
+        print("=" * 50)
+        return True
 
 
 if __name__ == "__main__":

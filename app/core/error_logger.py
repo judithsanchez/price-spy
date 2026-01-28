@@ -1,5 +1,6 @@
 """Service for standardized error logging to the database."""
 
+import sys
 import traceback
 
 from app.core.config import settings
@@ -39,8 +40,6 @@ def log_error_to_db(
         repo.insert(record)
     except Exception as e:
         # Fail-safe: if DB logging fails, at least print to stderr
-        import sys
-
         print(f"CRITICAL: Failed to persist error to DB: {e}", file=sys.stderr)
     finally:
         db.close()

@@ -2,6 +2,7 @@
 
 from dataclasses import dataclass
 from enum import Enum
+from typing import ClassVar
 
 
 class GeminiModel(str, Enum):
@@ -114,7 +115,7 @@ class GeminiModels:
 
     # Vision-capable models in priority order (for fallback)
     # Default is now Lite model as requested
-    VISION_MODELS = [VISION_FALLBACK, VISION_EXTRACTION]
+    VISION_MODELS: ClassVar[list[ModelConfig]] = [VISION_FALLBACK, VISION_EXTRACTION]
 
     @classmethod
     def get_config_by_model(cls, model_name: str) -> ModelConfig | None:

@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -41,7 +41,7 @@ def test_generate_report_data_mocked(mock_db):
             is_available=True,
             confidence=1.0,
             product_name="Test Product",
-            created_at=datetime.now(timezone.utc),
+            created_at=datetime.now(UTC),
         )
         mock_price_repo.return_value.get_by_url.return_value = [price]
 
