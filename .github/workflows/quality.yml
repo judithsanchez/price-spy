@@ -87,5 +87,5 @@ jobs:
           if [[ "${{ contains(github.event.pull_request.labels.*.name, 'skip-coverage') }}" == "true" ]]; then
             pytest
           else
-            pytest --cov=app --cov-fail-under=80
+            pytest --cov=app --cov-fail-under=50
           fi

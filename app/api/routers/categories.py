@@ -34,7 +34,7 @@ async def search_categories(q: str, db=Depends(get_db)):
         db.close()
 
 
-@router.post("", response_model=CategoryResponse)
+@router.post("", response_model=CategoryResponse, status_code=201)
 async def create_category(category: CategoryCreate, db=Depends(get_db)):
     """Create a new category with mandatory initial capitalization."""
     try:
