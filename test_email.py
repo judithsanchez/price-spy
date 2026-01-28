@@ -6,8 +6,8 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
 
-def test_email():
-    # Read config from environment
+def _load_email_config():
+    """Load and validate email configuration from environment."""
     config = {
         "recipient": os.getenv("EMAIL_RECIPIENT"),
         "sender": os.getenv("EMAIL_SENDER"),
@@ -29,6 +29,32 @@ def test_email():
         print("  SMTP_HOST - e.g., smtp.gmail.com")
         print("  SMTP_USER - Your Gmail address")
         print("  SMTP_PASSWORD - Gmail App Password (16 chars)")
+        return None
+
+    return config
+
+
+def _send_smtp_email(config, msg_as_string):
+    """Connect to SMTP and send email."""
+    print("Connecting to SMTP server...")
+    with smtplib.SMTP(config["smtp_host"], config["smtp_port"]) as server:
+        server.set_debuglevel(0)  # Set to 1 for verbose output
+
+        if config["use_tls"]:
+            print("Starting TLS...")
+            server.starttls()
+
+        print("Logging in...")
+        server.login(config["smtp_user"], config["smtp_password"])
+
+        print("Sending email...")
+        server.sendmail(config["sender"], config["recipient"], msg_as_string)
+
+
+def test_email():
+    # Read config from environment
+    config = _load_email_config()
+    if not config:
         return False
 
     print("Configuration:")
@@ -59,7 +85,9 @@ If you received this, your daily reports will work!
 <body style="font-family: Arial, sans-serif; padding: 20px;">
     <h2 style="color: #2563eb;">Hello from Price Spy!</h2>
     <p>This is a test email to verify your email configuration is working.</p>
-    <p style="color: #16a34a; font-weight: bold;">If you received this, your daily reports will work!</p>
+    <p style="color: #16a34a; font-weight: bold;">
+        If you received this, your daily reports will work!
+    </p>
     <hr style="margin: 20px 0;">
     <p style="color: #666; font-size: 12px;">- Price Spy</p>
 </body>
@@ -70,20 +98,8 @@ If you received this, your daily reports will work!
     msg.attach(MIMEText(html, "html"))
 
     # Send
-    print("Connecting to SMTP server...")
     try:
-        with smtplib.SMTP(config["smtp_host"], config["smtp_port"]) as server:
-            server.set_debuglevel(0)  # Set to 1 for verbose output
-
-            if config["use_tls"]:
-                print("Starting TLS...")
-                server.starttls()
-
-            print("Logging in...")
-            server.login(config["smtp_user"], config["smtp_password"])
-
-            print("Sending email...")
-            server.sendmail(config["sender"], config["recipient"], msg.as_string())
+        _send_smtp_email(config, msg.as_string())
 
         print()
         print("=" * 50)
