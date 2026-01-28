@@ -1,11 +1,12 @@
-import os
+import logging
 import sqlite3
 from datetime import datetime, timedelta
+from pathlib import Path
 
 
 def verify():
-    db_path = "data/pricespy.db"
-    if not os.path.exists(db_path):
+    db_path = Path("data/pricespy.db")
+    if not db_path.exists():
         print(f"Error: {db_path} not found")
         return
 
@@ -24,8 +25,8 @@ def verify():
         )
         cursor.execute(
             """
-            INSERT OR IGNORE INTO tracked_items 
-            (id, product_id, store_id, url, is_active, quantity_size, quantity_unit) 
+            INSERT OR IGNORE INTO tracked_items
+            (id, product_id, store_id, url, is_active, quantity_size, quantity_unit)
             VALUES (999, 999, 1, ?, 1, 100, 'ml')
         """,
             (test_url,),
@@ -36,10 +37,10 @@ def verify():
         yesterday = (datetime.now() - timedelta(days=1)).isoformat()
         cursor.execute(
             """
-            INSERT INTO price_history 
-            (product_name, price, currency, is_available, confidence, url, 
+            INSERT INTO price_history
+            (product_name, price, currency, is_available, confidence, url,
              store_name, notes, created_at)
-            VALUES ('Verification Logic Test', 80.0, 'EUR', 1, 1.0, ?, 
+            VALUES ('Verification Logic Test', 80.0, 'EUR', 1, 1.0, ?,
                     'Test Store', 'Stable', ?)
         """,
             (test_url, yesterday),
@@ -49,21 +50,21 @@ def verify():
         now = datetime.now().isoformat()
         cursor.execute(
             """
-            INSERT INTO price_history 
-            (product_name, price, currency, is_available, confidence, url, 
+            INSERT INTO price_history
+            (product_name, price, currency, is_available, confidence, url,
              store_name, notes, created_at)
-            VALUES ('Verification Logic Test', 120.0, 'EUR', 1, 1.0, ?, 
+            VALUES ('Verification Logic Test', 120.0, 'EUR', 1, 1.0, ?,
                     'Test Store', 'Only 1 unit left! (Low Stock Alert)', ?)
         """,
             (test_url, now),
         )
 
         conn.commit()
-        print("Verification data inserted successfully.")
-
-    except Exception as e:
-        print(f"Error: {e}")
+    except Exception:
+        logging.exception("Error executing verification")
         conn.rollback()
+    else:
+        print("Verification data inserted successfully.")
     finally:
         conn.close()
 
