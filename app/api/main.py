@@ -1,26 +1,28 @@
 """FastAPI application factory."""
 
-from fastapi import FastAPI, Request
-from fastapi.staticfiles import StaticFiles
-from fastapi.responses import JSONResponse
-from pydantic import ValidationError
 from pathlib import Path
 
-from app.core.scheduler import lifespan_scheduler
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
+from pydantic import ValidationError
+
 from app.api.routers import (
-    products,
     categories,
-    units,
-    purchase_types,
-    stores,
-    labels,
-    tracked_items,
-    extraction,
-    logs,
-    scheduler,
     email,
+    extraction,
+    labels,
+    logs,
+    products,
+    purchase_types,
+    scheduler,
+    stores,
+    tracked_items,
     ui,
+    units,
 )
+from app.core.error_logger import log_error_to_db
+from app.core.scheduler import lifespan_scheduler
 
 app = FastAPI(
     title="Price Spy",
@@ -54,11 +56,10 @@ if screenshots_dir.exists():
 @app.exception_handler(ValidationError)
 async def pydantic_validation_exception_handler(request: Request, exc: ValidationError):
     """Handle Pydantic validation errors by returning a 422 JSON response."""
-    from app.core.error_logger import log_error_to_db
 
     log_error_to_db(
         error_type="validation_error",
-        message=f"Validation error: {str(exc)}",
+        message=f"Validation error: {exc!s}",
         url=str(request.url),
     )
     return JSONResponse(
@@ -69,7 +70,6 @@ async def pydantic_validation_exception_handler(request: Request, exc: Validatio
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
     """Global catch-all for unhandled exceptions."""
-    from app.core.error_logger import log_error_to_db
 
     log_error_to_db(
         error_type="unhandled_exception", message=str(exc), url=str(request.url)

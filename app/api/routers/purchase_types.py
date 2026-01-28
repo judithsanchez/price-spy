@@ -1,19 +1,22 @@
-from typing import List
+from typing import Annotated
+
 from fastapi import APIRouter, Depends, HTTPException
+
 from app.api.deps import get_db
-from app.storage.repositories import PurchaseTypeRepository
 from app.models.schemas import (
     PurchaseType,
     PurchaseTypeCreate,
-    PurchaseTypeUpdate,
     PurchaseTypeResponse,
+    PurchaseTypeUpdate,
 )
+from app.storage.database import Database
+from app.storage.repositories import PurchaseTypeRepository
 
 router = APIRouter(prefix="/api/purchase-types", tags=["Purchase Types"])
 
 
-@router.get("", response_model=List[PurchaseTypeResponse])
-async def get_purchase_types(db=Depends(get_db)):
+@router.get("", response_model=list[PurchaseTypeResponse])
+async def get_purchase_types(db: Annotated[Database, Depends(get_db)]):
     """Get all purchase types (recurring, one_time)."""
     try:
         repo = PurchaseTypeRepository(db)
@@ -23,7 +26,9 @@ async def get_purchase_types(db=Depends(get_db)):
 
 
 @router.post("", response_model=PurchaseTypeResponse, status_code=201)
-async def create_purchase_type(pt: PurchaseTypeCreate, db=Depends(get_db)):
+async def create_purchase_type(
+    pt: PurchaseTypeCreate, db: Annotated[Database, Depends(get_db)]
+):
     """Create a new purchase type."""
     try:
         repo = PurchaseTypeRepository(db)
@@ -39,7 +44,7 @@ async def create_purchase_type(pt: PurchaseTypeCreate, db=Depends(get_db)):
 
 @router.put("/{pt_id}", response_model=PurchaseTypeResponse)
 async def update_purchase_type(
-    pt_id: int, pt_update: PurchaseTypeCreate, db=Depends(get_db)
+    pt_id: int, pt_update: PurchaseTypeCreate, db: Annotated[Database, Depends(get_db)]
 ):
     """Update a purchase type and cascade changes to products."""
     try:
@@ -56,7 +61,7 @@ async def update_purchase_type(
 
 @router.patch("/{pt_id}", response_model=PurchaseTypeResponse)
 async def patch_purchase_type(
-    pt_id: int, pt_patch: PurchaseTypeUpdate, db=Depends(get_db)
+    pt_id: int, pt_patch: PurchaseTypeUpdate, db: Annotated[Database, Depends(get_db)]
 ):
     """Partially update a purchase type."""
     try:
@@ -80,7 +85,7 @@ async def patch_purchase_type(
 
 
 @router.delete("/{pt_id}")
-async def delete_purchase_type(pt_id: int, db=Depends(get_db)):
+async def delete_purchase_type(pt_id: int, db: Annotated[Database, Depends(get_db)]):
     """Delete a purchase type. Blocked if used in products."""
     try:
         repo = PurchaseTypeRepository(db)
@@ -96,7 +101,10 @@ async def delete_purchase_type(pt_id: int, db=Depends(get_db)):
         if products:
             raise HTTPException(
                 status_code=400,
-                detail=f"Cannot delete purchase type '{pt.name}'. It is used by {len(products)} products. Update them first.",
+                detail=(
+                    f"Cannot delete purchase type '{pt.name}'. "
+                    f"It is used by {len(products)} products. Update them first."
+                ),
             )
 
         repo.delete(pt_id)

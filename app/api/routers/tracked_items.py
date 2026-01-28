@@ -1,24 +1,27 @@
-from typing import List
+from typing import Annotated
+
 from fastapi import APIRouter, Depends, HTTPException
+
 from app.api.deps import get_db
-from app.storage.repositories import (
-    TrackedItemRepository,
-    ProductRepository,
-    StoreRepository,
-    CategoryRepository,
-)
 from app.models.schemas import (
     TrackedItem,
     TrackedItemCreate,
-    TrackedItemUpdate,
     TrackedItemResponse,
+    TrackedItemUpdate,
+)
+from app.storage.database import Database
+from app.storage.repositories import (
+    CategoryRepository,
+    ProductRepository,
+    StoreRepository,
+    TrackedItemRepository,
 )
 
 router = APIRouter(prefix="/api/tracked-items", tags=["Tracked Items"])
 
 
-@router.get("", response_model=List[TrackedItemResponse])
-async def get_items(db=Depends(get_db)):
+@router.get("", response_model=list[TrackedItemResponse])
+async def get_items(db: Annotated[Database, Depends(get_db)]):
     """Get all tracked items with their labels."""
     try:
         repo = TrackedItemRepository(db)
@@ -27,7 +30,7 @@ async def get_items(db=Depends(get_db)):
         for item in items:
             # Map TrackedItem to TrackedItemResponse manually or using helper
             item_dict = item.model_dump()
-            item_dict["labels"] = repo.get_labels(item.id)
+            item_dict["labels"] = repo.get_labels(int(item.id or 0))
             result.append(TrackedItemResponse(**item_dict))
         return result
     finally:
@@ -35,7 +38,7 @@ async def get_items(db=Depends(get_db)):
 
 
 @router.get("/{item_id}", response_model=TrackedItemResponse)
-async def get_item(item_id: int, db=Depends(get_db)):
+async def get_item(item_id: int, db: Annotated[Database, Depends(get_db)]):
     """Get a single tracked item by ID with its labels."""
     try:
         repo = TrackedItemRepository(db)
@@ -44,14 +47,16 @@ async def get_item(item_id: int, db=Depends(get_db)):
             raise HTTPException(status_code=404, detail="Tracked item not found")
 
         item_dict = item.model_dump()
-        item_dict["labels"] = repo.get_labels(item.id)
+        item_dict["labels"] = repo.get_labels(int(item.id or 0))
         return TrackedItemResponse(**item_dict)
     finally:
         db.close()
 
 
 @router.post("", response_model=TrackedItemResponse, status_code=201)
-async def create_item(item_in: TrackedItemCreate, db=Depends(get_db)):
+async def create_item(
+    item_in: TrackedItemCreate, db: Annotated[Database, Depends(get_db)]
+):
     """Create a new tracked item and associate labels."""
     try:
         # Validate product and store exist
@@ -70,14 +75,19 @@ async def create_item(item_in: TrackedItemCreate, db=Depends(get_db)):
                 if not item_in.target_size:
                     raise HTTPException(
                         status_code=400,
-                        detail=f"Product category '{product.category}' is size-sensitive. 'target_size' is required.",
+                        detail=(
+                            f"Product category '{product.category}' is size-sensitive. "
+                            "'target_size' is required."
+                        ),
                     )
-            else:
-                if item_in.target_size:
-                    raise HTTPException(
-                        status_code=400,
-                        detail=f"Product category '{product.category}' is NOT size-sensitive. 'target_size' must be empty.",
-                    )
+            elif item_in.target_size:
+                raise HTTPException(
+                    status_code=400,
+                    detail=(
+                        f"Product category '{product.category}' is NOT size-sensitive. "
+                        "'target_size' must be empty."
+                    ),
+                )
 
         store_repo = StoreRepository(db)
         if not store_repo.get_by_id(item_in.store_id):
@@ -89,7 +99,7 @@ async def create_item(item_in: TrackedItemCreate, db=Depends(get_db)):
         if existing:
             # If it exists, return it with labels
             item_dict = existing.model_dump()
-            item_dict["labels"] = repo.get_labels(existing.id)
+            item_dict["labels"] = repo.get_labels(int(existing.id or 0))
             return TrackedItemResponse(**item_dict)
 
         item_obj = TrackedItem(
@@ -109,15 +119,23 @@ async def create_item(item_in: TrackedItemCreate, db=Depends(get_db)):
             repo.set_labels(item_id, item_in.label_ids)
 
         created = repo.get_by_id(item_id)
+        if not created:
+            raise HTTPException(
+                status_code=500, detail="Failed to retrieve created item"
+            )
         item_dict = created.model_dump()
-        item_dict["labels"] = repo.get_labels(item_id)
+        item_dict["labels"] = repo.get_labels(int(item_id))
         return TrackedItemResponse(**item_dict)
     finally:
         db.close()
 
 
 @router.put("/{item_id}", response_model=TrackedItemResponse)
-async def update_item(item_id: int, item_in: TrackedItemCreate, db=Depends(get_db)):
+async def update_item(
+    item_id: int,
+    item_in: TrackedItemCreate,
+    db: Annotated[Database, Depends(get_db)],
+):
     """Update a tracked item and replace its labels."""
     try:
         repo = TrackedItemRepository(db)
@@ -140,14 +158,19 @@ async def update_item(item_id: int, item_in: TrackedItemCreate, db=Depends(get_d
                 if not item_in.target_size:
                     raise HTTPException(
                         status_code=400,
-                        detail=f"Product category '{product.category}' is size-sensitive. 'target_size' is required.",
+                        detail=(
+                            f"Product category '{product.category}' is size-sensitive. "
+                            f"'target_size' is required."
+                        ),
                     )
-            else:
-                if item_in.target_size:
-                    raise HTTPException(
-                        status_code=400,
-                        detail=f"Product category '{product.category}' is NOT size-sensitive. 'target_size' must be empty.",
-                    )
+            elif item_in.target_size:
+                raise HTTPException(
+                    status_code=400,
+                    detail=(
+                        f"Product category '{product.category}' is NOT size-sensitive. "
+                        f"'target_size' must be empty."
+                    ),
+                )
 
         item_obj = TrackedItem(
             product_id=item_in.product_id,
@@ -166,15 +189,23 @@ async def update_item(item_id: int, item_in: TrackedItemCreate, db=Depends(get_d
             repo.set_labels(item_id, item_in.label_ids)
 
         updated = repo.get_by_id(item_id)
+        if not updated:
+            raise HTTPException(
+                status_code=404, detail="Tracked item not found after operation"
+            )
         item_dict = updated.model_dump()
-        item_dict["labels"] = repo.get_labels(item_id)
+        item_dict["labels"] = repo.get_labels(int(item_id))
         return TrackedItemResponse(**item_dict)
     finally:
         db.close()
 
 
 @router.patch("/{item_id}", response_model=TrackedItemResponse)
-async def patch_item(item_id: int, item_patch: TrackedItemUpdate, db=Depends(get_db)):
+async def patch_item(
+    item_id: int,
+    item_patch: TrackedItemUpdate,
+    db: Annotated[Database, Depends(get_db)],
+):
     """Partially update a tracked item and its labels."""
     try:
         repo = TrackedItemRepository(db)
@@ -197,6 +228,10 @@ async def patch_item(item_id: int, item_patch: TrackedItemUpdate, db=Depends(get
             repo.set_labels(item_id, label_ids)
 
         updated = repo.get_by_id(item_id)
+        if not updated:
+            raise HTTPException(
+                status_code=404, detail="Tracked item not found after operation"
+            )
         item_dict = updated.model_dump()
         item_dict["labels"] = repo.get_labels(item_id)
         return TrackedItemResponse(**item_dict)
@@ -205,8 +240,11 @@ async def patch_item(item_id: int, item_patch: TrackedItemUpdate, db=Depends(get
 
 
 @router.delete("/{item_id}")
-async def delete_item(item_id: int, db=Depends(get_db)):
-    """Delete a tracked item. Labels remain but association is removed via labels CASCADE or repository cleanup."""
+async def delete_item(item_id: int, db: Annotated[Database, Depends(get_db)]):
+    """
+    Delete a tracked item. Labels remain but association is removed via
+    labels CASCADE or repository cleanup.
+    """
     try:
         repo = TrackedItemRepository(db)
         if not repo.get_by_id(item_id):

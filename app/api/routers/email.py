@@ -1,4 +1,3 @@
-from typing import Optional
 from fastapi import APIRouter
 from pydantic import BaseModel
 
@@ -12,7 +11,7 @@ class EmailTestResponse(BaseModel):
 
     success: bool
     message: str
-    recipient: Optional[str] = None
+    recipient: str | None = None
 
 
 class EmailStatusResponse(BaseModel):
@@ -20,7 +19,7 @@ class EmailStatusResponse(BaseModel):
 
     enabled: bool
     configured: bool
-    recipient: Optional[str] = None
+    recipient: str | None = None
 
 
 @router.get("/status", response_model=EmailStatusResponse)
@@ -40,7 +39,10 @@ async def email_test():
     if not is_email_configured():
         return EmailTestResponse(
             success=False,
-            message="Email not configured. Set EMAIL_ENABLED=true and configure SMTP settings.",
+            message=(
+                "Email not configured. Set EMAIL_ENABLED=true "
+                "and configure SMTP settings."
+            ),
         )
 
     config = get_email_config()
@@ -51,7 +53,9 @@ async def email_test():
     <body style="font-family: Arial, sans-serif; padding: 20px;">
         <h2 style="color: #2563eb;">Price Spy Test Email</h2>
         <p>This is a test email to verify your email configuration is working.</p>
-        <p style="color: #16a34a; font-weight: bold;">If you received this, your daily reports will work!</p>
+        <p style="color: #16a34a; font-weight: bold;">
+            If you received this, your daily reports will work!
+        </p>
         <hr style="margin: 20px 0;">
         <p style="color: #666; font-size: 12px;">- Price Spy</p>
     </body>
@@ -81,8 +85,7 @@ If you received this, your daily reports will work!
             message="Test email sent successfully!",
             recipient=config["recipient"],
         )
-    else:
-        return EmailTestResponse(
-            success=False,
-            message="Failed to send email. Check SMTP settings and credentials.",
-        )
+    return EmailTestResponse(
+        success=False,
+        message="Failed to send email. Check SMTP settings and credentials.",
+    )

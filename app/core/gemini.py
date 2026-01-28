@@ -1,8 +1,8 @@
 """Gemini API configuration, rate limits, and provider management."""
 
-from enum import Enum
 from dataclasses import dataclass
-from typing import Optional
+from enum import Enum
+from typing import ClassVar
 
 
 class GeminiModel(str, Enum):
@@ -115,10 +115,10 @@ class GeminiModels:
 
     # Vision-capable models in priority order (for fallback)
     # Default is now Lite model as requested
-    VISION_MODELS = [VISION_FALLBACK, VISION_EXTRACTION]
+    VISION_MODELS: ClassVar[list[ModelConfig]] = [VISION_FALLBACK, VISION_EXTRACTION]
 
     @classmethod
-    def get_config_by_model(cls, model_name: str) -> Optional[ModelConfig]:
+    def get_config_by_model(cls, model_name: str) -> ModelConfig | None:
         """Get ModelConfig by model name string (e.g., 'gemini-2.5-flash')."""
         try:
             model = GeminiModel(model_name)

@@ -1,18 +1,19 @@
 """Service for standardized error logging to the database."""
 
+import sys
 import traceback
-from typing import Optional
+
+from app.core.config import settings
+from app.models.schemas import ErrorRecord
 from app.storage.database import Database
 from app.storage.repositories import ErrorLogRepository
-from app.models.schemas import ErrorRecord
-from app.core.config import settings
 
 
 def log_error_to_db(
     error_type: str,
     message: str,
-    url: Optional[str] = None,
-    screenshot_path: Optional[str] = None,
+    url: str | None = None,
+    screenshot_path: str | None = None,
     include_stack: bool = True,
 ):
     """
@@ -39,8 +40,6 @@ def log_error_to_db(
         repo.insert(record)
     except Exception as e:
         # Fail-safe: if DB logging fails, at least print to stderr
-        import sys
-
         print(f"CRITICAL: Failed to persist error to DB: {e}", file=sys.stderr)
     finally:
         db.close()

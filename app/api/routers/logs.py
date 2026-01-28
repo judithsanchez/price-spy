@@ -1,11 +1,13 @@
-from typing import List, Optional
-from fastapi import APIRouter, Depends
-from pydantic import BaseModel
+from typing import Annotated
+
+from fastapi import APIRouter, Depends, Query
+from pydantic import BaseModel, Field
 
 from app.api.deps import get_db
-from app.core.rate_limiter import RateLimitTracker
 from app.core.gemini import GeminiModels
-from app.storage.repositories import ExtractionLogRepository, ErrorLogRepository
+from app.core.rate_limiter import RateLimitTracker
+from app.storage.database import Database
+from app.storage.repositories import ErrorLogRepository, ExtractionLogRepository
 
 router = APIRouter(prefix="/api", tags=["Logs"])
 
@@ -16,11 +18,11 @@ class ExtractionLogResponse(BaseModel):
     id: int
     tracked_item_id: int
     status: str
-    model_used: Optional[str] = None
-    price: Optional[float] = None
-    currency: Optional[str] = None
-    error_message: Optional[str] = None
-    duration_ms: Optional[int] = None
+    model_used: str | None = None
+    price: float | None = None
+    currency: str | None = None
+    error_message: str | None = None
+    duration_ms: int | None = None
     created_at: str
 
 
@@ -30,9 +32,9 @@ class ErrorLogResponse(BaseModel):
     id: int
     error_type: str
     message: str
-    url: Optional[str] = None
-    screenshot_path: Optional[str] = None
-    stack_trace: Optional[str] = None
+    url: str | None = None
+    screenshot_path: str | None = None
+    stack_trace: str | None = None
     created_at: str
 
 
@@ -55,30 +57,33 @@ class ApiUsageResponse(BaseModel):
     exhausted: bool
 
 
-@router.get("/logs", response_model=List[ExtractionLogResponse])
+class ExtractionLogFilters(BaseModel):
+    """Filters for extraction logs."""
+
+    status: str | None = None
+    item_id: int | None = None
+    start_date: str | None = Field(None, pattern=r"^\d{4}-\d{2}-\d{2}$")
+    end_date: str | None = Field(None, pattern=r"^\d{4}-\d{2}-\d{2}$")
+    limit: int = Query(100, ge=1, le=1000)
+    offset: int = Query(0, ge=0)
+
+
+@router.get("/logs", response_model=list[ExtractionLogResponse])
 async def get_extraction_logs(
-    status: Optional[str] = None,
-    item_id: Optional[int] = None,
-    start_date: Optional[str] = None,
-    end_date: Optional[str] = None,
-    limit: int = 100,
-    offset: int = 0,
-    db=Depends(get_db),
+    filters: Annotated[ExtractionLogFilters, Query()],
+    db: Annotated[Database, Depends(get_db)],
 ):
     """Get recent extraction logs with optional filters."""
     try:
         repo = ExtractionLogRepository(db)
         logs = repo.get_all_filtered(
-            status=status,
-            item_id=item_id,
-            start_date=start_date,
-            end_date=end_date,
-            limit=limit,
-            offset=offset,
+            filters=filters.model_dump(),
+            limit=filters.limit,
+            offset=filters.offset,
         )
         return [
             ExtractionLogResponse(
-                id=log.id,
+                id=int(log.id or 0),
                 tracked_item_id=log.tracked_item_id,
                 status=log.status,
                 model_used=log.model_used,
@@ -94,28 +99,32 @@ async def get_extraction_logs(
         db.close()
 
 
-@router.get("/errors", response_model=List[ErrorLogResponse])
+class ErrorLogFilters(BaseModel):
+    """Filters for error logs."""
+
+    error_type: str | None = None
+    start_date: str | None = Field(None, pattern=r"^\d{4}-\d{2}-\d{2}$")
+    end_date: str | None = Field(None, pattern=r"^\d{4}-\d{2}-\d{2}$")
+    limit: int = Query(100, ge=1, le=1000)
+    offset: int = Query(0, ge=0)
+
+
+@router.get("/errors", response_model=list[ErrorLogResponse])
 async def get_error_logs(
-    error_type: Optional[str] = None,
-    start_date: Optional[str] = None,
-    end_date: Optional[str] = None,
-    limit: int = 100,
-    offset: int = 0,
-    db=Depends(get_db),
+    filters: Annotated[ErrorLogFilters, Query()],
+    db: Annotated[Database, Depends(get_db)],
 ):
     """Get recent error logs with optional filters."""
     try:
         repo = ErrorLogRepository(db)
         logs = repo.get_all_filtered(
-            error_type=error_type,
-            start_date=start_date,
-            end_date=end_date,
-            limit=limit,
-            offset=offset,
+            filters=filters.model_dump(),
+            limit=filters.limit,
+            offset=filters.offset,
         )
         return [
             ErrorLogResponse(
-                id=log.id,
+                id=int(log.id or 0),
                 error_type=log.error_type,
                 message=log.message,
                 url=log.url,
@@ -130,7 +139,9 @@ async def get_error_logs(
 
 
 @router.get("/logs/stats", response_model=ExtractionStatsResponse)
-async def get_extraction_stats(db=Depends(get_db)):
+async def get_extraction_stats(
+    db: Annotated[Database, Depends(get_db)],
+):
     """Get extraction statistics for today."""
     try:
         repo = ExtractionLogRepository(db)
@@ -140,8 +151,10 @@ async def get_extraction_stats(db=Depends(get_db)):
         db.close()
 
 
-@router.get("/usage", response_model=List[ApiUsageResponse])
-async def get_api_usage(db=Depends(get_db)):
+@router.get("/usage", response_model=list[ApiUsageResponse])
+async def get_api_usage(
+    db: Annotated[Database, Depends(get_db)],
+):
     """Get API usage for all models today."""
     try:
         tracker = RateLimitTracker(db)

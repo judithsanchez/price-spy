@@ -1,8 +1,8 @@
 """Rate limit tracking and provider fallback for AI APIs."""
 
-from datetime import datetime, timezone
-from typing import Optional, List
 from dataclasses import dataclass
+from datetime import UTC, datetime
+
 import pytz
 
 from app.core.gemini import GeminiModel, GeminiModels, ModelConfig
@@ -65,12 +65,13 @@ class RateLimitTracker:
         """)
         self.db.commit()
 
-    def _get_pacific_date(self) -> str:
+    @staticmethod
+    def _get_pacific_date() -> str:
         """Get current date in Pacific timezone (for RPD reset)."""
         now_pacific = datetime.now(PACIFIC_TZ)
         return now_pacific.strftime("%Y-%m-%d")
 
-    def get_usage(self, model: GeminiModel) -> Optional[UsageRecord]:
+    def get_usage(self, model: GeminiModel) -> UsageRecord | None:
         """Get today's usage for a model."""
         today = self._get_pacific_date()
         cursor = self.db.execute(
@@ -85,24 +86,30 @@ class RateLimitTracker:
             model=row[0],
             date=row[1],
             request_count=row[2],
-            last_request_at=datetime.fromisoformat(row[3]) if row[3] else None,
+            last_request_at=datetime.fromisoformat(row[3])
+            if row[3]
+            else datetime.now(UTC),
             is_exhausted=bool(row[4]),
         )
 
     def record_usage(self, config: ModelConfig):
         """Record a successful API request."""
         today = self._get_pacific_date()
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(UTC).isoformat()
 
+        params: tuple = (config.model.value, today, now, now)
         self.db.execute(
             """
-            INSERT INTO api_usage (model, date, request_count, last_request_at, is_exhausted)
+            INSERT INTO api_usage (
+                model, date, request_count,
+                last_request_at, is_exhausted
+            )
             VALUES (?, ?, 1, ?, 0)
             ON CONFLICT(model, date) DO UPDATE SET
                 request_count = request_count + 1,
                 last_request_at = ?
-        """,
-            (config.model.value, today, now, now),
+            """,
+            params,
         )
         self.db.commit()
 
@@ -119,17 +126,19 @@ class RateLimitTracker:
     def mark_exhausted(self, config: ModelConfig):
         """Mark a model as exhausted for today."""
         today = self._get_pacific_date()
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(UTC).isoformat()
 
+        params: tuple = (config.model.value, today, now, now)
         self.db.execute(
             """
-            INSERT INTO api_usage (model, date, request_count, last_request_at, is_exhausted)
+            INSERT INTO api_usage (model, date, request_count,
+                last_request_at, is_exhausted)
             VALUES (?, ?, 0, ?, 1)
             ON CONFLICT(model, date) DO UPDATE SET
                 is_exhausted = 1,
                 last_request_at = ?
-        """,
-            (config.model.value, today, now, now),
+            """,
+            params,
         )
         self.db.commit()
 
@@ -152,7 +161,7 @@ class RateLimitTracker:
         limit = int(config.rate_limits.rpd * 0.9)
         return usage.request_count < limit
 
-    def get_available_model(self, models: List[ModelConfig]) -> Optional[ModelConfig]:
+    def get_available_model(self, models: list[ModelConfig]) -> ModelConfig | None:
         """Get first available model from list (sorted by priority).
 
         Args:

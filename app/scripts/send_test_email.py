@@ -6,11 +6,11 @@ from datetime import datetime
 sys.path.append("/app")
 
 from app.core.email_report import (
+    build_subject,
     get_email_config,
     render_html_email,
     render_text_email,
     send_email,
-    build_subject,
 )
 
 

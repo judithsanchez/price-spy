@@ -1,22 +1,27 @@
-from typing import List
+from typing import Annotated, Literal, cast
+
 from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
+
 from app.api.deps import get_db
-from app.storage.repositories import (
-    ProductRepository,
-    CategoryRepository,
-    TrackedItemRepository,
-)
 from app.models.schemas import (
+    Category,
     Product,
     ProductCreate,
-    ProductUpdate,
     ProductResponse,
-    Category,
+    ProductUpdate,
 )
-from pydantic import BaseModel
+from app.storage.database import Database
+from app.storage.repositories import (
+    CategoryRepository,
+    ProductRepository,
+    TrackedItemRepository,
+)
 
 
 class MergeRequest(BaseModel):
+    """Request schema for merging two items, specifying the source and target IDs."""
+
     source_id: int
     target_id: int
 
@@ -24,19 +29,20 @@ class MergeRequest(BaseModel):
 router = APIRouter(prefix="/api/products", tags=["Products"])
 
 
-@router.get("", response_model=List[ProductResponse])
-async def get_products(db=Depends(get_db)):
+@router.get("", response_model=list[ProductResponse])
+async def get_products(db: Annotated[Database, Depends(get_db)]):
     """Get all products."""
     try:
         repo = ProductRepository(db)
-        products = repo.get_all()
-        return products
+        return repo.get_all()
     finally:
         db.close()
 
 
 @router.post("", response_model=ProductResponse, status_code=201)
-async def create_product(product: ProductCreate, db=Depends(get_db)):
+async def create_product(
+    product: ProductCreate, db: Annotated[Database, Depends(get_db)]
+):
     """Create a new product."""
     try:
         repo = ProductRepository(db)
@@ -61,16 +67,28 @@ async def create_product(product: ProductCreate, db=Depends(get_db)):
         # Override with normalized version
         kwargs["category"] = category_name
 
-        new_product = Product(**kwargs)
+        new_product = Product(
+            name=str(kwargs["name"]),
+            category=str(kwargs["category"]),
+            purchase_type=cast(
+                Literal["recurring", "one_time"], kwargs["purchase_type"]
+            ),
+            target_price=float(kwargs["target_price"])
+            if kwargs["target_price"]
+            else None,
+            target_unit=str(kwargs["target_unit"]) if kwargs["target_unit"] else None,
+            planned_date=str(kwargs["planned_date"])
+            if kwargs["planned_date"]
+            else None,
+        )
         product_id = repo.insert(new_product)
-        created = repo.get_by_id(product_id)
-        return created
+        return repo.get_by_id(product_id)
     finally:
         db.close()
 
 
 @router.get("/{product_id}", response_model=ProductResponse)
-async def get_product(product_id: int, db=Depends(get_db)):
+async def get_product(product_id: int, db: Annotated[Database, Depends(get_db)]):
     """Get a product by ID."""
     try:
         repo = ProductRepository(db)
@@ -83,7 +101,9 @@ async def get_product(product_id: int, db=Depends(get_db)):
 
 
 @router.put("/{product_id}", response_model=ProductResponse)
-async def update_product(product_id: int, product: ProductCreate, db=Depends(get_db)):
+async def update_product(
+    product_id: int, product: ProductCreate, db: Annotated[Database, Depends(get_db)]
+):
     """Update a product."""
     try:
         repo = ProductRepository(db)
@@ -108,14 +128,13 @@ async def update_product(product_id: int, product: ProductCreate, db=Depends(get
                 cat_repo.insert(Category(name=product.category))
 
         repo.update(product_id, updated_product)
-        result = repo.get_by_id(product_id)
-        return result
+        return repo.get_by_id(product_id)
     finally:
         db.close()
 
 
 @router.delete("/{product_id}", status_code=204)
-async def delete_product(product_id: int, db=Depends(get_db)):
+async def delete_product(product_id: int, db: Annotated[Database, Depends(get_db)]):
     """Delete a product."""
     try:
         repo = ProductRepository(db)
@@ -132,8 +151,8 @@ async def delete_product(product_id: int, db=Depends(get_db)):
         db.close()
 
 
-@router.get("/search", response_model=List[ProductResponse])
-async def search_products(q: str, db=Depends(get_db)):
+@router.get("/search", response_model=list[ProductResponse])
+async def search_products(q: str, db: Annotated[Database, Depends(get_db)]):
     """Search products by name."""
     try:
         repo = ProductRepository(db)
@@ -143,7 +162,7 @@ async def search_products(q: str, db=Depends(get_db)):
 
 
 @router.get("/summary")
-async def get_products_summary(db=Depends(get_db)):
+async def get_products_summary(db: Annotated[Database, Depends(get_db)]):
     """Get aggregated stats for products."""
     try:
         repo = ProductRepository(db)
@@ -153,9 +172,7 @@ async def get_products_summary(db=Depends(get_db)):
         return {
             "total_products": len(all_products),
             "orphaned_products": len(orphans),
-            "active_categories": len(
-                set(p.category for p in all_products if p.category)
-            ),
+            "active_categories": len({p.category for p in all_products if p.category}),
         }
     finally:
         db.close()
@@ -163,7 +180,9 @@ async def get_products_summary(db=Depends(get_db)):
 
 @router.patch("/{product_id}", response_model=ProductResponse)
 async def patch_product(
-    product_id: int, product_update: ProductUpdate, db=Depends(get_db)
+    product_id: int,
+    product_update: ProductUpdate,
+    db: Annotated[Database, Depends(get_db)],
 ):
     """Partially update a product with super granular control."""
     try:
@@ -177,7 +196,7 @@ async def patch_product(
         if not update_data:
             return existing
 
-        if "category" in update_data and update_data["category"]:
+        if update_data.get("category"):
             cat_repo = CategoryRepository(db)
             category_name = cat_repo.normalize_name(update_data["category"])
             update_data["category"] = category_name
@@ -189,7 +208,22 @@ async def patch_product(
         for key, value in update_data.items():
             current_data[key] = value
 
-        updated_product = Product(**current_data)
+        updated_product = Product(
+            name=str(current_data["name"]),
+            category=str(current_data["category"]),
+            purchase_type=cast(
+                Literal["recurring", "one_time"], current_data["purchase_type"]
+            ),
+            target_price=float(current_data["target_price"])
+            if current_data["target_price"]
+            else None,
+            target_unit=str(current_data["target_unit"])
+            if current_data["target_unit"]
+            else None,
+            planned_date=str(current_data["planned_date"])
+            if current_data["planned_date"]
+            else None,
+        )
 
         repo.update(product_id, updated_product)
         return repo.get_by_id(product_id)
@@ -198,36 +232,37 @@ async def patch_product(
 
 
 @router.post("/merge")
-async def merge_products(request: MergeRequest, db=Depends(get_db)):
+async def merge_products(
+    request: MergeRequest, db: Annotated[Database, Depends(get_db)]
+):
     """Merge two products."""
-    try:
-        repo = ProductRepository(db)
-        if not repo.get_by_id(request.source_id) or not repo.get_by_id(
-            request.target_id
-        ):
-            raise HTTPException(
-                status_code=404, detail="One or both products not found"
-            )
+    repo = ProductRepository(db)
+    if not repo.get_by_id(request.source_id) or not repo.get_by_id(request.target_id):
+        raise HTTPException(status_code=404, detail="One or both products not found")
 
+    try:
         repo.merge(request.source_id, request.target_id)
-        return {
-            "status": "success",
-            "message": f"Product {request.source_id} merged into {request.target_id}",
-        }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
     finally:
         db.close()
 
+    return {
+        "status": "success",
+        "message": f"Product {request.source_id} merged into {request.target_id}",
+    }
+
 
 @router.post("/bulk-delete")
-async def bulk_delete_products(product_ids: List[int], db=Depends(get_db)):
+async def bulk_delete_products(
+    product_ids: list[int], db: Annotated[Database, Depends(get_db)]
+):
     """Delete multiple products at once."""
     try:
         repo = ProductRepository(db)
         repo.bulk_delete(product_ids)
         return {"status": "success", "message": f"{len(product_ids)} products deleted"}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
     finally:
         db.close()

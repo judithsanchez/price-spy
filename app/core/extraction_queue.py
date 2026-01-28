@@ -1,39 +1,49 @@
 """Extraction queue with concurrency management."""
 
 import asyncio
+import json
+import logging
 import time
-from typing import Optional, List, Dict, Any
-from app.core.config import settings
 from pathlib import Path
+from typing import Any, cast
 
+from app.core.browser import capture_screenshot
+from app.core.config import settings
+from app.core.rate_limiter import RateLimitTracker
+from app.core.vision import extract_with_structured_output
+from app.models.schemas import (
+    ExtractionContext,
+    ExtractionLog,
+    PriceHistoryRecord,
+    TrackedItem,
+)
 from app.storage.database import Database
 from app.storage.repositories import (
-    TrackedItemRepository,
-    PriceHistoryRepository,
-    ExtractionLogRepository,
-    ProductRepository,
     CategoryRepository,
+    ExtractionLogRepository,
+    PriceHistoryRepository,
+    ProductRepository,
+    TrackedItemRepository,
 )
-from app.models.schemas import (
-    PriceHistoryRecord,
-    ExtractionLog,
-    TrackedItem,
-    ExtractionContext,
-)
-from app.core.rate_limiter import RateLimitTracker
 
 # Maximum concurrent extractions (respects Gemini's 15 RPM limit)
 MAX_CONCURRENT = 10
 
 
-def get_api_key() -> Optional[str]:
+def _raise_item_not_found(item_id: int) -> None:
+    """Raise ValueError when item is not found."""
+    msg = f"Item {item_id} not found"
+    raise ValueError(msg)
+
+
+def get_api_key() -> str | None:
     """Get Gemini API key from environment."""
     return settings.GEMINI_API_KEY
 
 
 async def extract_single_item(
     item_id: int, url: str, api_key: str, db: Database
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Extract price for a single tracked item.
 
@@ -46,8 +56,6 @@ async def extract_single_item(
     Returns:
         Dict with item_id, status, and optional price/error
     """
-    from app.core.browser import capture_screenshot
-    from app.core.vision import extract_with_structured_output
 
     tracked_repo = TrackedItemRepository(db)
     price_repo = PriceHistoryRepository(db)
@@ -62,7 +70,10 @@ async def extract_single_item(
     try:
         item = tracked_repo.get_by_id(item_id)
         if not item:
-            raise Exception("Item not found")
+            _raise_item_not_found(item_id)
+
+        # We know item is present (checked above); mypy needs explicit assertion here
+        assert item is not None
 
         product = product_repo.get_by_id(item.product_id)
         category = (
@@ -83,7 +94,8 @@ async def extract_single_item(
 
         # Capture screenshot
         screenshot_bytes = await capture_screenshot(
-            url, target_size=item.target_size if item else None
+            url,
+            target_size=str(item.target_size) if item.target_size else None,
         )
 
         # Save screenshot
@@ -97,8 +109,6 @@ async def extract_single_item(
         )
 
         duration_ms = int((time.time() - start_time) * 1000)
-
-        import json
 
         # Save to price history
         record = PriceHistoryRecord(
@@ -137,6 +147,29 @@ async def extract_single_item(
         # Update last checked time
         tracked_repo.set_last_checked(item_id)
 
+    except Exception as e:
+        # Log failed extraction
+        duration_ms = int((time.time() - start_time) * 1000)
+        logging.exception("Extraction failed for item %s", item_id)
+
+        log_repo.insert(
+            ExtractionLog(
+                tracked_item_id=item_id,
+                status="error",
+                model_used=model_used,
+                error_message=str(e)[:2000],
+                duration_ms=duration_ms,
+            )
+        )
+
+        return {
+            "item_id": item_id,
+            "status": "error",
+            "error": str(e),
+            "duration_ms": duration_ms,
+        }
+
+    else:
         return {
             "item_id": item_id,
             "status": "success",
@@ -146,32 +179,10 @@ async def extract_single_item(
             "duration_ms": duration_ms,
         }
 
-    except Exception as e:
-        duration_ms = int((time.time() - start_time) * 1000)
-        error_msg = str(e)
-
-        # Log failed extraction
-        log_repo.insert(
-            ExtractionLog(
-                tracked_item_id=item_id,
-                status="error",
-                model_used=model_used,
-                error_message=error_msg[:2000],
-                duration_ms=duration_ms,
-            )
-        )
-
-        return {
-            "item_id": item_id,
-            "status": "error",
-            "error": error_msg,
-            "duration_ms": duration_ms,
-        }
-
 
 async def process_extraction_queue(
-    items: List[TrackedItem], db: Database
-) -> List[Dict[str, Any]]:
+    items: list[TrackedItem], db: Database
+) -> list[dict[str, Any]]:
     """
     Process extraction queue with concurrency limit.
 
@@ -198,14 +209,19 @@ async def process_extraction_queue(
             for item in items
         ]
 
+    # Mypy doesn't infer strict optional across the closure properly
+    assert api_key is not None
+
     semaphore = asyncio.Semaphore(MAX_CONCURRENT)
 
-    async def extract_with_limit(item: TrackedItem) -> Dict[str, Any]:
+    async def extract_with_limit(item: TrackedItem) -> dict[str, Any]:
         """Extract with semaphore limit."""
+        # Ensure api_key is treated as str in this scope
+        assert api_key is not None
         async with semaphore:
             try:
                 return await extract_single_item(
-                    item_id=item.id, url=item.url, api_key=api_key, db=db
+                    item_id=int(item.id or 0), url=str(item.url), api_key=api_key, db=db
                 )
             except Exception as e:
                 return {"item_id": item.id, "status": "error", "error": str(e)}
@@ -222,12 +238,12 @@ async def process_extraction_queue(
                 {"item_id": items[i].id, "status": "error", "error": str(result)}
             )
         else:
-            final_results.append(result)
+            final_results.append(cast(dict[str, Any], result))
 
     return final_results
 
 
-def get_queue_summary(results: List[Dict[str, Any]]) -> Dict[str, Any]:
+def get_queue_summary(results: list[dict[str, Any]]) -> dict[str, Any]:
     """
     Generate summary statistics from queue results.
 

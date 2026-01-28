@@ -1,4 +1,3 @@
-from typing import Optional
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -9,7 +8,7 @@ class Settings(BaseSettings):
     """
 
     # Core
-    GEMINI_API_KEY: str
+    GEMINI_API_KEY: str = ""
     DATABASE_PATH: str = "data/pricespy.db"
 
     # Scheduler
@@ -23,12 +22,12 @@ class Settings(BaseSettings):
 
     # Email Reporting
     EMAIL_ENABLED: bool = False
-    EMAIL_RECIPIENT: Optional[str] = None
-    EMAIL_SENDER: Optional[str] = None
-    SMTP_HOST: Optional[str] = None
+    EMAIL_RECIPIENT: str | None = None
+    EMAIL_SENDER: str | None = None
+    SMTP_HOST: str | None = None
     SMTP_PORT: int = 587
-    SMTP_USER: Optional[str] = None
-    SMTP_PASSWORD: Optional[str] = None
+    SMTP_USER: str | None = None
+    SMTP_PASSWORD: str | None = None
     SMTP_USE_TLS: bool = True
     EMAIL_DASHBOARD_URL: str = "http://localhost:8000"
 

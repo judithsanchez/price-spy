@@ -1,24 +1,26 @@
 import os
 import time
 from pathlib import Path
-from typing import Optional
+from typing import Annotated
+
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
 from app.api.deps import get_db
-from app.core.config import settings
-from app.core.browser import capture_screenshot
-from app.core.vision import extract_with_structured_output
 from app.core.batch_extraction import extract_all_items, get_batch_summary
+from app.core.browser import capture_screenshot
+from app.core.config import settings
+from app.core.error_logger import log_error_to_db
 from app.core.rate_limiter import RateLimitTracker
-from app.models.schemas import PriceHistoryRecord, ExtractionLog, ExtractionContext
+from app.core.vision import extract_with_structured_output
+from app.models.schemas import ExtractionContext, ExtractionLog, PriceHistoryRecord
 from app.storage.database import Database
 from app.storage.repositories import (
-    TrackedItemRepository,
-    PriceHistoryRepository,
-    ExtractionLogRepository,
-    ProductRepository,
     CategoryRepository,
+    ExtractionLogRepository,
+    PriceHistoryRepository,
+    ProductRepository,
+    TrackedItemRepository,
 )
 
 router = APIRouter(prefix="/api/extract", tags=["Extraction"])
@@ -29,9 +31,9 @@ class ExtractResponse(BaseModel):
 
     status: str  # "success", "error"
     item_id: int
-    message: Optional[str] = None
-    price: Optional[float] = None
-    error: Optional[str] = None
+    message: str | None = None
+    price: float | None = None
+    error: str | None = None
 
 
 class BatchExtractResponse(BaseModel):
@@ -67,12 +69,12 @@ async def run_extraction(item_id: int, db_path: str):
 
         # Build context
         context = ExtractionContext(
-            product_name=product.name if product else "Unknown",
-            category=category.name if category else None,
-            is_size_sensitive=category.is_size_sensitive if category else False,
-            target_size=item.target_size,
-            quantity_size=item.quantity_size,
-            quantity_unit=item.quantity_unit,
+            product_name=str(product.name) if product else "Unknown",
+            category=str(category.name) if category else None,
+            is_size_sensitive=bool(category.is_size_sensitive) if category else False,
+            target_size=str(item.target_size) if item.target_size else None,
+            quantity_size=float(item.quantity_size) if item.quantity_size else None,
+            quantity_unit=str(item.quantity_unit) if item.quantity_unit else None,
         )
 
         api_key = os.getenv("GEMINI_API_KEY")
@@ -120,7 +122,7 @@ async def run_extraction(item_id: int, db_path: str):
 
 
 @router.post("/all", response_model=BatchExtractResponse)
-async def trigger_batch_extraction(db=Depends(get_db)):
+async def trigger_batch_extraction(db: Annotated[Database, Depends(get_db)]):
     """Run price extraction for all active tracked items."""
     try:
         # Use shorter delay in API context (configurable)
@@ -133,7 +135,7 @@ async def trigger_batch_extraction(db=Depends(get_db)):
 
 
 @router.post("/{item_id}", response_model=ExtractResponse)
-async def trigger_extraction(item_id: int, db=Depends(get_db)):
+async def trigger_extraction(item_id: int, db: Annotated[Database, Depends(get_db)]):
     """Run price extraction for a tracked item with rate limiting and logging."""
     start_time = time.time()
     model_used = None
@@ -160,18 +162,16 @@ async def trigger_extraction(item_id: int, db=Depends(get_db)):
 
         # Build context
         context = ExtractionContext(
-            product_name=product.name if product else "Unknown",
-            category=category.name if category else None,
-            is_size_sensitive=category.is_size_sensitive if category else False,
-            target_size=item.target_size,
-            quantity_size=item.quantity_size,
-            quantity_unit=item.quantity_unit,
+            product_name=str(product.name) if product else "Unknown",
+            category=str(category.name) if category else None,
+            is_size_sensitive=bool(category.is_size_sensitive) if category else False,
+            target_size=str(item.target_size) if item.target_size else None,
+            quantity_size=float(item.quantity_size) if item.quantity_size else None,
+            quantity_unit=str(item.quantity_unit) if item.quantity_unit else None,
         )
 
         api_key = settings.GEMINI_API_KEY
         if not api_key:
-            from app.core.error_logger import log_error_to_db
-
             log_error_to_db(
                 error_type="config_error",
                 message="GEMINI_API_KEY not configured",

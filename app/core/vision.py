@@ -2,15 +2,26 @@
 
 import base64
 import json
-import aiohttp
-from typing import Union, Optional, Tuple
-
-from app.models.schemas import ProductInfo, ExtractionResult, ExtractionContext
-from app.utils.logging import get_logger
-from app.core.gemini import GeminiModels, ModelConfig, is_rate_limit_error
 import re
 
+import aiohttp
+
+from app.core.gemini import GeminiModels, ModelConfig, is_rate_limit_error
+from app.models.schemas import ExtractionContext, ExtractionResult, ProductInfo
+from app.utils.logging import get_logger
+
 logger = get_logger(__name__)
+
+# Constants for magic values
+HTTP_OK = 200
+PROMPT_PREVIEW_LEN = 500
+MAX_ERROR_PREVIEW = 200
+
+
+class GeminiAPIError(Exception):
+    """Exception raised for Gemini API errors."""
+
+    pass
 
 
 # JSON Schema for Gemini structured outputs
@@ -54,21 +65,33 @@ EXTRACTION_SCHEMA = {
         },
         "discount_percentage": {
             "type": "number",
-            "description": "The percentage value of the discount (e.g., 20 for 20% off). Only fill if deal_type is percentage_off.",
+            "description": (
+                "The percentage value of the discount (e.g., 20 for 20% off). "
+                "Only fill if deal_type is percentage_off."
+            ),
         },
         "discount_fixed_amount": {
             "type": "number",
-            "description": "The absolute currency value off (e.g., 5 for €5 off). Only fill if deal_type is fixed_amount_off.",
+            "description": (
+                "The absolute currency value off (e.g., 5 for €5 off). "
+                "Only fill if deal_type is fixed_amount_off."
+            ),
         },
         "deal_description": {"type": "string"},
         "available_sizes": {
             "type": "array",
             "items": {"type": "string"},
-            "description": "List of sizes currently in stock and selectable (e.g. ['28', '30', 'XS', 'M'])",
+            "description": (
+                "List of sizes currently in stock and selectable "
+                "(e.g. ['28', '30', 'XS', 'M'])"
+            ),
         },
         "is_size_matched": {
             "type": "boolean",
-            "description": "True if the price is confirmed to be for the target size, False if unknown but a price/discount exists.",
+            "description": (
+                "True if the price is confirmed to be for the target size, "
+                "False if unknown but a price/discount exists."
+            ),
         },
         "notes": {"type": "string"},
     },
@@ -76,11 +99,13 @@ EXTRACTION_SCHEMA = {
 }
 
 
-STRUCTURED_PROMPT = """Act as a price extraction expert. Analyze this screenshot of a webpage.
+STRUCTURED_PROMPT = """Act as a price extraction expert.
+Analyze this screenshot of a webpage.
 
 Your task:
 1. Identify if this is a Single Product Page or a Search Result List
-2. Extract the price information, including original prices and any discounts or deals.
+2. Extract the price information, including original prices and any
+   discounts or deals.
 
 Return ONLY a valid JSON object with these exact fields:
 {
@@ -95,14 +120,17 @@ Return ONLY a valid JSON object with these exact fields:
     "deal_type": "string or null",
     "deal_description": "string or null",
     "confidence_score": number (your confidence from 0.0 to 1.0),
-    "is_blocked": boolean (true if a modal/consent banner blocks major content),
-    "is_size_matched": boolean (true if you are CERTAIN the price is for the requested size)
+    "is_blocked": boolean (true if a modal/consent banner blocks
+major content),
+    "is_size_matched": boolean (true if you are CERTAIN the price is for
+the requested size)
 }
 
 Important for Clothing:
 - Look for size selectors (labeled as 'Maat', 'Size', 'Mate', etc.).
 - List only the sizes that appear to be IN STOCK (not greyed out or struck through).
-- If multiple prices exist for different sizes, use the most prominent or 'starting at' price.
+- If multiple prices exist for different sizes, use the most prominent
+  or 'starting at' price.
 
 Important:
 - If is_blocked is true, still try to extract what you can, but set is_blocked: true.
@@ -113,9 +141,7 @@ Return ONLY the JSON, no markdown, no explanation.
 """
 
 
-async def extract_product_info(
-    image_bytes: bytes, api_key: str
-) -> Union[ProductInfo, str]:
+async def extract_product_info(image_bytes: bytes, api_key: str) -> ProductInfo | str:
     """
     Send image to Gemini and return validated ProductInfo.
 
@@ -139,33 +165,40 @@ async def extract_product_info(
     logger.info("Sending image to Gemini API", extra={"image_size": len(image_bytes)})
 
     async with aiohttp.ClientSession() as session:
-        async with session.post(url, json=payload, timeout=60) as response:
-            if response.status != 200:
+        timeout = aiohttp.ClientTimeout(total=60)
+        async with session.post(url, json=payload, timeout=timeout) as response:
+            if response.status != HTTP_OK:
                 error_text = await response.text()
                 logger.error(
                     "Gemini API error",
-                    extra={"status": response.status, "error": error_text[:200]},
+                    extra={
+                        "status": response.status,
+                        "error": error_text[:MAX_ERROR_PREVIEW],
+                    },
                 )
-                raise Exception(f"Gemini API error {response.status}: {error_text}")
+                msg = f"Gemini API error {response.status}: {error_text}"
+                raise GeminiAPIError(msg)
 
             data = await response.json()
 
     text = data["candidates"][0]["content"]["parts"][0]["text"].strip()
 
-    # Try to parse as JSON and validate with Pydantic
     try:
         # Clean up markdown code blocks if present
-        if text.startswith("```json"):
-            text = text[7:]
-        if text.startswith("```"):
-            text = text[3:]
-        if text.endswith("```"):
-            text = text[:-3]
+        text = text.removeprefix("```json")
+        text = text.removeprefix("```")
         text = text.strip()
-
+        text = text.removesuffix("```")
+        text = text.strip()
         parsed = json.loads(text)
         product_info = ProductInfo(**parsed)
-
+    except Exception as e:
+        logger.warning(
+            "Failed to parse structured response, returning raw text",
+            extra={"error": str(e)},
+        )
+        return text
+    else:
         logger.info(
             "Price extracted successfully",
             extra={
@@ -174,45 +207,48 @@ async def extract_product_info(
                 "confidence": product_info.confidence,
             },
         )
-
         return product_info
 
-    except (json.JSONDecodeError, Exception) as e:
-        logger.warning(
-            "Failed to parse structured response, returning raw text",
-            extra={"error": str(e)},
-        )
-        return text
 
-
-def get_extraction_prompt(context: Optional[ExtractionContext] = None) -> str:
+def get_extraction_prompt(context: ExtractionContext | None = None) -> str:
     """Generate a refined extraction prompt based on context."""
-
     target_info = ""
     size_guidance = ""
 
     if context:
-        target_info = f"\nTARGET PRODUCT: {context.product_name} | CATEGORY: {context.category or 'General'}\n"
+        target_info = (
+            f"\nTARGET PRODUCT: {context.product_name} | "
+            f"CATEGORY: {context.category or 'General'}\n"
+        )
 
         if context.is_size_sensitive and context.target_size:
             target_info += (
                 f"TARGET SIZE: {context.target_size} (This is a CLOTHING/SHOE item)\n"
             )
             size_guidance = (
-                f"- This item is SIZE-SENSITIVE. You are looking for size '{context.target_size}'.\n"
-                f"- If size '{context.target_size}' is NOT selectable, is greyed out, or explicitly marked as 'Out of Stock', "
-                "set is_available to false.\n"
-                f"- If you see the price but cannot confirm it is for size '{context.target_size}' (e.g. no size is highlighted), "
-                "set is_size_matched to false but still report the price and is_available=true if it looks like a general sale.\n"
-                f"- ALWAYS favor reporting a price with is_size_matched=false over reporting 'Out of Stock' if a discount is visible.\n"
+                f"- This item is SIZE-SENSITIVE. You are looking for size "
+                f"'{context.target_size}'.\n"
+                f"- If size '{context.target_size}' is NOT selectable, is greyed out, "
+                "or explicitly marked "
+                "as 'Out of Stock', set is_available to false.\n"
+                f"- If you see the price but cannot confirm it is for size "
+                f"'{context.target_size}',\n"
+                "set is_size_matched to false but still report the price and "
+                "is_available=true\n"
+                "if it looks like a general sale.\n"
+                "- ALWAYS favor reporting a price with is_size_matched=false over "
+                "reporting 'Out of Stock'\n"
+                "if a discount is visible.\n"
             )
         elif context.quantity_size and context.quantity_unit:
             target_info += (
                 f"TARGET VOLUME/SIZE: {context.quantity_size} {context.quantity_unit}\n"
             )
             size_guidance = (
-                f"- Verify the product matches the volume/size '{context.quantity_size} {context.quantity_unit}'.\n"
-                "- If the page shows a different size (e.g., in a list of results), prioritize finding the exact match.\n"
+                "- Verify the product matches the volume/size "
+                f"'{context.quantity_size} {context.quantity_unit}'.\n"
+                "- If the page shows a different size (e.g., in a list of results),\n"
+                "prioritize finding the exact match.\n"
             )
         elif context.target_size:
             target_info += f"TARGET SIZE: {context.target_size}\n"
@@ -220,30 +256,32 @@ def get_extraction_prompt(context: Optional[ExtractionContext] = None) -> str:
                 f"- Look specifically for the version/size '{context.target_size}'.\n"
             )
 
-    base_prompt = f"""Act as a professional Personal Shopping Assistant. {target_info}
+    return f"""Act as a professional Personal Shopping Assistant. {target_info}
 Analyze this webpage screenshot to extract pricing and availability information.
 
 RULES:
-- THE CURRENT PRICE: numeric value only. If multiple prices exist for different sizes and yours isn't selected, use the 'starting at' price or the most prominent price.
+- THE CURRENT PRICE: numeric value only.
+  If multiple prices exist for different sizes and yours isn't selected,
+  use the 'starting at' price or the most prominent price.
 - Currency code: 3-letter ISO (EUR, USD, etc.).
 - is_available: Boolean.
-{size_guidance}
-- product_name: The name as shown on the site.
+{size_guidance}- product_name: The name as shown on the site.
 - store_name: The retailer name.
 - is_blocked: Boolean (true if a cookie/consent modal blocks the view).
-- Original price: Only if a clear previous price is shown (strikethrough). ALWAYS look for this to detect discounts.
-- Deal type: Choose from 'bogo', 'multibuy', 'percentage_off', 'fixed_amount_off', 'second_unit_discount', 'value_pack', 'clearance', or 'none'.
+- Original price: Only if a clear previous price is shown (strikethrough).
+  ALWAYS look for this to detect discounts.
+- Deal type: Choose from 'bogo', 'multibuy', 'percentage_off', 'fixed_amount_off',
+  'second_unit_discount', 'value_pack', 'clearance', or 'none'.
 - Discount: Extract percentage or fixed amount if applicable.
 - deal_description: E.g., '1+1 gratis' or '20% off with code'.
-- General Notes: Mention if the price is a general discount but you couldn't confirm the target size price.
-- IMPORTANT: If price is not immediately top-center, look for a STICKY BOTTOM BAR or "Add to Cart" button area. Fashion mobile sites often place the price there.
+- General Notes: Mention if the price is a general discount
+  but you couldn't confirm the target size price.
+- IMPORTANT: If price is not immediately top-center, look for a STICKY BOTTOM BAR or
+  "Add to Cart" button area. Fashion mobile sites often place the price there.
 
 Return ONLY valid JSON. If is_blocked is true, provide your best guess.
 If fields are missing, use 0.0 for price and "N/A" for currency.
 """
-    return base_prompt
-
-    # Imports moved to top of file
 
 
 def _extract_json(text: str) -> str:
@@ -259,7 +297,7 @@ async def _call_gemini_api(
     image_bytes: bytes,
     api_key: str,
     config: ModelConfig,
-    context: Optional[ExtractionContext] = None,
+    context: ExtractionContext | None = None,
 ) -> ExtractionResult:
     """Make a single API call to Gemini with the given model config."""
     url = GeminiModels.get_api_url(config, api_key)
@@ -276,8 +314,8 @@ async def _call_gemini_api(
         "Sending request to Gemini API",
         extra={
             **log_extras,
-            "prompt_sample": prompt_text[:500] + "..."
-            if len(prompt_text) > 500
+            "prompt_sample": prompt_text[:PROMPT_PREVIEW_LEN] + "..."
+            if len(prompt_text) > PROMPT_PREVIEW_LEN
             else prompt_text,
         },
     )
@@ -298,14 +336,16 @@ async def _call_gemini_api(
     }
 
     async with aiohttp.ClientSession() as session:
-        async with session.post(url, json=payload, timeout=60) as response:
-            if response.status != 200:
+        timeout = aiohttp.ClientTimeout(total=60)
+        async with session.post(url, json=payload, timeout=timeout) as response:
+            if response.status != HTTP_OK:
                 error_text = await response.text()
                 logger.error(
                     "Gemini API error",
                     extra={"status": response.status, "model": config.model.value},
                 )
-                raise Exception(f"Gemini API error {response.status}: {error_text}")
+                msg = f"Gemini API error {response.status}: {error_text}"
+                raise GeminiAPIError(msg)
 
             data = await response.json()
 
@@ -336,8 +376,8 @@ async def extract_with_structured_output(
     image_bytes: bytes,
     api_key: str,
     tracker=None,
-    context: Optional[ExtractionContext] = None,
-) -> Tuple[ExtractionResult, str]:
+    context: ExtractionContext | None = None,
+) -> tuple[ExtractionResult, str]:
     """
     Extract price using Gemini's structured output mode with automatic fallback.
 
@@ -364,22 +404,14 @@ async def extract_with_structured_output(
             # Reorder to put available first, but maintain priority
             models_to_try = [available] + [m for m in models_to_try if m != available]
         else:
-            raise Exception(
-                "All Gemini models exhausted for today. Try again tomorrow."
-            )
+            msg = "All Gemini models exhausted for today. Try again tomorrow."
+            raise GeminiAPIError(msg)
 
     last_error = None
 
     for config in models_to_try:
         try:
             result = await _call_gemini_api(image_bytes, api_key, config, context)
-
-            # Record successful usage
-            if tracker:
-                tracker.record_usage(config)
-
-            return result, config.model.value
-
         except Exception as e:
             last_error = e
             error_msg = str(e)
@@ -396,6 +428,12 @@ async def extract_with_structured_output(
 
             # Non-rate-limit error, don't try fallback
             raise
+        else:
+            # Record successful usage
+            if tracker:
+                tracker.record_usage(config)
+
+            return result, config.model.value
 
     # All models failed
     raise last_error or Exception("All models failed")

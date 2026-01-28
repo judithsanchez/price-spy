@@ -1,22 +1,23 @@
 """Batch extraction for all tracked items."""
 
-import time
 import asyncio
+import time
 from pathlib import Path
-from typing import List, Dict, Any, Optional
+from typing import Any
 
+from app.core.browser import capture_screenshot
 from app.core.config import settings
-
+from app.core.rate_limiter import RateLimitTracker
+from app.core.vision import extract_with_structured_output
+from app.models.schemas import ExtractionContext, ExtractionLog, PriceHistoryRecord
 from app.storage.database import Database
 from app.storage.repositories import (
-    TrackedItemRepository,
-    PriceHistoryRepository,
-    ExtractionLogRepository,
-    ProductRepository,
     CategoryRepository,
+    ExtractionLogRepository,
+    PriceHistoryRepository,
+    ProductRepository,
+    TrackedItemRepository,
 )
-from app.models.schemas import PriceHistoryRecord, ExtractionLog, ExtractionContext
-from app.core.rate_limiter import RateLimitTracker
 
 
 async def extract_single_item(
@@ -24,9 +25,9 @@ async def extract_single_item(
     url: str,
     api_key: str,
     db: Database,
-    tracker: Optional[RateLimitTracker] = None,
+    tracker: RateLimitTracker | None = None,
     delay_seconds: float = 0,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Extract price for a single tracked item.
 
@@ -41,8 +42,6 @@ async def extract_single_item(
     Returns:
         Dict with item_id, status, and optional price/error
     """
-    from app.core.browser import capture_screenshot
-    from app.core.vision import extract_with_structured_output
 
     if delay_seconds > 0:
         await asyncio.sleep(delay_seconds)
@@ -67,12 +66,12 @@ async def extract_single_item(
 
         # Build context
         context = ExtractionContext(
-            product_name=product.name if product else "Unknown",
-            category=category.name if category else None,
-            is_size_sensitive=category.is_size_sensitive if category else False,
-            target_size=item.target_size if item else None,
-            quantity_size=item.quantity_size if item else 1.0,
-            quantity_unit=item.quantity_unit if item else "unit",
+            product_name=str(product.name) if product else "Unknown",
+            category=str(category.name) if category else None,
+            is_size_sensitive=bool(category.is_size_sensitive) if category else False,
+            target_size=str(item.target_size) if item and item.target_size else None,
+            quantity_size=float(item.quantity_size) if item else 1.0,
+            quantity_unit=str(item.quantity_unit) if item else "unit",
         )
 
         # Capture screenshot
@@ -126,21 +125,8 @@ async def extract_single_item(
         )
 
         # Update last checked time
+        # Update last checked time
         tracked_repo.set_last_checked(item_id)
-
-        return {
-            "item_id": item_id,
-            "status": "success",
-            "price": result.price,
-            "currency": result.currency,
-            "original_price": result.original_price,
-            "deal_type": result.deal_type,
-            "discount_percentage": result.discount_percentage,
-            "discount_fixed_amount": result.discount_fixed_amount,
-            "deal_description": result.deal_description,
-            "model_used": model_used,
-            "duration_ms": duration_ms,
-        }
 
     except Exception as e:
         duration_ms = int((time.time() - start_time) * 1000)
@@ -164,13 +150,27 @@ async def extract_single_item(
             "duration_ms": duration_ms,
         }
 
+    return {
+        "item_id": item_id,
+        "status": "success",
+        "price": result.price,
+        "currency": result.currency,
+        "original_price": result.original_price,
+        "deal_type": result.deal_type,
+        "discount_percentage": result.discount_percentage,
+        "discount_fixed_amount": result.discount_fixed_amount,
+        "deal_description": result.deal_description,
+        "model_used": model_used,
+        "duration_ms": duration_ms,
+    }
+
 
 # ...
 
 
 async def extract_all_items(
     db: Database, delay_seconds: float = 5.0
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     """
     Extract prices for all active tracked items.
 
@@ -202,7 +202,7 @@ async def extract_all_items(
         delay = delay_seconds if i > 0 else 0
 
         result = await extract_single_item(
-            item_id=item.id,
+            item_id=int(item.id or 0),
             url=item.url,
             api_key=api_key,
             db=db,
@@ -214,7 +214,7 @@ async def extract_all_items(
     return results
 
 
-def get_batch_summary(results: List[Dict[str, Any]]) -> Dict[str, Any]:
+def get_batch_summary(results: list[dict[str, Any]]) -> dict[str, Any]:
     """
     Generate summary statistics from batch extraction results.
 

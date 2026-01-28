@@ -1,9 +1,8 @@
 """Price calculation and comparison logic."""
 
-from typing import Optional, Tuple
+import json
 
 from app.models.schemas import PriceComparison
-
 
 # Unit conversion constants
 UNIT_CONVERSIONS = {
@@ -27,7 +26,7 @@ def normalize_unit(unit: str) -> str:
 
 def calculate_volume_price(
     page_price: float, items_per_lot: int, quantity_size: float, quantity_unit: str
-) -> Tuple[float, str]:
+) -> tuple[float, str]:
     """
     Calculate price per standard unit.
 
@@ -63,19 +62,17 @@ def calculate_volume_price(
         total_quantity = quantity_size * items_per_lot
 
     # Calculate price per standard unit
-    volume_price = page_price / total_quantity
-
-    return volume_price, standard_unit
+    return page_price / total_quantity, standard_unit
 
 
 def compare_prices(
     current: float,
-    previous: Optional[float],
-    original_price: Optional[float] = None,
-    deal_type: Optional[str] = None,
-    discount_percentage: Optional[float] = None,
-    discount_fixed_amount: Optional[float] = None,
-    deal_description: Optional[str] = None,
+    previous: float | None,
+    original_price: float | None = None,
+    deal_type: str | None = None,
+    discount_percentage: float | None = None,
+    discount_fixed_amount: float | None = None,
+    deal_description: str | None = None,
 ) -> PriceComparison:
     """
     Compare current price with previous price and evaluate deals.
@@ -90,9 +87,9 @@ def compare_prices(
         deal_description: Explanation of the deal
     """
     is_deal = False
-    if original_price and original_price > current:
-        is_deal = True
-    elif deal_type and deal_type.lower() != "none":
+    if (original_price and original_price > current) or (
+        deal_type and deal_type.lower() != "none"
+    ):
         is_deal = True
 
     if previous is None:
@@ -146,8 +143,8 @@ def is_size_available(target_size: str, available_sizes: list[str]) -> bool:
 def determine_effective_availability(
     is_size_sensitive: bool,
     raw_is_available: bool,
-    available_sizes_json: Optional[str],
-    target_size: Optional[str],
+    available_sizes_json: str | None,
+    target_size: str | None,
 ) -> bool:
     """
     Determine the effective availability of an item.
@@ -164,8 +161,6 @@ def determine_effective_availability(
     if not target_size or not available_sizes_json:
         # Sensitive but no target or no sizes extracted, fall back to raw
         return raw_is_available
-
-    import json
 
     try:
         extracted_sizes = json.loads(available_sizes_json)
