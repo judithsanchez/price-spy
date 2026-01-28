@@ -1,3 +1,5 @@
+from typing import Annotated
+
 from fastapi import APIRouter, Depends, HTTPException
 
 from app.api.deps import get_db
@@ -7,6 +9,7 @@ from app.models.schemas import (
     TrackedItemResponse,
     TrackedItemUpdate,
 )
+from app.storage.database import Database
 from app.storage.repositories import (
     CategoryRepository,
     ProductRepository,
@@ -18,7 +21,7 @@ router = APIRouter(prefix="/api/tracked-items", tags=["Tracked Items"])
 
 
 @router.get("", response_model=list[TrackedItemResponse])
-async def get_items(db=Depends(get_db)):
+async def get_items(db: Annotated[Database, Depends(get_db)]):
     """Get all tracked items with their labels."""
     try:
         repo = TrackedItemRepository(db)
@@ -35,7 +38,7 @@ async def get_items(db=Depends(get_db)):
 
 
 @router.get("/{item_id}", response_model=TrackedItemResponse)
-async def get_item(item_id: int, db=Depends(get_db)):
+async def get_item(item_id: int, db: Annotated[Database, Depends(get_db)]):
     """Get a single tracked item by ID with its labels."""
     try:
         repo = TrackedItemRepository(db)
@@ -51,7 +54,9 @@ async def get_item(item_id: int, db=Depends(get_db)):
 
 
 @router.post("", response_model=TrackedItemResponse, status_code=201)
-async def create_item(item_in: TrackedItemCreate, db=Depends(get_db)):
+async def create_item(
+    item_in: TrackedItemCreate, db: Annotated[Database, Depends(get_db)]
+):
     """Create a new tracked item and associate labels."""
     try:
         # Validate product and store exist
@@ -129,7 +134,7 @@ async def create_item(item_in: TrackedItemCreate, db=Depends(get_db)):
 async def update_item(
     item_id: int,
     item_in: TrackedItemCreate,
-    db=Depends(get_db),
+    db: Annotated[Database, Depends(get_db)],
 ):
     """Update a tracked item and replace its labels."""
     try:
@@ -196,7 +201,11 @@ async def update_item(
 
 
 @router.patch("/{item_id}", response_model=TrackedItemResponse)
-async def patch_item(item_id: int, item_patch: TrackedItemUpdate, db=Depends(get_db)):
+async def patch_item(
+    item_id: int,
+    item_patch: TrackedItemUpdate,
+    db: Annotated[Database, Depends(get_db)],
+):
     """Partially update a tracked item and its labels."""
     try:
         repo = TrackedItemRepository(db)
@@ -231,7 +240,7 @@ async def patch_item(item_id: int, item_patch: TrackedItemUpdate, db=Depends(get
 
 
 @router.delete("/{item_id}")
-async def delete_item(item_id: int, db=Depends(get_db)):
+async def delete_item(item_id: int, db: Annotated[Database, Depends(get_db)]):
     """
     Delete a tracked item. Labels remain but association is removed via
     labels CASCADE or repository cleanup.
