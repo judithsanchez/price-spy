@@ -64,10 +64,16 @@ async def create_product(product: ProductCreate, db=Depends(get_db)):
         new_product = Product(
             name=str(kwargs["name"]),
             category=str(kwargs["category"]),
-            purchase_type=cast(Literal["recurring", "one_time"], kwargs["purchase_type"]),
-            target_price=float(kwargs["target_price"]) if kwargs["target_price"] else None,
+            purchase_type=cast(
+                Literal["recurring", "one_time"], kwargs["purchase_type"]
+            ),
+            target_price=float(kwargs["target_price"])
+            if kwargs["target_price"]
+            else None,
             target_unit=str(kwargs["target_unit"]) if kwargs["target_unit"] else None,
-            planned_date=str(kwargs["planned_date"]) if kwargs["planned_date"] else None,
+            planned_date=str(kwargs["planned_date"])
+            if kwargs["planned_date"]
+            else None,
         )
         product_id = repo.insert(new_product)
         created = repo.get_by_id(product_id)
@@ -199,10 +205,18 @@ async def patch_product(
         updated_product = Product(
             name=str(current_data["name"]),
             category=str(current_data["category"]),
-            purchase_type=cast(Literal["recurring", "one_time"], current_data["purchase_type"]),
-            target_price=float(current_data["target_price"]) if current_data["target_price"] else None,
-            target_unit=str(current_data["target_unit"]) if current_data["target_unit"] else None,
-            planned_date=str(current_data["planned_date"]) if current_data["planned_date"] else None,
+            purchase_type=cast(
+                Literal["recurring", "one_time"], current_data["purchase_type"]
+            ),
+            target_price=float(current_data["target_price"])
+            if current_data["target_price"]
+            else None,
+            target_unit=str(current_data["target_unit"])
+            if current_data["target_unit"]
+            else None,
+            planned_date=str(current_data["planned_date"])
+            if current_data["planned_date"]
+            else None,
         )
 
         repo.update(product_id, updated_product)

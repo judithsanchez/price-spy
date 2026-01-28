@@ -149,7 +149,9 @@ def generate_report_data(results: List[Dict[str, Any]], db: Database) -> Dict[st
                 price,
                 details["items_per_lot"] if details else 1,
                 details["quantity_size"] if details else 1.0,
-                str(details["quantity_unit"]) if details and details["quantity_unit"] else "",
+                str(details["quantity_unit"])
+                if details and details["quantity_unit"]
+                else "",
             )
 
             t_price = details["target_price"] if details else None
@@ -234,7 +236,9 @@ def generate_report_data(results: List[Dict[str, Any]], db: Database) -> Dict[st
                 continue
 
             active_items = [
-                ti for ti in tracked_repo.get_by_product(int(product.id or 0)) if ti.is_active
+                ti
+                for ti in tracked_repo.get_by_product(int(product.id or 0))
+                if ti.is_active
             ]
             if not active_items:
                 untracked_planned.append(

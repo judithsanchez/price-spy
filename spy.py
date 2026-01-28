@@ -69,9 +69,7 @@ async def cmd_extract(args) -> int:
 
         print("Extracting product info with Gemini...", file=sys.stderr)
         preferred_model = getattr(args, "model", None)
-        result, model_used = await extract_with_structured_output(
-            screenshot, api_key
-        )
+        result, model_used = await extract_with_structured_output(screenshot, api_key)
 
         # Check for tracked item to get volume info
         tracked = tracked_repo.get_by_url(args.url)
@@ -391,16 +389,12 @@ def cmd_list(args) -> int:
             if not products:
                 print("No products found.")
                 return 0
-            print(
-                f"{'ID':<4} {'Name':<30} {'Category':<15} {'Target':<10}"
-            )
+            print(f"{'ID':<4} {'Name':<30} {'Category':<15} {'Target':<10}")
             print("-" * 60)
             for p in products:
                 target = f"{p.target_price:.2f}" if p.target_price else "-"
                 cat = p.category or "-"
-                print(
-                    f"{p.id:<4} {p.name[:30]:<30} {cat[:15]:<15} {target:<10}"
-                )
+                print(f"{p.id:<4} {p.name[:30]:<30} {cat[:15]:<15} {target:<10}")
 
         elif args.what == "stores":
             stores = store_repo.get_all()
@@ -410,9 +404,7 @@ def cmd_list(args) -> int:
             print(f"{'ID':<4} {'Name':<25}")
             print("-" * 30)
             for s in stores:
-                print(
-                    f"{s.id:<4} {s.name[:25]:<25}"
-                )
+                print(f"{s.id:<4} {s.name[:25]:<25}")
 
         else:  # tracked items (default)
             items = tracked_repo.get_active()
