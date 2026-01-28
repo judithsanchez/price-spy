@@ -1,14 +1,17 @@
+from typing import Annotated
+
 from fastapi import APIRouter, Depends, HTTPException
 
 from app.api.deps import get_db
 from app.models.schemas import Unit, UnitCreate, UnitResponse, UnitUpdate
+from app.storage.database import Database
 from app.storage.repositories import UnitRepository
 
 router = APIRouter(prefix="/api/units", tags=["Units"])
 
 
 @router.get("", response_model=list[UnitResponse])
-async def get_units(db=Depends(get_db)):
+async def get_units(db: Annotated[Database, Depends(get_db)]):
     """Get all measurement units."""
     try:
         repo = UnitRepository(db)
@@ -18,7 +21,7 @@ async def get_units(db=Depends(get_db)):
 
 
 @router.post("", response_model=UnitResponse, status_code=201)
-async def create_unit(unit: UnitCreate, db=Depends(get_db)):
+async def create_unit(unit: UnitCreate, db: Annotated[Database, Depends(get_db)]):
     """Create a new unit."""
     try:
         repo = UnitRepository(db)
@@ -33,7 +36,9 @@ async def create_unit(unit: UnitCreate, db=Depends(get_db)):
 
 
 @router.put("/{unit_id}", response_model=UnitResponse)
-async def update_unit(unit_id: int, unit_update: UnitCreate, db=Depends(get_db)):
+async def update_unit(
+    unit_id: int, unit_update: UnitCreate, db: Annotated[Database, Depends(get_db)]
+):
     """Update a unit and cascade changes to products and items."""
     try:
         repo = UnitRepository(db)
@@ -48,7 +53,9 @@ async def update_unit(unit_id: int, unit_update: UnitCreate, db=Depends(get_db))
 
 
 @router.patch("/{unit_id}", response_model=UnitResponse)
-async def patch_unit(unit_id: int, unit_patch: UnitUpdate, db=Depends(get_db)):
+async def patch_unit(
+    unit_id: int, unit_patch: UnitUpdate, db: Annotated[Database, Depends(get_db)]
+):
     """Partially update a unit."""
     try:
         repo = UnitRepository(db)
@@ -71,7 +78,7 @@ async def patch_unit(unit_id: int, unit_patch: UnitUpdate, db=Depends(get_db)):
 
 
 @router.delete("/{unit_id}")
-async def delete_unit(unit_id: int, db=Depends(get_db)):
+async def delete_unit(unit_id: int, db: Annotated[Database, Depends(get_db)]):
     """Delete a unit. Blocked if used in products or tracked items."""
     try:
         repo = UnitRepository(db)
@@ -94,7 +101,11 @@ async def delete_unit(unit_id: int, db=Depends(get_db)):
         if products or tracked_items:
             raise HTTPException(
                 status_code=400,
-                detail=f"Cannot delete unit '{unit.name}'. It is used by {len(products)} products and {len(tracked_items)} tracked items. Update them first.",
+                detail=(
+                    f"Cannot delete unit '{unit.name}'. It is used by {len(products)} "
+                    f"products and {len(tracked_items)} tracked items. "
+                    "Update them first."
+                ),
             )
 
         repo.delete(unit_id)
