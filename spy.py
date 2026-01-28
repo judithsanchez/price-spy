@@ -68,7 +68,6 @@ async def cmd_extract(args) -> int:
         screenshot = await capture_screenshot(args.url)
 
         print("Extracting product info with Gemini...", file=sys.stderr)
-        preferred_model = getattr(args, "model", None)
         result, model_used = await extract_with_structured_output(screenshot, api_key)
 
         # Check for tracked item to get volume info
