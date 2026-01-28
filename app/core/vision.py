@@ -238,8 +238,7 @@ def get_extraction_prompt(context: Optional[ExtractionContext] = None) -> str:
                 f"- Look specifically for the version/size '{context.target_size}'.\n"
             )
 
-    base_prompt = (
-        f"""Act as a professional Personal Shopping Assistant. {target_info}
+    base_prompt = f"""Act as a professional Personal Shopping Assistant. {target_info}
 Analyze this webpage screenshot to extract pricing and availability information.
 
 RULES:
@@ -265,7 +264,6 @@ RULES:
 Return ONLY valid JSON. If is_blocked is true, provide your best guess.
 If fields are missing, use 0.0 for price and "N/A" for currency.
 """
-    )
     return base_prompt
 
     # Imports moved to top of file

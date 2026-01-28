@@ -20,6 +20,7 @@ from app.storage.repositories import (
 
 class MergeRequest(BaseModel):
     """Request schema for merging two items, specifying the source and target IDs."""
+
     source_id: int
     target_id: int
 
@@ -169,9 +170,7 @@ async def get_products_summary(db=Depends(get_db)):
         return {
             "total_products": len(all_products),
             "orphaned_products": len(orphans),
-            "active_categories": len(
-                {p.category for p in all_products if p.category}
-            ),
+            "active_categories": len({p.category for p in all_products if p.category}),
         }
     finally:
         db.close()

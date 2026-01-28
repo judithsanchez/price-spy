@@ -2,7 +2,7 @@
 
 import os
 import smtplib
-from datetime import datetime, timedelta
+from datetime import datetime
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from typing import Any, Dict, List, Optional
@@ -118,10 +118,7 @@ def generate_report_data(results: List[Dict[str, Any]], db: Database) -> Dict[st
         return _initialize_empty_report()
 
     price_repo = PriceHistoryRepository(db)
-    processed = [
-        _process_single_result(result, price_repo, db)
-        for result in results
-    ]
+    processed = [_process_single_result(result, price_repo, db) for result in results]
 
     items = [p["item"] for p in processed if "item" in p]
     deals = [p["deal"] for p in processed if "deal" in p]
@@ -142,6 +139,8 @@ def generate_report_data(results: List[Dict[str, Any]], db: Database) -> Dict[st
         "errors": errors,
         "next_run": "Tomorrow 23:00",
     }
+
+
 def build_subject(report_data: Dict[str, Any]) -> str:
     """Build email subject line."""
     total = report_data["total"]

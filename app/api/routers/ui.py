@@ -394,7 +394,11 @@ async def timeline_page(request: Request, db=Depends(get_db)):
 
             for item in tracked_items:
                 latest = price_repo.get_latest_by_url(item.url)
-                if latest and latest.price and (best_price is None or latest.price < best_price):
+                if (
+                    latest
+                    and latest.price
+                    and (best_price is None or latest.price < best_price)
+                ):
                     best_price = latest.price
                     best_currency = latest.currency
 
