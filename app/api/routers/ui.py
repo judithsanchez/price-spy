@@ -315,7 +315,9 @@ async def dashboard(request: Request, db=Depends(get_db)):
                     continue
 
                 active_items = [
-                    ti for ti in tracked_repo.get_by_product(int(product.id or 0)) if ti.is_active
+                    ti
+                    for ti in tracked_repo.get_by_product(int(product.id or 0))
+                    if ti.is_active
                 ]
                 if not active_items:
                     untracked_planned_products.append(
@@ -373,7 +375,9 @@ async def timeline_page(request: Request, db=Depends(get_db)):
     price_repo = PriceHistoryRepository(db)
 
     products = product_repo.get_all()
-    timeline_data: dict[int, dict[int, list[dict]]] = defaultdict(lambda: defaultdict(list))
+    timeline_data: dict[int, dict[int, list[dict]]] = defaultdict(
+        lambda: defaultdict(list)
+    )
 
     # Filter products that have a planned date
     planned_products = [p for p in products if p.planned_date]

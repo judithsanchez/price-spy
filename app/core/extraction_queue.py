@@ -83,7 +83,8 @@ async def extract_single_item(
 
         # Capture screenshot
         screenshot_bytes = await capture_screenshot(
-            url, target_size=str(item.target_size) if item and item.target_size else None
+            url,
+            target_size=str(item.target_size) if item and item.target_size else None,
         )
 
         # Save screenshot

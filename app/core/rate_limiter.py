@@ -85,7 +85,9 @@ class RateLimitTracker:
             model=row[0],
             date=row[1],
             request_count=row[2],
-            last_request_at=datetime.fromisoformat(row[3]) if row[3] else datetime.now(timezone.utc),
+            last_request_at=datetime.fromisoformat(row[3])
+            if row[3]
+            else datetime.now(timezone.utc),
             is_exhausted=bool(row[4]),
         )
 
