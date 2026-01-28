@@ -12,9 +12,8 @@ client = TestClient(app)
 
 @pytest.fixture
 def mock_db():
-    db = MagicMock()
     # Mock context manager behavior if needed, but here it's just passed to repo
-    return db
+    return MagicMock()
 
 
 @pytest.fixture
@@ -36,9 +35,9 @@ def test_get_units(mock_repo, mock_db):
 
     response = client.get("/api/units")
 
-    assert response.status_code == 200
+    assert response.status_code == 200  # noqa: PLR2004
     data = response.json()
-    assert len(data) == 2
+    assert len(data) == 2  # noqa: PLR2004
     assert data[0]["name"] == "ml"
 
     # Cleanup
@@ -55,7 +54,7 @@ def test_create_unit(mock_repo, mock_db):
 
     response = client.post("/api/units", json={"name": "bottle"})
 
-    assert response.status_code == 201
+    assert response.status_code == 201  # noqa: PLR2004
     assert response.json()["name"] == "bottle"
 
     app.dependency_overrides.clear()
@@ -72,7 +71,7 @@ def test_delete_unit_success(mock_repo, mock_db):
 
     response = client.delete("/api/units/1")
 
-    assert response.status_code == 200
+    assert response.status_code == 200  # noqa: PLR2004
     assert response.json()["status"] == "success"
     mock_repo_inst.delete.assert_called_once_with(1)
 
@@ -90,7 +89,7 @@ def test_delete_unit_in_use(mock_repo, mock_db):
 
     response = client.delete("/api/units/1")
 
-    assert response.status_code == 400
+    assert response.status_code == 400  # noqa: PLR2004
     assert "used by" in response.json()["detail"]
 
     app.dependency_overrides.clear()

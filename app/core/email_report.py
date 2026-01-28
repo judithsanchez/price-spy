@@ -1,10 +1,10 @@
 """Daily email report for Price Spy."""
 
-import os
 import smtplib
 from datetime import datetime
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+from pathlib import Path
 from typing import Any
 
 from jinja2 import (
@@ -167,11 +167,9 @@ def build_subject(report_data: dict[str, Any]) -> str:
 
 
 # Initialize Jinja2 environment for email templates
-template_dir = os.path.join(
-    os.path.dirname(os.path.dirname(__file__)), "templates", "email"
-)
+template_dir = Path(__file__).resolve().parent.parent.parent / "templates" / "email"
 env = Environment(
-    loader=FileSystemLoader(template_dir),
+    loader=FileSystemLoader(str(template_dir)),
     autoescape=select_autoescape(["html", "xml"]),
 )
 
@@ -208,10 +206,11 @@ def send_email(
                 server.starttls()
             server.login(config["smtp_user"], config["smtp_password"])
             server.sendmail(config["sender"], to, msg.as_string())
-        return True
     except Exception as e:
         print(f"Email error: {e}")
         return False
+    else:
+        return True
 
 
 def send_daily_report(results: list[dict[str, Any]], db: Database) -> bool:
