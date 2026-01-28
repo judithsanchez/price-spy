@@ -20,8 +20,7 @@ async def get_categories(db: Annotated[Database, Depends(get_db)]):
     """Get all categories."""
     try:
         repo = CategoryRepository(db)
-        categories = repo.get_all()
-        return categories
+        return repo.get_all()
     finally:
         db.close()
 
@@ -31,8 +30,7 @@ async def search_categories(q: str, db: Annotated[Database, Depends(get_db)]):
     """Search categories by name."""
     try:
         repo = CategoryRepository(db)
-        categories = repo.search(q)
-        return categories
+        return repo.search(q)
     finally:
         db.close()
 
@@ -55,8 +53,7 @@ async def create_category(
             name=category_name, is_size_sensitive=category.is_size_sensitive
         )
         repo.insert(new_cat)
-        result = repo.get_by_name(category_name)
-        return result
+        return repo.get_by_name(category_name)
     finally:
         db.close()
 
@@ -87,8 +84,7 @@ async def update_category(
         )
         repo.update(category_id, updated)
 
-        result = repo.get_by_id(category_id)
-        return result
+        return repo.get_by_id(category_id)
     finally:
         db.close()
 
