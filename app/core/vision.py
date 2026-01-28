@@ -139,7 +139,8 @@ async def extract_product_info(
     logger.info("Sending image to Gemini API", extra={"image_size": len(image_bytes)})
 
     async with aiohttp.ClientSession() as session:
-        async with session.post(url, json=payload, timeout=60) as response:
+        timeout = aiohttp.ClientTimeout(total=60)
+        async with session.post(url, json=payload, timeout=timeout) as response:
             if response.status != 200:
                 error_text = await response.text()
                 logger.error(
@@ -298,7 +299,8 @@ async def _call_gemini_api(
     }
 
     async with aiohttp.ClientSession() as session:
-        async with session.post(url, json=payload, timeout=60) as response:
+        timeout = aiohttp.ClientTimeout(total=60)
+        async with session.post(url, json=payload, timeout=timeout) as response:
             if response.status != 200:
                 error_text = await response.text()
                 logger.error(

@@ -1,7 +1,7 @@
 """Repository classes for database operations."""
 
 from datetime import datetime
-from typing import List, Optional
+from typing import List, Optional, Any
 
 from app.storage.database import Database
 from app.models.schemas import (
@@ -53,7 +53,7 @@ class PriceHistoryRepository:
             ),
         )
         self.db.commit()
-        return cursor.lastrowid
+        return int(cursor.lastrowid or 0)
 
     def get_by_id(self, record_id: int) -> Optional[PriceHistoryRecord]:
         """Get a price history record by ID."""
@@ -149,7 +149,7 @@ class ErrorLogRepository:
             ),
         )
         self.db.commit()
-        return cursor.lastrowid
+        return int(cursor.lastrowid or 0)
 
     def get_recent(self, limit: int = 10) -> List[ErrorRecord]:
         """Get recent error records."""
@@ -169,7 +169,7 @@ class ErrorLogRepository:
         """Get all error logs with filters and pagination."""
         query = "SELECT * FROM error_log"
         conditions = []
-        params = []
+        params: List[Any] = []
 
         if error_type:
             conditions.append("error_type = ?")
@@ -227,7 +227,7 @@ class ProductRepository:
             ),
         )
         self.db.commit()
-        return cursor.lastrowid
+        return int(cursor.lastrowid or 0)
 
     def get_by_id(self, product_id: int) -> Optional[Product]:
         """Get a product by ID."""
@@ -372,7 +372,7 @@ class StoreRepository:
         """Insert a store and return its ID."""
         cursor = self.db.execute("INSERT INTO stores (name) VALUES (?)", (store.name,))
         self.db.commit()
-        return cursor.lastrowid
+        return int(cursor.lastrowid or 0)
 
     def get_by_id(self, store_id: int) -> Optional[Store]:
         """Get a store by ID."""
@@ -439,7 +439,7 @@ class TrackedItemRepository:
             ),
         )
         self.db.commit()
-        return cursor.lastrowid
+        return int(cursor.lastrowid or 0)
 
     def get_by_id(self, item_id: int) -> Optional[TrackedItem]:
         """Get a tracked item by ID."""
@@ -590,14 +590,14 @@ class TrackedItemRepository:
                 pass
 
         return TrackedItem(
-            id=row["id"],
-            product_id=row["product_id"],
-            store_id=row["store_id"],
-            url=row["url"],
-            target_size=row["target_size"],
-            quantity_size=row["quantity_size"],
-            quantity_unit=row["quantity_unit"],
-            items_per_lot=row["items_per_lot"],
+            id=int(row["id"]),
+            product_id=int(row["product_id"]),
+            store_id=int(row["store_id"]),
+            url=str(row["url"]),
+            target_size=str(row["target_size"]) if row["target_size"] else None,
+            quantity_size=float(row["quantity_size"]),
+            quantity_unit=str(row["quantity_unit"]),
+            items_per_lot=int(row["items_per_lot"]),
             last_checked_at=last_checked,
             is_active=bool(row["is_active"]),
             alerts_enabled=bool(row["alerts_enabled"]),
@@ -629,7 +629,7 @@ class ExtractionLogRepository:
             ),
         )
         self.db.commit()
-        return cursor.lastrowid
+        return int(cursor.lastrowid or 0)
 
     def get_by_id(self, log_id: int) -> Optional[ExtractionLog]:
         """Get an extraction log by ID."""
@@ -694,7 +694,7 @@ class ExtractionLogRepository:
         """Get all extraction logs with filters and pagination."""
         query = "SELECT * FROM extraction_logs"
         conditions = []
-        params = []
+        params: List[Any] = []
 
         if status:
             conditions.append("status = ?")
@@ -749,7 +749,7 @@ class SchedulerRunRepository:
             (items_total,),
         )
         self.db.commit()
-        return cursor.lastrowid
+        return int(cursor.lastrowid or 0)
 
     def complete_run(
         self,
@@ -842,7 +842,7 @@ class CategoryRepository:
             (category.name, 1 if category.is_size_sensitive else 0),
         )
         self.db.commit()
-        return cursor.lastrowid
+        return int(cursor.lastrowid or 0)
 
     def get_all(self) -> List[Category]:
         """Get all categories."""
@@ -907,7 +907,7 @@ class LabelRepository:
         """Insert a label and return its ID."""
         cursor = self.db.execute("INSERT INTO labels (name) VALUES (?)", (label.name,))
         self.db.commit()
-        return cursor.lastrowid
+        return int(cursor.lastrowid or 0)
 
     def get_all(self) -> List[Label]:
         """Get all labels."""
@@ -966,7 +966,7 @@ class UnitRepository:
         """Insert a unit and return its ID."""
         cursor = self.db.execute("INSERT INTO units (name) VALUES (?)", (unit.name,))
         self.db.commit()
-        return cursor.lastrowid
+        return int(cursor.lastrowid or 0)
 
     def get_all(self) -> List[Unit]:
         """Get all units."""
@@ -1033,7 +1033,7 @@ class PurchaseTypeRepository:
             "INSERT INTO purchase_types (name) VALUES (?)", (pt.name,)
         )
         self.db.commit()
-        return cursor.lastrowid
+        return int(cursor.lastrowid or 0)
 
     def get_all(self) -> List[PurchaseType]:
         """Get all purchase types."""

@@ -70,7 +70,7 @@ async def cmd_extract(args) -> int:
         print("Extracting product info with Gemini...", file=sys.stderr)
         preferred_model = getattr(args, "model", None)
         result, model_used = await extract_with_structured_output(
-            screenshot, api_key, preferred_model=preferred_model
+            screenshot, api_key
         )
 
         # Check for tracked item to get volume info
@@ -155,8 +155,8 @@ async def cmd_extract(args) -> int:
             if comparison.price_change != 0:
                 direction = "↓" if comparison.is_price_drop else "↑"
                 print(
-                    f"Price change: {direction} {abs(comparison.price_change):.2f} "
-                    f"({comparison.price_change_percent:+.1f}%)"
+                    f"Price change: {direction} {abs(float(comparison.price_change or 0)):.2f} "
+                    f"({comparison.price_change_percent or 0:+.1f}%)"
                 )
             else:
                 print("Price unchanged since last check")
@@ -165,11 +165,11 @@ async def cmd_extract(args) -> int:
             print("\n*** DEAL DETECTED ***")
             if comparison.is_price_drop:
                 print(
-                    f"-> Price dropped by {abs(comparison.price_change):.2f} {result.currency}"
+                    f"-> Price dropped by {abs(float(comparison.price_change or 0)):.2f} {result.currency}"
                 )
             if comparison.original_price and comparison.original_price > result.price:
                 print(
-                    f"-> Promotion: {comparison.currency} {result.price} (was {comparison.original_price})"
+                    f"-> Promotion: {result.currency} {result.price} (was {comparison.original_price})"
                 )
             if comparison.deal_type:
                 print(f"-> Offer: {comparison.deal_type}")
@@ -281,7 +281,7 @@ def cmd_add_product(args) -> int:
             name=args.name,
             category=args.category,
             target_price=args.target_price,
-            preferred_unit_size=args.unit_size,
+            target_unit=args.unit_size,
         )
         product_id = repo.insert(product)
         print(f"Product added with ID: {product_id}")
@@ -306,8 +306,6 @@ def cmd_add_store(args) -> int:
     try:
         store = Store(
             name=args.name,
-            shipping_cost_standard=args.shipping or 0,
-            free_shipping_threshold=args.free_threshold,
         )
         store_id = repo.insert(store)
         print(f"Store added with ID: {store_id}")
@@ -363,7 +361,6 @@ def cmd_track(args) -> int:
             quantity_size=args.size,
             quantity_unit=args.unit,
             items_per_lot=args.lot or 1,
-            preferred_model=getattr(args, "model", None),
         )
         item_id = tracked_repo.insert(item)
 
@@ -395,14 +392,14 @@ def cmd_list(args) -> int:
                 print("No products found.")
                 return 0
             print(
-                f"{'ID':<4} {'Name':<30} {'Category':<15} {'Target':<10} {'Stock':<6}"
+                f"{'ID':<4} {'Name':<30} {'Category':<15} {'Target':<10}"
             )
-            print("-" * 70)
+            print("-" * 60)
             for p in products:
                 target = f"{p.target_price:.2f}" if p.target_price else "-"
                 cat = p.category or "-"
                 print(
-                    f"{p.id:<4} {p.name[:30]:<30} {cat[:15]:<15} {target:<10} {p.current_stock:<6}"
+                    f"{p.id:<4} {p.name[:30]:<30} {cat[:15]:<15} {target:<10}"
                 )
 
         elif args.what == "stores":
@@ -410,16 +407,11 @@ def cmd_list(args) -> int:
             if not stores:
                 print("No stores found.")
                 return 0
-            print(f"{'ID':<4} {'Name':<25} {'Shipping':<10} {'Free Above':<12}")
-            print("-" * 55)
+            print(f"{'ID':<4} {'Name':<25}")
+            print("-" * 30)
             for s in stores:
-                free = (
-                    f"{s.free_shipping_threshold:.2f}"
-                    if s.free_shipping_threshold
-                    else "-"
-                )
                 print(
-                    f"{s.id:<4} {s.name[:25]:<25} {s.shipping_cost_standard:<10.2f} {free:<12}"
+                    f"{s.id:<4} {s.name[:25]:<25}"
                 )
 
         else:  # tracked items (default)

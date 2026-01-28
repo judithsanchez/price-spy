@@ -27,7 +27,7 @@ async def get_items(db=Depends(get_db)):
         for item in items:
             # Map TrackedItem to TrackedItemResponse manually or using helper
             item_dict = item.model_dump()
-            item_dict["labels"] = repo.get_labels(item.id)
+            item_dict["labels"] = repo.get_labels(int(item.id or 0))
             result.append(TrackedItemResponse(**item_dict))
         return result
     finally:
@@ -44,7 +44,7 @@ async def get_item(item_id: int, db=Depends(get_db)):
             raise HTTPException(status_code=404, detail="Tracked item not found")
 
         item_dict = item.model_dump()
-        item_dict["labels"] = repo.get_labels(item.id)
+        item_dict["labels"] = repo.get_labels(int(item.id or 0))
         return TrackedItemResponse(**item_dict)
     finally:
         db.close()
@@ -89,7 +89,7 @@ async def create_item(item_in: TrackedItemCreate, db=Depends(get_db)):
         if existing:
             # If it exists, return it with labels
             item_dict = existing.model_dump()
-            item_dict["labels"] = repo.get_labels(existing.id)
+            item_dict["labels"] = repo.get_labels(int(existing.id or 0))
             return TrackedItemResponse(**item_dict)
 
         item_obj = TrackedItem(
@@ -109,8 +109,10 @@ async def create_item(item_in: TrackedItemCreate, db=Depends(get_db)):
             repo.set_labels(item_id, item_in.label_ids)
 
         created = repo.get_by_id(item_id)
+        if not created:
+             raise HTTPException(status_code=500, detail="Failed to retrieve created item")
         item_dict = created.model_dump()
-        item_dict["labels"] = repo.get_labels(item_id)
+        item_dict["labels"] = repo.get_labels(int(item_id))
         return TrackedItemResponse(**item_dict)
     finally:
         db.close()
@@ -166,8 +168,10 @@ async def update_item(item_id: int, item_in: TrackedItemCreate, db=Depends(get_d
             repo.set_labels(item_id, item_in.label_ids)
 
         updated = repo.get_by_id(item_id)
+        if not updated:
+            raise HTTPException(status_code=404, detail="Tracked item not found after operation")
         item_dict = updated.model_dump()
-        item_dict["labels"] = repo.get_labels(item_id)
+        item_dict["labels"] = repo.get_labels(int(item_id))
         return TrackedItemResponse(**item_dict)
     finally:
         db.close()
@@ -197,6 +201,8 @@ async def patch_item(item_id: int, item_patch: TrackedItemUpdate, db=Depends(get
             repo.set_labels(item_id, label_ids)
 
         updated = repo.get_by_id(item_id)
+        if not updated:
+            raise HTTPException(status_code=404, detail="Tracked item not found after operation")
         item_dict = updated.model_dump()
         item_dict["labels"] = repo.get_labels(item_id)
         return TrackedItemResponse(**item_dict)

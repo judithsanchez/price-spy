@@ -2,7 +2,7 @@
 
 import asyncio
 import time
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, cast
 from app.core.config import settings
 from pathlib import Path
 
@@ -83,7 +83,7 @@ async def extract_single_item(
 
         # Capture screenshot
         screenshot_bytes = await capture_screenshot(
-            url, target_size=item.target_size if item else None
+            url, target_size=str(item.target_size) if item and item.target_size else None
         )
 
         # Save screenshot
@@ -205,7 +205,7 @@ async def process_extraction_queue(
         async with semaphore:
             try:
                 return await extract_single_item(
-                    item_id=item.id, url=item.url, api_key=api_key, db=db
+                    item_id=int(item.id or 0), url=str(item.url), api_key=api_key, db=db
                 )
             except Exception as e:
                 return {"item_id": item.id, "status": "error", "error": str(e)}
@@ -222,7 +222,7 @@ async def process_extraction_queue(
                 {"item_id": items[i].id, "status": "error", "error": str(result)}
             )
         else:
-            final_results.append(result)
+            final_results.append(cast(Dict[str, Any], result))
 
     return final_results
 

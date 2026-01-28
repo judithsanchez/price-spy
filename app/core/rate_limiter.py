@@ -85,7 +85,7 @@ class RateLimitTracker:
             model=row[0],
             date=row[1],
             request_count=row[2],
-            last_request_at=datetime.fromisoformat(row[3]) if row[3] else None,
+            last_request_at=datetime.fromisoformat(row[3]) if row[3] else datetime.now(timezone.utc),
             is_exhausted=bool(row[4]),
         )
 
@@ -94,6 +94,7 @@ class RateLimitTracker:
         today = self._get_pacific_date()
         now = datetime.now(timezone.utc).isoformat()
 
+        params: tuple = (config.model.value, today, now, now)
         self.db.execute(
             """
             INSERT INTO api_usage (model, date, request_count, last_request_at, is_exhausted)
@@ -102,7 +103,7 @@ class RateLimitTracker:
                 request_count = request_count + 1,
                 last_request_at = ?
         """,
-            (config.model.value, today, now, now),
+            params,
         )
         self.db.commit()
 
@@ -121,6 +122,7 @@ class RateLimitTracker:
         today = self._get_pacific_date()
         now = datetime.now(timezone.utc).isoformat()
 
+        params: tuple = (config.model.value, today, now, now)
         self.db.execute(
             """
             INSERT INTO api_usage (model, date, request_count, last_request_at, is_exhausted)
@@ -129,7 +131,7 @@ class RateLimitTracker:
                 is_exhausted = 1,
                 last_request_at = ?
         """,
-            (config.model.value, today, now, now),
+            params,
         )
         self.db.commit()
 

@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List, Optional, cast, Literal
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 
@@ -78,7 +78,7 @@ async def get_extraction_logs(
         )
         return [
             ExtractionLogResponse(
-                id=log.id,
+                id=int(log.id or 0),
                 tracked_item_id=log.tracked_item_id,
                 status=log.status,
                 model_used=log.model_used,
@@ -115,7 +115,7 @@ async def get_error_logs(
         )
         return [
             ErrorLogResponse(
-                id=log.id,
+                id=int(log.id or 0),
                 error_type=log.error_type,
                 message=log.message,
                 url=log.url,

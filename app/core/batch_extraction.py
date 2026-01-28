@@ -67,12 +67,12 @@ async def extract_single_item(
 
         # Build context
         context = ExtractionContext(
-            product_name=product.name if product else "Unknown",
-            category=category.name if category else None,
-            is_size_sensitive=category.is_size_sensitive if category else False,
-            target_size=item.target_size if item else None,
-            quantity_size=item.quantity_size if item else 1.0,
-            quantity_unit=item.quantity_unit if item else "unit",
+            product_name=str(product.name) if product else "Unknown",
+            category=str(category.name) if category else None,
+            is_size_sensitive=bool(category.is_size_sensitive) if category else False,
+            target_size=str(item.target_size) if item and item.target_size else None,
+            quantity_size=float(item.quantity_size) if item else 1.0,
+            quantity_unit=str(item.quantity_unit) if item else "unit",
         )
 
         # Capture screenshot
@@ -202,7 +202,7 @@ async def extract_all_items(
         delay = delay_seconds if i > 0 else 0
 
         result = await extract_single_item(
-            item_id=item.id,
+            item_id=int(item.id or 0),
             url=item.url,
             api_key=api_key,
             db=db,
