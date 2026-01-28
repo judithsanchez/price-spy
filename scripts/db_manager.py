@@ -5,8 +5,8 @@ Handles SQL dumps and restores for production data environment.
 """
 
 import os
-import sys
 import sqlite3
+import sys
 from datetime import datetime
 
 # Configure paths

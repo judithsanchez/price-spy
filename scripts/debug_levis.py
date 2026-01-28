@@ -1,7 +1,7 @@
 import asyncio
 import logging
-import sys
 import os
+import sys
 
 # Add app to path
 sys.path.append(os.getcwd())

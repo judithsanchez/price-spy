@@ -1,8 +1,9 @@
-import random
 import asyncio
 import logging
+import random
 from typing import Optional
-from playwright.async_api import async_playwright, BrowserContext
+
+from playwright.async_api import BrowserContext, async_playwright
 
 logger = logging.getLogger(__name__)
 

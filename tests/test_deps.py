@@ -1,5 +1,6 @@
-from app.api import deps
 import os
+
+from app.api import deps
 
 
 def test_get_db_test_path(test_db):

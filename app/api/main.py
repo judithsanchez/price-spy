@@ -1,26 +1,27 @@
 """FastAPI application factory."""
 
-from fastapi import FastAPI, Request
-from fastapi.staticfiles import StaticFiles
-from fastapi.responses import JSONResponse
-from pydantic import ValidationError
 from pathlib import Path
 
-from app.core.scheduler import lifespan_scheduler
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
+from pydantic import ValidationError
+
 from app.api.routers import (
-    products,
     categories,
-    units,
-    purchase_types,
-    stores,
-    labels,
-    tracked_items,
-    extraction,
-    logs,
-    scheduler,
     email,
+    extraction,
+    labels,
+    logs,
+    products,
+    purchase_types,
+    scheduler,
+    stores,
+    tracked_items,
     ui,
+    units,
 )
+from app.core.scheduler import lifespan_scheduler
 
 app = FastAPI(
     title="Price Spy",
@@ -58,7 +59,7 @@ async def pydantic_validation_exception_handler(request: Request, exc: Validatio
 
     log_error_to_db(
         error_type="validation_error",
-        message=f"Validation error: {str(exc)}",
+        message=f"Validation error: {exc!s}",
         url=str(request.url),
     )
     return JSONResponse(

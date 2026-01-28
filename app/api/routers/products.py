@@ -1,19 +1,21 @@
-from typing import List, cast, Literal
+from typing import List, Literal, cast
+
 from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
+
 from app.api.deps import get_db
-from app.storage.repositories import (
-    ProductRepository,
-    CategoryRepository,
-    TrackedItemRepository,
-)
 from app.models.schemas import (
+    Category,
     Product,
     ProductCreate,
-    ProductUpdate,
     ProductResponse,
-    Category,
+    ProductUpdate,
 )
-from pydantic import BaseModel
+from app.storage.repositories import (
+    CategoryRepository,
+    ProductRepository,
+    TrackedItemRepository,
+)
 
 
 class MergeRequest(BaseModel):
@@ -191,7 +193,7 @@ async def patch_product(
         if not update_data:
             return existing
 
-        if "category" in update_data and update_data["category"]:
+        if update_data.get("category"):
             cat_repo = CategoryRepository(db)
             category_name = cat_repo.normalize_name(update_data["category"])
             update_data["category"] = category_name

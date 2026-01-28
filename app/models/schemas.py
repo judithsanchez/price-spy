@@ -1,9 +1,9 @@
 """Pydantic models for Price Spy data validation."""
 
 from datetime import datetime, timezone
-from typing import Literal, Optional, List
+from typing import List, Literal, Optional
 
-from pydantic import BaseModel, Field, field_validator, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class ProductInfo(BaseModel):

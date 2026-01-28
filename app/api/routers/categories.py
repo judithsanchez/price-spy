@@ -1,13 +1,15 @@
 from typing import List
+
 from fastapi import APIRouter, Depends, HTTPException
+
 from app.api.deps import get_db
-from app.storage.repositories import CategoryRepository, ProductRepository
 from app.models.schemas import (
     Category,
     CategoryCreate,
-    CategoryUpdate,
     CategoryResponse,
+    CategoryUpdate,
 )
+from app.storage.repositories import CategoryRepository, ProductRepository
 
 router = APIRouter(prefix="/api/categories", tags=["Categories"])
 

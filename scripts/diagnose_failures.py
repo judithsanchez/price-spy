@@ -1,5 +1,6 @@
 import asyncio
 import os
+
 from app.core.browser import capture_screenshot
 
 
@@ -23,7 +24,7 @@ async def diagnose_sites():
             else:
                 print(f"  [FAILED] Could not capture screenshot for {name}")
         except Exception as e:
-            print(f"  [ERROR] {name}: {str(e)}")
+            print(f"  [ERROR] {name}: {e!s}")
 
 
 if __name__ == "__main__":

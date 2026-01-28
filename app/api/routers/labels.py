@@ -1,8 +1,10 @@
 from typing import List
+
 from fastapi import APIRouter, Depends, HTTPException
+
 from app.api.deps import get_db
+from app.models.schemas import Label, LabelCreate, LabelResponse, LabelUpdate
 from app.storage.repositories import LabelRepository
-from app.models.schemas import Label, LabelCreate, LabelUpdate, LabelResponse
 
 router = APIRouter(prefix="/api/labels", tags=["Labels"])
 

@@ -1,5 +1,5 @@
-import sqlite3
 import os
+import sqlite3
 from datetime import datetime, timedelta
 
 
@@ -19,11 +19,13 @@ def verify():
 
         # 1. Setup a product and tracked item
         cursor.execute(
-            "INSERT OR IGNORE INTO products (id, name, target_price) VALUES (999, 'Verification Logic Test', 100.0)"
+            "INSERT OR IGNORE INTO products (id, name, target_price) "
+            "VALUES (999, 'Verification Logic Test', 100.0)"
         )
         cursor.execute(
             """
-            INSERT OR IGNORE INTO tracked_items (id, product_id, store_id, url, is_active, quantity_size, quantity_unit) 
+            INSERT OR IGNORE INTO tracked_items 
+            (id, product_id, store_id, url, is_active, quantity_size, quantity_unit) 
             VALUES (999, 999, 1, ?, 1, 100, 'ml')
         """,
             (test_url,),
@@ -34,8 +36,11 @@ def verify():
         yesterday = (datetime.now() - timedelta(days=1)).isoformat()
         cursor.execute(
             """
-            INSERT INTO price_history (product_name, price, currency, is_available, confidence, url, store_name, notes, created_at)
-            VALUES ('Verification Logic Test', 80.0, 'EUR', 1, 1.0, ?, 'Test Store', 'Stable', ?)
+            INSERT INTO price_history 
+            (product_name, price, currency, is_available, confidence, url, 
+             store_name, notes, created_at)
+            VALUES ('Verification Logic Test', 80.0, 'EUR', 1, 1.0, ?, 
+                    'Test Store', 'Stable', ?)
         """,
             (test_url, yesterday),
         )
@@ -44,8 +49,11 @@ def verify():
         now = datetime.now().isoformat()
         cursor.execute(
             """
-            INSERT INTO price_history (product_name, price, currency, is_available, confidence, url, store_name, notes, created_at)
-            VALUES ('Verification Logic Test', 120.0, 'EUR', 1, 1.0, ?, 'Test Store', 'Only 1 unit left! (Low Stock Alert)', ?)
+            INSERT INTO price_history 
+            (product_name, price, currency, is_available, confidence, url, 
+             store_name, notes, created_at)
+            VALUES ('Verification Logic Test', 120.0, 'EUR', 1, 1.0, ?, 
+                    'Test Store', 'Only 1 unit left! (Low Stock Alert)', ?)
         """,
             (test_url, now),
         )

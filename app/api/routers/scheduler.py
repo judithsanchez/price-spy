@@ -1,12 +1,13 @@
 from typing import Optional
+
 from fastapi import APIRouter, BackgroundTasks
 from pydantic import BaseModel
 
 from app.core.scheduler import (
     get_scheduler_status,
-    trigger_run_now,
     pause_scheduler,
     resume_scheduler,
+    trigger_run_now,
 )
 
 router = APIRouter(prefix="/api/scheduler", tags=["Scheduler"])

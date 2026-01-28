@@ -2,23 +2,24 @@ import os
 import time
 from pathlib import Path
 from typing import Optional
+
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
 from app.api.deps import get_db
-from app.core.config import settings
-from app.core.browser import capture_screenshot
-from app.core.vision import extract_with_structured_output
 from app.core.batch_extraction import extract_all_items, get_batch_summary
+from app.core.browser import capture_screenshot
+from app.core.config import settings
 from app.core.rate_limiter import RateLimitTracker
-from app.models.schemas import PriceHistoryRecord, ExtractionLog, ExtractionContext
+from app.core.vision import extract_with_structured_output
+from app.models.schemas import ExtractionContext, ExtractionLog, PriceHistoryRecord
 from app.storage.database import Database
 from app.storage.repositories import (
-    TrackedItemRepository,
-    PriceHistoryRepository,
-    ExtractionLogRepository,
-    ProductRepository,
     CategoryRepository,
+    ExtractionLogRepository,
+    PriceHistoryRepository,
+    ProductRepository,
+    TrackedItemRepository,
 )
 
 router = APIRouter(prefix="/api/extract", tags=["Extraction"])

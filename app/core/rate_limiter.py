@@ -1,8 +1,9 @@
 """Rate limit tracking and provider fallback for AI APIs."""
 
-from datetime import datetime, timezone
-from typing import Optional, List
 from dataclasses import dataclass
+from datetime import datetime, timezone
+from typing import List, Optional
+
 import pytz
 
 from app.core.gemini import GeminiModel, GeminiModels, ModelConfig

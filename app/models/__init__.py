@@ -1,5 +1,5 @@
 """Pydantic models for Price Spy."""
 
-from app.models.schemas import ProductInfo, ErrorRecord, PriceHistoryRecord
+from app.models.schemas import ErrorRecord, PriceHistoryRecord, ProductInfo
 
-__all__ = ["ProductInfo", "ErrorRecord", "PriceHistoryRecord"]
+__all__ = ["ErrorRecord", "PriceHistoryRecord", "ProductInfo"]

@@ -3,7 +3,6 @@
 import sqlite3
 from typing import Optional
 
-
 SCHEMA = """
 -- Purchase Types Table (Seeded)
 CREATE TABLE IF NOT EXISTS purchase_types (
@@ -223,8 +222,7 @@ class Database:
             conn.execute("ALTER TABLE products RENAME TO products_old")
             conn.executescript(SCHEMA)
             conn.execute(
-                f"INSERT INTO products ({keep_csv}) "
-                f"SELECT {keep_csv} FROM products_old"  # nosec B608
+                f"INSERT INTO products ({keep_csv}) SELECT {keep_csv} FROM products_old"  # nosec B608
             )
             conn.execute("DROP TABLE products_old")
             conn.commit()
@@ -239,7 +237,8 @@ class Database:
 
         cursor = conn.cursor()
         if self._needs_products_migration(cursor):
-            self._migrate_products_table(conn)
+            try:
+                self._migrate_products_table(conn)
                 conn.commit()
             except Exception as e:
                 conn.rollback()

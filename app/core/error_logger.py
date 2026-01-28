@@ -2,10 +2,11 @@
 
 import traceback
 from typing import Optional
+
+from app.core.config import settings
+from app.models.schemas import ErrorRecord
 from app.storage.database import Database
 from app.storage.repositories import ErrorLogRepository
-from app.models.schemas import ErrorRecord
-from app.core.config import settings
 
 
 def log_error_to_db(

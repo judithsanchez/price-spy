@@ -1,8 +1,10 @@
 from typing import List
+
 from fastapi import APIRouter, Depends, HTTPException
+
 from app.api.deps import get_db
+from app.models.schemas import Store, StoreCreate, StoreResponse, StoreUpdate
 from app.storage.repositories import StoreRepository, TrackedItemRepository
-from app.models.schemas import Store, StoreCreate, StoreUpdate, StoreResponse
 
 router = APIRouter(prefix="/api/stores", tags=["Stores"])
 
