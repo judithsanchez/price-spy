@@ -5,7 +5,7 @@ import smtplib
 from datetime import datetime
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from jinja2 import (
     Environment,
@@ -23,7 +23,7 @@ from app.storage.repositories import (
 )
 
 
-def get_email_config() -> Dict[str, Any]:
+def get_email_config() -> dict[str, Any]:
     """Get email configuration from environment."""
     return {
         "enabled": settings.EMAIL_ENABLED,
@@ -47,7 +47,7 @@ def is_email_configured() -> bool:
     return all(config.get(key) for key in required)
 
 
-def get_item_details(item_id: int, db: Database) -> Optional[Dict[str, Any]]:
+def get_item_details(item_id: int, db: Database) -> dict[str, Any] | None:
     """Get product and store details for a tracked item."""
     tracked_repo = TrackedItemRepository(db)
     product_repo = ProductRepository(db)
@@ -72,7 +72,7 @@ def get_item_details(item_id: int, db: Database) -> Optional[Dict[str, Any]]:
     }
 
 
-def _initialize_empty_report() -> Dict[str, Any]:
+def _initialize_empty_report() -> dict[str, Any]:
     return {
         "date": datetime.now().strftime("%B %d, %Y"),
         "total": 0,
@@ -89,10 +89,10 @@ def _initialize_empty_report() -> Dict[str, Any]:
 
 
 def _process_single_result(
-    result: Dict[str, Any],
+    result: dict[str, Any],
     price_repo: PriceHistoryRepository,
     db: Database,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     item_id = result.get("item_id")
     item_details = get_item_details(item_id, db)
     if not item_details:
@@ -116,7 +116,7 @@ def _process_single_result(
     return entry
 
 
-def generate_report_data(results: List[Dict[str, Any]], db: Database) -> Dict[str, Any]:
+def generate_report_data(results: list[dict[str, Any]], db: Database) -> dict[str, Any]:
     """Generate report data from extraction results."""
     if not results:
         return _initialize_empty_report()
@@ -145,7 +145,7 @@ def generate_report_data(results: List[Dict[str, Any]], db: Database) -> Dict[st
     }
 
 
-def build_subject(report_data: Dict[str, Any]) -> str:
+def build_subject(report_data: dict[str, Any]) -> str:
     """Build email subject line."""
     total = report_data["total"]
     deals = report_data["deals_count"]
@@ -176,14 +176,14 @@ env = Environment(
 )
 
 
-def render_html_email(report_data: Dict[str, Any], config: Dict[str, Any]) -> str:
+def render_html_email(report_data: dict[str, Any], config: dict[str, Any]) -> str:
     """Render HTML email template."""
     dashboard_url = config.get("dashboard_url", "http://localhost:8000")
     template = env.get_template("daily_report.html")
     return template.render(report=report_data, dashboard_url=dashboard_url)
 
 
-def render_text_email(report_data: Dict[str, Any], config: Dict[str, Any]) -> str:
+def render_text_email(report_data: dict[str, Any], config: dict[str, Any]) -> str:
     """Render plain text email template."""
     dashboard_url = config.get("dashboard_url", "http://localhost:8000")
     template = env.get_template("daily_report.txt")
@@ -191,7 +191,7 @@ def render_text_email(report_data: Dict[str, Any], config: Dict[str, Any]) -> st
 
 
 def send_email(
-    to: str, subject: str, html: str, text: str, config: Dict[str, Any]
+    to: str, subject: str, html: str, text: str, config: dict[str, Any]
 ) -> bool:
     """Send email via SMTP."""
     msg = MIMEMultipart("alternative")
@@ -214,7 +214,7 @@ def send_email(
         return False
 
 
-def send_daily_report(results: List[Dict[str, Any]], db: Database) -> bool:
+def send_daily_report(results: list[dict[str, Any]], db: Database) -> bool:
     """Send daily email report after scheduler run."""
     if not is_email_configured():
         return False

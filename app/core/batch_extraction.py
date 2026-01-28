@@ -3,7 +3,7 @@
 import asyncio
 import time
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from app.core.config import settings
 from app.core.rate_limiter import RateLimitTracker
@@ -23,9 +23,9 @@ async def extract_single_item(
     url: str,
     api_key: str,
     db: Database,
-    tracker: Optional[RateLimitTracker] = None,
+    tracker: RateLimitTracker | None = None,
     delay_seconds: float = 0,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Extract price for a single tracked item.
 
@@ -169,7 +169,7 @@ async def extract_single_item(
 
 async def extract_all_items(
     db: Database, delay_seconds: float = 5.0
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     """
     Extract prices for all active tracked items.
 
@@ -213,7 +213,7 @@ async def extract_all_items(
     return results
 
 
-def get_batch_summary(results: List[Dict[str, Any]]) -> Dict[str, Any]:
+def get_batch_summary(results: list[dict[str, Any]]) -> dict[str, Any]:
     """
     Generate summary statistics from batch extraction results.
 

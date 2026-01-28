@@ -3,7 +3,6 @@
 import base64
 import json
 import re
-from typing import Optional, Tuple, Union
 
 import aiohttp
 
@@ -136,9 +135,7 @@ Return ONLY the JSON, no markdown, no explanation.
 """
 
 
-async def extract_product_info(
-    image_bytes: bytes, api_key: str
-) -> Union[ProductInfo, str]:
+async def extract_product_info(image_bytes: bytes, api_key: str) -> ProductInfo | str:
     """
     Send image to Gemini and return validated ProductInfo.
 
@@ -182,12 +179,9 @@ async def extract_product_info(
     # Try to parse as JSON and validate with Pydantic
     try:
         # Clean up markdown code blocks if present
-        if text.startswith("```json"):
-            text = text[7:]
-        if text.startswith("```"):
-            text = text[3:]
-        if text.endswith("```"):
-            text = text[:-3]
+        text = text.removeprefix("```json")
+        text = text.removeprefix("```")
+        text = text.removesuffix("```")
         text = text.strip()
         parsed = json.loads(text)
         product_info = ProductInfo(**parsed)
@@ -211,7 +205,7 @@ async def extract_product_info(
         return text
 
 
-def get_extraction_prompt(context: Optional[ExtractionContext] = None) -> str:
+def get_extraction_prompt(context: ExtractionContext | None = None) -> str:
     """Generate a refined extraction prompt based on context."""
     target_info = ""
     size_guidance = ""
@@ -299,7 +293,7 @@ async def _call_gemini_api(
     image_bytes: bytes,
     api_key: str,
     config: ModelConfig,
-    context: Optional[ExtractionContext] = None,
+    context: ExtractionContext | None = None,
 ) -> ExtractionResult:
     """Make a single API call to Gemini with the given model config."""
     url = GeminiModels.get_api_url(config, api_key)
@@ -377,8 +371,8 @@ async def extract_with_structured_output(
     image_bytes: bytes,
     api_key: str,
     tracker=None,
-    context: Optional[ExtractionContext] = None,
-) -> Tuple[ExtractionResult, str]:
+    context: ExtractionContext | None = None,
+) -> tuple[ExtractionResult, str]:
     """
     Extract price using Gemini's structured output mode with automatic fallback.
 

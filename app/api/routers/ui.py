@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Any, Optional, cast
+from typing import Any, cast
 
 from fastapi import APIRouter, Depends, Request
 from fastapi.templating import Jinja2Templates
@@ -27,21 +27,21 @@ class DashboardItem(BaseModel):
     product_name: str
     store_name: str
     url: str
-    price: Optional[float] = None
+    price: float | None = None
     currency: str = "EUR"
-    target_price: Optional[float] = None
-    target_unit: Optional[str] = None
-    unit_price: Optional[float] = None
-    unit: Optional[str] = None
-    is_available: Optional[bool] = None
-    notes: Optional[str] = None
-    screenshot_path: Optional[str] = None
-    last_checked: Optional[str] = None
-    original_price: Optional[float] = None
-    deal_type: Optional[str] = None
-    discount_percentage: Optional[float] = None
-    discount_fixed_amount: Optional[float] = None
-    deal_description: Optional[str] = None
+    target_price: float | None = None
+    target_unit: str | None = None
+    unit_price: float | None = None
+    unit: str | None = None
+    is_available: bool | None = None
+    notes: str | None = None
+    screenshot_path: str | None = None
+    last_checked: str | None = None
+    original_price: float | None = None
+    deal_type: str | None = None
+    discount_percentage: float | None = None
+    discount_fixed_amount: float | None = None
+    deal_description: str | None = None
     is_deal: bool = False
     is_price_drop: bool = False
     is_target_hit: bool = False

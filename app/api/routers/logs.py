@@ -1,5 +1,5 @@
 import sqlite3
-from typing import Annotated, List, Optional
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel, Field
@@ -18,11 +18,11 @@ class ExtractionLogResponse(BaseModel):
     id: int
     tracked_item_id: int
     status: str
-    model_used: Optional[str] = None
-    price: Optional[float] = None
-    currency: Optional[str] = None
-    error_message: Optional[str] = None
-    duration_ms: Optional[int] = None
+    model_used: str | None = None
+    price: float | None = None
+    currency: str | None = None
+    error_message: str | None = None
+    duration_ms: int | None = None
     created_at: str
 
 
@@ -32,9 +32,9 @@ class ErrorLogResponse(BaseModel):
     id: int
     error_type: str
     message: str
-    url: Optional[str] = None
-    screenshot_path: Optional[str] = None
-    stack_trace: Optional[str] = None
+    url: str | None = None
+    screenshot_path: str | None = None
+    stack_trace: str | None = None
     created_at: str
 
 
@@ -60,15 +60,15 @@ class ApiUsageResponse(BaseModel):
 class ExtractionLogFilters(BaseModel):
     """Filters for extraction logs."""
 
-    status: Optional[str] = None
-    item_id: Optional[int] = None
-    start_date: Optional[str] = Field(None, pattern=r"^\d{4}-\d{2}-\d{2}$")
-    end_date: Optional[str] = Field(None, pattern=r"^\d{4}-\d{2}-\d{2}$")
+    status: str | None = None
+    item_id: int | None = None
+    start_date: str | None = Field(None, pattern=r"^\d{4}-\d{2}-\d{2}$")
+    end_date: str | None = Field(None, pattern=r"^\d{4}-\d{2}-\d{2}$")
     limit: int = Query(100, ge=1, le=1000)
     offset: int = Query(0, ge=0)
 
 
-@router.get("/logs", response_model=List[ExtractionLogResponse])
+@router.get("/logs", response_model=list[ExtractionLogResponse])
 async def get_extraction_logs(
     filters: Annotated[ExtractionLogFilters, Query()],
     db: Annotated[sqlite3.Connection, Depends(get_db)],
@@ -102,14 +102,14 @@ async def get_extraction_logs(
 class ErrorLogFilters(BaseModel):
     """Filters for error logs."""
 
-    error_type: Optional[str] = None
-    start_date: Optional[str] = Field(None, pattern=r"^\d{4}-\d{2}-\d{2}$")
-    end_date: Optional[str] = Field(None, pattern=r"^\d{4}-\d{2}-\d{2}$")
+    error_type: str | None = None
+    start_date: str | None = Field(None, pattern=r"^\d{4}-\d{2}-\d{2}$")
+    end_date: str | None = Field(None, pattern=r"^\d{4}-\d{2}-\d{2}$")
     limit: int = Query(100, ge=1, le=1000)
     offset: int = Query(0, ge=0)
 
 
-@router.get("/errors", response_model=List[ErrorLogResponse])
+@router.get("/errors", response_model=list[ErrorLogResponse])
 async def get_error_logs(
     filters: Annotated[ErrorLogFilters, Query()],
     db: Annotated[sqlite3.Connection, Depends(get_db)],
@@ -151,7 +151,7 @@ async def get_extraction_stats(
         db.close()
 
 
-@router.get("/usage", response_model=List[ApiUsageResponse])
+@router.get("/usage", response_model=list[ApiUsageResponse])
 async def get_api_usage(
     db: Annotated[sqlite3.Connection, Depends(get_db)],
 ):

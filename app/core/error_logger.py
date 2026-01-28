@@ -1,7 +1,6 @@
 """Service for standardized error logging to the database."""
 
 import traceback
-from typing import Optional
 
 from app.core.config import settings
 from app.models.schemas import ErrorRecord
@@ -12,8 +11,8 @@ from app.storage.repositories import ErrorLogRepository
 def log_error_to_db(
     error_type: str,
     message: str,
-    url: Optional[str] = None,
-    screenshot_path: Optional[str] = None,
+    url: str | None = None,
+    screenshot_path: str | None = None,
     include_stack: bool = True,
 ):
     """

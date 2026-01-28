@@ -1,5 +1,3 @@
-from typing import List
-
 from fastapi import APIRouter, Depends, HTTPException
 
 from app.api.deps import get_db
@@ -9,7 +7,7 @@ from app.storage.repositories import LabelRepository
 router = APIRouter(prefix="/api/labels", tags=["Labels"])
 
 
-@router.get("", response_model=List[LabelResponse])
+@router.get("", response_model=list[LabelResponse])
 async def get_labels(db=Depends(get_db)):
     """Get all labels."""
     try:
@@ -19,7 +17,7 @@ async def get_labels(db=Depends(get_db)):
         db.close()
 
 
-@router.get("/search", response_model=List[LabelResponse])
+@router.get("/search", response_model=list[LabelResponse])
 async def search_labels(q: str, db=Depends(get_db)):
     """Search labels by name."""
     try:

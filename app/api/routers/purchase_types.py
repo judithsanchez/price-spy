@@ -1,4 +1,4 @@
-from typing import Annotated, List
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException
 
@@ -15,7 +15,7 @@ from app.storage.repositories import PurchaseTypeRepository
 router = APIRouter(prefix="/api/purchase-types", tags=["Purchase Types"])
 
 
-@router.get("", response_model=List[PurchaseTypeResponse])
+@router.get("", response_model=list[PurchaseTypeResponse])
 async def get_purchase_types(db: Annotated[Database, Depends(get_db)]):
     """Get all purchase types (recurring, one_time)."""
     try:

@@ -1,4 +1,4 @@
-from typing import Annotated, List
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException
 
@@ -10,7 +10,7 @@ from app.storage.repositories import StoreRepository, TrackedItemRepository
 router = APIRouter(prefix="/api/stores", tags=["Stores"])
 
 
-@router.get("", response_model=List[StoreResponse])
+@router.get("", response_model=list[StoreResponse])
 async def get_stores(db: Annotated[Database, Depends(get_db)]):
     """Get all stores."""
     try:

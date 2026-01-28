@@ -2,7 +2,6 @@
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import Optional
 
 
 class GeminiModel(str, Enum):
@@ -118,7 +117,7 @@ class GeminiModels:
     VISION_MODELS = [VISION_FALLBACK, VISION_EXTRACTION]
 
     @classmethod
-    def get_config_by_model(cls, model_name: str) -> Optional[ModelConfig]:
+    def get_config_by_model(cls, model_name: str) -> ModelConfig | None:
         """Get ModelConfig by model name string (e.g., 'gemini-2.5-flash')."""
         try:
             model = GeminiModel(model_name)

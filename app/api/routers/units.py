@@ -1,5 +1,3 @@
-from typing import List
-
 from fastapi import APIRouter, Depends, HTTPException
 
 from app.api.deps import get_db
@@ -9,7 +7,7 @@ from app.storage.repositories import UnitRepository
 router = APIRouter(prefix="/api/units", tags=["Units"])
 
 
-@router.get("", response_model=List[UnitResponse])
+@router.get("", response_model=list[UnitResponse])
 async def get_units(db=Depends(get_db)):
     """Get all measurement units."""
     try:

@@ -3,7 +3,7 @@
 import asyncio
 import time
 from pathlib import Path
-from typing import Any, Dict, List, Optional, cast
+from typing import Any, cast
 
 from app.core.config import settings
 from app.core.rate_limiter import RateLimitTracker
@@ -26,14 +26,14 @@ from app.storage.repositories import (
 MAX_CONCURRENT = 10
 
 
-def get_api_key() -> Optional[str]:
+def get_api_key() -> str | None:
     """Get Gemini API key from environment."""
     return settings.GEMINI_API_KEY
 
 
 async def extract_single_item(
     item_id: int, url: str, api_key: str, db: Database
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Extract price for a single tracked item.
 
@@ -171,8 +171,8 @@ async def extract_single_item(
 
 
 async def process_extraction_queue(
-    items: List[TrackedItem], db: Database
-) -> List[Dict[str, Any]]:
+    items: list[TrackedItem], db: Database
+) -> list[dict[str, Any]]:
     """
     Process extraction queue with concurrency limit.
 
@@ -201,7 +201,7 @@ async def process_extraction_queue(
 
     semaphore = asyncio.Semaphore(MAX_CONCURRENT)
 
-    async def extract_with_limit(item: TrackedItem) -> Dict[str, Any]:
+    async def extract_with_limit(item: TrackedItem) -> dict[str, Any]:
         """Extract with semaphore limit."""
         async with semaphore:
             try:
@@ -223,12 +223,12 @@ async def process_extraction_queue(
                 {"item_id": items[i].id, "status": "error", "error": str(result)}
             )
         else:
-            final_results.append(cast(Dict[str, Any], result))
+            final_results.append(cast(dict[str, Any], result))
 
     return final_results
 
 
-def get_queue_summary(results: List[Dict[str, Any]]) -> Dict[str, Any]:
+def get_queue_summary(results: list[dict[str, Any]]) -> dict[str, Any]:
     """
     Generate summary statistics from queue results.
 

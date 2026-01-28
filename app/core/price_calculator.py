@@ -1,7 +1,5 @@
 """Price calculation and comparison logic."""
 
-from typing import Optional, Tuple
-
 from app.models.schemas import PriceComparison
 
 # Unit conversion constants
@@ -26,7 +24,7 @@ def normalize_unit(unit: str) -> str:
 
 def calculate_volume_price(
     page_price: float, items_per_lot: int, quantity_size: float, quantity_unit: str
-) -> Tuple[float, str]:
+) -> tuple[float, str]:
     """
     Calculate price per standard unit.
 
@@ -69,12 +67,12 @@ def calculate_volume_price(
 
 def compare_prices(
     current: float,
-    previous: Optional[float],
-    original_price: Optional[float] = None,
-    deal_type: Optional[str] = None,
-    discount_percentage: Optional[float] = None,
-    discount_fixed_amount: Optional[float] = None,
-    deal_description: Optional[str] = None,
+    previous: float | None,
+    original_price: float | None = None,
+    deal_type: str | None = None,
+    discount_percentage: float | None = None,
+    discount_fixed_amount: float | None = None,
+    deal_description: str | None = None,
 ) -> PriceComparison:
     """
     Compare current price with previous price and evaluate deals.
@@ -89,9 +87,9 @@ def compare_prices(
         deal_description: Explanation of the deal
     """
     is_deal = False
-    if original_price and original_price > current:
-        is_deal = True
-    elif deal_type and deal_type.lower() != "none":
+    if (original_price and original_price > current) or (
+        deal_type and deal_type.lower() != "none"
+    ):
         is_deal = True
 
     if previous is None:
@@ -145,8 +143,8 @@ def is_size_available(target_size: str, available_sizes: list[str]) -> bool:
 def determine_effective_availability(
     is_size_sensitive: bool,
     raw_is_available: bool,
-    available_sizes_json: Optional[str],
-    target_size: Optional[str],
+    available_sizes_json: str | None,
+    target_size: str | None,
 ) -> bool:
     """
     Determine the effective availability of an item.
