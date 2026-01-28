@@ -1,12 +1,16 @@
 """Extraction queue with concurrency management."""
 
 import asyncio
+import json
+import logging
 import time
 from pathlib import Path
 from typing import Any, cast
 
+from app.core.browser import capture_screenshot
 from app.core.config import settings
 from app.core.rate_limiter import RateLimitTracker
+from app.core.vision import extract_with_structured_output
 from app.models.schemas import (
     ExtractionContext,
     ExtractionLog,
@@ -24,6 +28,12 @@ from app.storage.repositories import (
 
 # Maximum concurrent extractions (respects Gemini's 15 RPM limit)
 MAX_CONCURRENT = 10
+
+
+def _raise_item_not_found(item_id: int) -> None:
+    """Raise ValueError when item is not found."""
+    msg = f"Item {item_id} not found"
+    raise ValueError(msg)
 
 
 def get_api_key() -> str | None:
@@ -46,8 +56,6 @@ async def extract_single_item(
     Returns:
         Dict with item_id, status, and optional price/error
     """
-    from app.core.browser import capture_screenshot
-    from app.core.vision import extract_with_structured_output
 
     tracked_repo = TrackedItemRepository(db)
     price_repo = PriceHistoryRepository(db)
@@ -62,7 +70,7 @@ async def extract_single_item(
     try:
         item = tracked_repo.get_by_id(item_id)
         if not item:
-            raise Exception("Item not found")
+            _raise_item_not_found(item_id)
 
         product = product_repo.get_by_id(item.product_id)
         category = (
@@ -98,8 +106,6 @@ async def extract_single_item(
         )
 
         duration_ms = int((time.time() - start_time) * 1000)
-
-        import json
 
         # Save to price history
         record = PriceHistoryRecord(
@@ -138,26 +144,17 @@ async def extract_single_item(
         # Update last checked time
         tracked_repo.set_last_checked(item_id)
 
-        return {
-            "item_id": item_id,
-            "status": "success",
-            "price": result.price,
-            "currency": result.currency,
-            "model_used": model_used,
-            "duration_ms": duration_ms,
-        }
-
     except Exception as e:
-        duration_ms = int((time.time() - start_time) * 1000)
-        error_msg = str(e)
-
         # Log failed extraction
+        duration_ms = int((time.time() - start_time) * 1000)
+        logging.exception("Extraction failed for item %s", item_id)
+
         log_repo.insert(
             ExtractionLog(
                 tracked_item_id=item_id,
                 status="error",
                 model_used=model_used,
-                error_message=error_msg[:2000],
+                error_message=str(e)[:2000],
                 duration_ms=duration_ms,
             )
         )
@@ -165,7 +162,17 @@ async def extract_single_item(
         return {
             "item_id": item_id,
             "status": "error",
-            "error": error_msg,
+            "error": str(e),
+            "duration_ms": duration_ms,
+        }
+
+    else:
+        return {
+            "item_id": item_id,
+            "status": "success",
+            "price": result.price,
+            "currency": result.currency,
+            "model_used": model_used,
             "duration_ms": duration_ms,
         }
 
