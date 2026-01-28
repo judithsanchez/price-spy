@@ -54,21 +54,33 @@ EXTRACTION_SCHEMA = {
         },
         "discount_percentage": {
             "type": "number",
-            "description": "The percentage value of the discount (e.g., 20 for 20% off). Only fill if deal_type is percentage_off.",
+            "description": (
+                "The percentage value of the discount (e.g., 20 for 20% off). "
+                "Only fill if deal_type is percentage_off."
+            ),
         },
         "discount_fixed_amount": {
             "type": "number",
-            "description": "The absolute currency value off (e.g., 5 for €5 off). Only fill if deal_type is fixed_amount_off.",
+            "description": (
+                "The absolute currency value off (e.g., 5 for €5 off). "
+                "Only fill if deal_type is fixed_amount_off."
+            ),
         },
         "deal_description": {"type": "string"},
         "available_sizes": {
             "type": "array",
             "items": {"type": "string"},
-            "description": "List of sizes currently in stock and selectable (e.g. ['28', '30', 'XS', 'M'])",
+            "description": (
+                "List of sizes currently in stock and selectable "
+                "(e.g. ['28', '30', 'XS', 'M'])"
+            ),
         },
         "is_size_matched": {
             "type": "boolean",
-            "description": "True if the price is confirmed to be for the target size, False if unknown but a price/discount exists.",
+            "description": (
+                "True if the price is confirmed to be for the target size, "
+                "False if unknown but a price/discount exists."
+            ),
         },
         "notes": {"type": "string"},
     },
@@ -80,7 +92,8 @@ STRUCTURED_PROMPT = """Act as a price extraction expert. Analyze this screenshot
 
 Your task:
 1. Identify if this is a Single Product Page or a Search Result List
-2. Extract the price information, including original prices and any discounts or deals.
+2. Extract the price information, including original prices and any
+   discounts or deals.
 
 Return ONLY a valid JSON object with these exact fields:
 {
@@ -95,8 +108,10 @@ Return ONLY a valid JSON object with these exact fields:
     "deal_type": "string or null",
     "deal_description": "string or null",
     "confidence_score": number (your confidence from 0.0 to 1.0),
-    "is_blocked": boolean (true if a modal/consent banner blocks major content),
-    "is_size_matched": boolean (true if you are CERTAIN the price is for the requested size)
+    "is_blocked": boolean (true if a modal/consent banner blocks
+major content),
+    "is_size_matched": boolean (true if you are CERTAIN the price is for
+the requested size)
 }
 
 Important for Clothing:
@@ -163,7 +178,6 @@ async def extract_product_info(
         if text.endswith("```"):
             text = text[:-3]
         text = text.strip()
-
         parsed = json.loads(text)
         product_info = ProductInfo(**parsed)
 
@@ -178,7 +192,7 @@ async def extract_product_info(
 
         return product_info
 
-    except (json.JSONDecodeError, Exception) as e:
+    except Exception as e:
         logger.warning(
             "Failed to parse structured response, returning raw text",
             extra={"error": str(e)},
@@ -188,7 +202,6 @@ async def extract_product_info(
 
 def get_extraction_prompt(context: Optional[ExtractionContext] = None) -> str:
     """Generate a refined extraction prompt based on context."""
-
     target_info = ""
     size_guidance = ""
 
@@ -201,11 +214,13 @@ def get_extraction_prompt(context: Optional[ExtractionContext] = None) -> str:
             )
             size_guidance = (
                 f"- This item is SIZE-SENSITIVE. You are looking for size '{context.target_size}'.\n"
-                f"- If size '{context.target_size}' is NOT selectable, is greyed out, or explicitly marked as 'Out of Stock', "
-                "set is_available to false.\n"
-                f"- If you see the price but cannot confirm it is for size '{context.target_size}' (e.g. no size is highlighted), "
-                "set is_size_matched to false but still report the price and is_available=true if it looks like a general sale.\n"
-                f"- ALWAYS favor reporting a price with is_size_matched=false over reporting 'Out of Stock' if a discount is visible.\n"
+                f"- If size '{context.target_size}' is NOT selectable, is greyed out, or explicitly marked "
+                "as 'Out of Stock', set is_available to false.\n"
+                f"- If you see the price but cannot confirm it is for size '{context.target_size}',\n"
+                "set is_size_matched to false but still report the price and is_available=true\n"
+                "if it looks like a general sale.\n"
+                "- ALWAYS favor reporting a price with is_size_matched=false over reporting 'Out of Stock'\n"
+                "if a discount is visible.\n"
             )
         elif context.quantity_size and context.quantity_unit:
             target_info += (
@@ -213,7 +228,8 @@ def get_extraction_prompt(context: Optional[ExtractionContext] = None) -> str:
             )
             size_guidance = (
                 f"- Verify the product matches the volume/size '{context.quantity_size} {context.quantity_unit}'.\n"
-                "- If the page shows a different size (e.g., in a list of results), prioritize finding the exact match.\n"
+                "- If the page shows a different size (e.g., in a list of results),\n"
+                "prioritize finding the exact match.\n"
             )
         elif context.target_size:
             target_info += f"TARGET SIZE: {context.target_size}\n"
@@ -221,27 +237,34 @@ def get_extraction_prompt(context: Optional[ExtractionContext] = None) -> str:
                 f"- Look specifically for the version/size '{context.target_size}'.\n"
             )
 
-    base_prompt = f"""Act as a professional Personal Shopping Assistant. {target_info}
+    base_prompt = (
+        f"""Act as a professional Personal Shopping Assistant. {target_info}
 Analyze this webpage screenshot to extract pricing and availability information.
 
 RULES:
-- THE CURRENT PRICE: numeric value only. If multiple prices exist for different sizes and yours isn't selected, use the 'starting at' price or the most prominent price.
+- THE CURRENT PRICE: numeric value only.
+  If multiple prices exist for different sizes and yours isn't selected, use the 'starting at'
+  price or the most prominent price.
 - Currency code: 3-letter ISO (EUR, USD, etc.).
 - is_available: Boolean.
-{size_guidance}
-- product_name: The name as shown on the site.
+{size_guidance}- product_name: The name as shown on the site.
 - store_name: The retailer name.
 - is_blocked: Boolean (true if a cookie/consent modal blocks the view).
-- Original price: Only if a clear previous price is shown (strikethrough). ALWAYS look for this to detect discounts.
-- Deal type: Choose from 'bogo', 'multibuy', 'percentage_off', 'fixed_amount_off', 'second_unit_discount', 'value_pack', 'clearance', or 'none'.
+- Original price: Only if a clear previous price is shown (strikethrough).
+  ALWAYS look for this to detect discounts.
+- Deal type: Choose from 'bogo', 'multibuy', 'percentage_off', 'fixed_amount_off',
+  'second_unit_discount', 'value_pack', 'clearance', or 'none'.
 - Discount: Extract percentage or fixed amount if applicable.
 - deal_description: E.g., '1+1 gratis' or '20% off with code'.
-- General Notes: Mention if the price is a general discount but you couldn't confirm the target size price.
-- IMPORTANT: If price is not immediately top-center, look for a STICKY BOTTOM BAR or "Add to Cart" button area. Fashion mobile sites often place the price there.
+- General Notes: Mention if the price is a general discount
+  but you couldn't confirm the target size price.
+- IMPORTANT: If price is not immediately top-center, look for a STICKY BOTTOM BAR or
+  "Add to Cart" button area. Fashion mobile sites often place the price there.
 
 Return ONLY valid JSON. If is_blocked is true, provide your best guess.
 If fields are missing, use 0.0 for price and "N/A" for currency.
 """
+    )
     return base_prompt
 
     # Imports moved to top of file

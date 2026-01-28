@@ -65,7 +65,8 @@ class RateLimitTracker:
         """)
         self.db.commit()
 
-    def _get_pacific_date(self) -> str:
+    @staticmethod
+    def _get_pacific_date() -> str:
         """Get current date in Pacific timezone (for RPD reset)."""
         now_pacific = datetime.now(PACIFIC_TZ)
         return now_pacific.strftime("%Y-%m-%d")
@@ -99,12 +100,15 @@ class RateLimitTracker:
         params: tuple = (config.model.value, today, now, now)
         self.db.execute(
             """
-            INSERT INTO api_usage (model, date, request_count, last_request_at, is_exhausted)
+            INSERT INTO api_usage (
+                model, date, request_count,
+                last_request_at, is_exhausted
+            )
             VALUES (?, ?, 1, ?, 0)
             ON CONFLICT(model, date) DO UPDATE SET
                 request_count = request_count + 1,
                 last_request_at = ?
-        """,
+            """,
             params,
         )
         self.db.commit()
@@ -127,12 +131,13 @@ class RateLimitTracker:
         params: tuple = (config.model.value, today, now, now)
         self.db.execute(
             """
-            INSERT INTO api_usage (model, date, request_count, last_request_at, is_exhausted)
+            INSERT INTO api_usage (model, date, request_count,
+                last_request_at, is_exhausted)
             VALUES (?, ?, 0, ?, 1)
             ON CONFLICT(model, date) DO UPDATE SET
                 is_exhausted = 1,
                 last_request_at = ?
-        """,
+            """,
             params,
         )
         self.db.commit()

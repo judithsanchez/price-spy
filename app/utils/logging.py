@@ -11,6 +11,12 @@ class JSONFormatter(logging.Formatter):
     """Custom formatter that outputs logs as JSON objects."""
 
     def format(self, record: logging.LogRecord) -> str:
+        """
+        Format a LogRecord into a JSON string containing timestamp, level, logger name, and message.
+        
+        :param record: The logging LogRecord to format.
+        :return: A JSON-formatted string representation of the log entry.
+        """
         log_entry = {
             "timestamp": datetime.now(timezone.utc).isoformat(),
             "level": record.levelname,
@@ -72,10 +78,13 @@ class JSONFormatter(logging.Formatter):
         return json.dumps(log_entry, default=str)
 
 
+"""Logging utilities providing ExtraFieldsAdapter for merging extra context into log records."""
+
 class ExtraFieldsAdapter(logging.LoggerAdapter):
     """Adapter that merges extra fields into log records."""
 
     def process(self, msg, kwargs):
+        """Merge adapter extra fields with provided kwargs extra and return updated message and kwargs."""
         extra = kwargs.get("extra", {})
         kwargs["extra"] = {**self.extra, **extra}
         return msg, kwargs

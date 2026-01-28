@@ -12,7 +12,10 @@ STEALTH_CONFIG = {
     "viewport": {"width": 1920, "height": 1080},
     "locale": "nl-NL",
     "timezone_id": "Europe/Amsterdam",
-    "geolocation": {"latitude": 52.3676, "longitude": 4.9041},  # Amsterdam
+    "geolocation": {
+        "latitude": 52.3676,
+        "longitude": 4.9041,
+    },  # Amsterdam
     "permissions": ["geolocation"],
 }
 
@@ -27,7 +30,11 @@ STEALTH_SCRIPTS = """
     Object.defineProperty(navigator, 'plugins', { get: () => [1, 2, 3, 4, 5] });
 
     // Pass the Languages Test
-    Object.defineProperty(navigator, 'languages', { get: () => ['nl-NL', 'nl', 'en-US', 'en'] });
+    Object.defineProperty(
+        navigator,
+        'languages',
+        { get: () => ['nl-NL', 'nl', 'en-US', 'en'] }
+    );
 
     // Mock Chrome runtime
     window.chrome = { runtime: {} };
@@ -53,17 +60,26 @@ async def create_stealth_context(playwright) -> BrowserContext:
     profile = random.choice(  # nosec B311
         [
             {
-                "ua": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                "ua": (
+                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+                    "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+                ),
                 "platform": '"Windows"',
                 "sec_ch_ua_platform": "Windows",
             },
             {
-                "ua": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                "ua": (
+                    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
+                    "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+                ),
                 "platform": '"macOS"',
                 "sec_ch_ua_platform": "macOS",
             },
             {
-                "ua": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                "ua": (
+                    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
+                    "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+                ),
                 "platform": '"Linux"',
                 "sec_ch_ua_platform": "Linux",
             },
@@ -95,7 +111,10 @@ async def create_stealth_context(playwright) -> BrowserContext:
         permissions=STEALTH_CONFIG["permissions"],
         # Add extra headers for better stealth
         extra_http_headers={
-            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+            "Accept": (
+                "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,"
+                "image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7"
+            ),
             "Accept-Language": "nl-NL,nl;q=0.9,en-US;q=0.8,en;q=0.7",
             "Sec-Ch-Ua": '"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"',
             "Sec-Ch-Ua-Mobile": "?0",
@@ -115,7 +134,7 @@ async def handle_zalando_interaction(page, target_size: Optional[str] = None):
     if "zalando" not in page.url:
         return
 
-    logger.info(f"Handling Zalando interaction (target_size: {target_size})")
+    logger.info("Handling Zalando interaction (target_size: %s)", target_size)
     try:
         # 1. Look for the "Maat kiezen" button
         # Try both role-based and testid-based selectors
@@ -148,10 +167,18 @@ async def handle_zalando_interaction(page, target_size: Optional[str] = None):
                 # Zalando sizes are often in a list or grid
                 # Try specific data-testid first, then generic buttons
                 size_selectors = [
-                    f'button[data-testid="pdp-size-selector-item"]:has-text("{target_size}")',
-                    f'button[data-testid="pdp-size-picker-item"]:has-text("{target_size}")',
-                    f'li[data-testid="pdp-size-selector-item"] button:has-text("{target_size}")',
-                    f'button:has-text("{target_size}")',
+                    'button[data-testid="pdp-size-selector-item"]:has-text("'
+                    + target_size
+                    + '")',
+                    'button[data-testid="pdp-size-picker-item"]:has-text("'
+                    + target_size
+                    + '")',
+                    'li[data-testid="pdp-size-selector-item"] button:has-text("'
+                    + target_size
+                    + '")',
+                    'button:has-text("'
+                    + target_size
+                    + '")',
                 ]
 
                 size_option = None
@@ -166,16 +193,16 @@ async def handle_zalando_interaction(page, target_size: Optional[str] = None):
 
                 if size_option:
                     await size_option.click()
-                    logger.info(f"Clicked Zalando size option: {target_size}")
+                    logger.info("Clicked Zalando size option: %s", target_size)
                     await page.wait_for_timeout(2000)  # Wait for price update
                 else:
                     logger.warning(
-                        f"Zalando size option '{target_size}' not found or not visible"
+                        "Zalando size option '%s' not found or not visible", target_size
                     )
         else:
             logger.warning("Zalando size button not found")
     except Exception as e:
-        logger.error(f"Error during Zalando interaction: {e}")
+        logger.error("Error during Zalando interaction: %s", e)
 
 
 async def capture_screenshot(url: str, target_size: Optional[str] = None) -> bytes:
@@ -195,12 +222,12 @@ async def capture_screenshot(url: str, target_size: Optional[str] = None) -> byt
             await page.goto(url, wait_until="networkidle", timeout=60000)
         except Exception as e:
             logger.warning(
-                f"Networkidle failed for {url}, falling back to domcontentloaded: {e}"
+                "Networkidle failed for %s, falling back to domcontentloaded: %s", url, e
             )
             try:
                 await page.goto(url, wait_until="domcontentloaded", timeout=30000)
             except Exception as e2:
-                logger.error(f"Failed to navigate to {url}: {e2}")
+                logger.error("Failed to navigate to %s: %s", url, e2)
                 raise
 
         # Try to dismiss cookie consent popups
