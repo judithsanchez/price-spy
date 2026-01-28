@@ -1,5 +1,5 @@
 import asyncio
-import os
+from pathlib import Path
 
 from app.core.browser import capture_screenshot
 
@@ -10,16 +10,15 @@ async def diagnose_sites():
         "douglas": "https://www.douglas.nl/nl/p/5010033070",
     }
 
-    os.makedirs("diagnostics", exist_ok=True)
+    Path("diagnostics").mkdir(exist_ok=True)
 
     for name, url in sites.items():
         print(f"Diagnosing {name}: {url}")
-        output_path = f"diagnostics/{name}_check.png"
+        output_path = Path(f"diagnostics/{name}_check.png")
         try:
             screenshot_bytes = await capture_screenshot(url)
             if screenshot_bytes:
-                with open(output_path, "wb") as f:
-                    f.write(screenshot_bytes)
+                await asyncio.to_thread(output_path.write_bytes, screenshot_bytes)
                 print(f"  [SUCCESS] Screenshot saved to {output_path}")
             else:
                 print(f"  [FAILED] Could not capture screenshot for {name}")

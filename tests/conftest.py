@@ -1,5 +1,6 @@
 import os
 import tempfile
+from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
@@ -27,8 +28,9 @@ def test_db():
     deps._test_db_path = original_test_path
 
     # Cleanup
-    if os.path.exists(path):
-        os.unlink(path)
+    # Cleanup
+    if Path(path).exists():
+        Path(path).unlink()
 
 
 @pytest.fixture

@@ -5,8 +5,10 @@ import time
 from pathlib import Path
 from typing import Any
 
+from app.core.browser import capture_screenshot
 from app.core.config import settings
 from app.core.rate_limiter import RateLimitTracker
+from app.core.vision import extract_with_structured_output
 from app.models.schemas import ExtractionContext, ExtractionLog, PriceHistoryRecord
 from app.storage.database import Database
 from app.storage.repositories import (
@@ -40,8 +42,6 @@ async def extract_single_item(
     Returns:
         Dict with item_id, status, and optional price/error
     """
-    from app.core.browser import capture_screenshot
-    from app.core.vision import extract_with_structured_output
 
     if delay_seconds > 0:
         await asyncio.sleep(delay_seconds)
@@ -125,21 +125,8 @@ async def extract_single_item(
         )
 
         # Update last checked time
+        # Update last checked time
         tracked_repo.set_last_checked(item_id)
-
-        return {
-            "item_id": item_id,
-            "status": "success",
-            "price": result.price,
-            "currency": result.currency,
-            "original_price": result.original_price,
-            "deal_type": result.deal_type,
-            "discount_percentage": result.discount_percentage,
-            "discount_fixed_amount": result.discount_fixed_amount,
-            "deal_description": result.deal_description,
-            "model_used": model_used,
-            "duration_ms": duration_ms,
-        }
 
     except Exception as e:
         duration_ms = int((time.time() - start_time) * 1000)
@@ -160,6 +147,21 @@ async def extract_single_item(
             "item_id": item_id,
             "status": "error",
             "error": error_msg,
+            "duration_ms": duration_ms,
+        }
+
+    else:
+        return {
+            "item_id": item_id,
+            "status": "success",
+            "price": result.price,
+            "currency": result.currency,
+            "original_price": result.original_price,
+            "deal_type": result.deal_type,
+            "discount_percentage": result.discount_percentage,
+            "discount_fixed_amount": result.discount_fixed_amount,
+            "deal_description": result.deal_description,
+            "model_used": model_used,
             "duration_ms": duration_ms,
         }
 

@@ -107,7 +107,7 @@ async def create_stealth_context(playwright) -> BrowserContext:
     browser = await playwright.chromium.launch(headless=True, args=launch_args)
 
     # Use a taller viewport by default to avoid clipping issues
-    context = await browser.new_context(
+    return await browser.new_context(
         viewport={"width": width, "height": 1200},
         user_agent=profile["ua"],
         locale=STEALTH_CONFIG["locale"],
@@ -134,7 +134,6 @@ async def create_stealth_context(playwright) -> BrowserContext:
             "Upgrade-Insecure-Requests": "1",
         },
     )
-    return context
 
 
 async def _find_zalando_size_button(page):
@@ -201,8 +200,8 @@ async def handle_zalando_interaction(page, target_size: str | None = None):
                 logger.warning("Zalando size option '%s' not found", target_size)
         elif not button_clicked:
             logger.warning("Zalando size button not found")
-    except Exception as e:
-        logger.error("Error during Zalando interaction: %s", e)
+    except Exception:
+        logger.exception("Error during Zalando interaction")
 
 
 async def _dismiss_cookie_consent(page):
@@ -274,8 +273,8 @@ async def capture_screenshot(url: str, target_size: str | None = None) -> bytes:
             logger.warning("Networkidle failed for %s, falling back: %s", url, e)
             try:
                 await page.goto(url, wait_until="domcontentloaded", timeout=30000)
-            except Exception as e2:
-                logger.error("Failed to navigate to %s: %s", url, e2)
+            except Exception:
+                logger.exception("Failed to navigate to %s", url)
                 raise
 
         # Try to dismiss cookie consent popups

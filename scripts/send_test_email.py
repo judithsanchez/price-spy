@@ -1,9 +1,9 @@
-import os
 import sys
 from datetime import datetime
+from pathlib import Path
 
 # Add app directory to path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+sys.path.append(str(Path(__file__).resolve().parent.parent))
 
 from app.core.email_report import (
     build_subject,

@@ -4,13 +4,13 @@ import argparse
 import asyncio
 import sys
 
+from app.core.batch_extraction import extract_all_items, get_batch_summary
+from app.core.seeder import seed_test_data
 from app.storage.database import Database
 
 
 def seed_test_data_command(db_path: str = "data/pricespy.db"):
     """Seed the database with test data."""
-    from app.core.seeder import seed_test_data
-
     db = Database(db_path)
     db.initialize()
 
@@ -32,7 +32,6 @@ def seed_test_data_command(db_path: str = "data/pricespy.db"):
 
 def extract_all_command(db_path: str = "data/pricespy.db", delay: float = 5.0):
     """Extract prices for all active tracked items."""
-    from app.core.batch_extraction import extract_all_items, get_batch_summary
 
     db = Database(db_path)
     db.initialize()
