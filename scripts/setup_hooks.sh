@@ -15,9 +15,10 @@ STAGED_FILES=$(git diff --cached --name-only | wc -l)
 LIMIT=10
 
 if [ "$STAGED_FILES" -gt "$LIMIT" ]; then
-    echo "⚠️  WARNING: You have staged $STAGED_FILES files."
-    echo "    Large commits can be harder to review. Consider splitting into atomic commits."
-    echo "    (Continuing anyway as this is a warning-only guard)"
+    echo "❌ ERROR: You have staged $STAGED_FILES files. Limit is $LIMIT."
+    echo "    Large commits are blocked to ensure atomic changes."
+    echo "    Use 'git commit --no-verify' if you MUST bypass this guard."
+    exit 1
 fi
 
 exit 0

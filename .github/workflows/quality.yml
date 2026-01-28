@@ -2,6 +2,7 @@ name: CI Quality Check
 
 on:
   pull_request:
+    types: [opened, synchronize, reopened, labeled, unlabeled]
     branches: [ main ]
   push:
     branches: [ main ]
@@ -12,6 +13,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -23,55 +26,66 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-          pip install ruff mypy bandit pip-audit pytest pytest-cov
+          pip install ruff mypy bandit pip-audit pytest pytest-cov mutmut
 
       - name: Check formatting with Ruff
+        if: "!contains(github.event.pull_request.labels.*.name, 'skip-lint') && !contains(github.event.pull_request.labels.*.name, 'skip-all')"
         run: ruff format --check .
 
       - name: Lint with Ruff
+        if: "!contains(github.event.pull_request.labels.*.name, 'skip-lint') && !contains(github.event.pull_request.labels.*.name, 'skip-all')"
         run: ruff check .
 
       - name: Static type check with mypy
-        run: mypy --ignore-missing-imports . || true
+        if: "!contains(github.event.pull_request.labels.*.name, 'skip-typing') && !contains(github.event.pull_request.labels.*.name, 'skip-all')"
+        run: mypy --ignore-missing-imports .
 
       - name: Security scan with Bandit
-        run: bandit -r app/ --skip B101 || true
+        if: "!contains(github.event.pull_request.labels.*.name, 'skip-security') && !contains(github.event.pull_request.labels.*.name, 'skip-all')"
+        run: bandit -r app/ --skip B101
 
       - name: Audit dependencies
+        if: "!contains(github.event.pull_request.labels.*.name, 'skip-security') && !contains(github.event.pull_request.labels.*.name, 'skip-all')"
         run: pip-audit
 
       - name: Check branch name
-        if: github.event_name == 'pull_request'
+        if: "github.event_name == 'pull_request' && !contains(github.event.pull_request.labels.*.name, 'skip-branch') && !contains(github.event.pull_request.labels.*.name, 'skip-all')"
         run: |
           BRANCH_NAME="${{ github.head_ref }}"
           REGEX="^(feat|fix|docs|test|refactor|chore)/[a-z0-9-]+$"
           if [[ ! $BRANCH_NAME =~ $REGEX ]]; then
-            echo "⚠️  WARNING: Branch name '$BRANCH_NAME' does not follow conventional naming: $REGEX"
+            echo "❌ ERROR: Branch name '$BRANCH_NAME' does not follow conventional naming: $REGEX"
+            exit 1
           fi
-        continue-on-error: true
 
       - name: Check PR size
-        if: github.event_name == 'pull_request'
+        if: "github.event_name == 'pull_request' && !contains(github.event.pull_request.labels.*.name, 'skip-size') && !contains(github.event.pull_request.labels.*.name, 'skip-all')"
         run: |
           DIFF_SIZE=$(git diff origin/${{ github.base_ref }}...HEAD --shortstat | awk '{print $4 + $6}')
           if [ "$DIFF_SIZE" -gt 500 ]; then
-            echo "⚠️  WARNING: PR is large ($DIFF_SIZE lines changed). Consider splitting it."
+            echo "❌ ERROR: PR is too large ($DIFF_SIZE lines changed). Limit is 500 lines. Please split your PR."
+            exit 1
           fi
-        continue-on-error: true
 
       - name: Documentation Sync Check
-        if: github.event_name == 'pull_request'
+        if: "github.event_name == 'pull_request' && !contains(github.event.pull_request.labels.*.name, 'skip-docs') && !contains(github.event.pull_request.labels.*.name, 'skip-all')"
         run: |
           APP_CHANGES=$(git diff --name-only origin/${{ github.base_ref }}...HEAD | grep "^app/" | wc -l)
           DOC_CHANGES=$(git diff --name-only origin/${{ github.base_ref }}...HEAD | grep -E "^docs/|^README.md" | wc -l)
           if [ "$APP_CHANGES" -gt 0 ] && [ "$DOC_CHANGES" -eq 0 ]; then
-            echo "⚠️  WARNING: Code changed in app/ but no changes found in docs/ or README.md."
+            echo "❌ ERROR: Code changed in app/ but no changes found in docs/ or README.md."
+            exit 1
           fi
-        continue-on-error: true
 
       - name: Mutation Testing (app/core)
+        if: "!contains(github.event.pull_request.labels.*.name, 'skip-mutation') && !contains(github.event.pull_request.labels.*.name, 'skip-all')"
         run: mutmut run --paths-to-mutate app/core/ --time-out 10 --runner "pytest tests/test_basic.py" || true
-        continue-on-error: true
 
-      - name: Run Tests
-        run: pytest
+      - name: Run Tests & Check Coverage
+        if: "!contains(github.event.pull_request.labels.*.name, 'skip-tests') && !contains(github.event.pull_request.labels.*.name, 'skip-all')"
+        run: |
+          if [[ "${{ contains(github.event.pull_request.labels.*.name, 'skip-coverage') }}" == "true" ]]; then
+            pytest
+          else
+            pytest --cov=app --cov-fail-under=80
+          fi
