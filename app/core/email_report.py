@@ -94,11 +94,14 @@ def _process_single_result(
     db: Database,
 ) -> dict[str, Any]:
     item_id = result.get("item_id")
+    if item_id is None:
+        return {"error": {"message": "Missing item_id"}}
+
     item_details = get_item_details(item_id, db)
     if not item_details:
         return {"error": {"item_id": item_id, "message": "Item not found"}}
 
-    history = price_repo.get_history(item_id)
+    history = price_repo.get_by_item(item_id)
     if not history:
         return {"error": {"item_id": item_id, "message": "No price history"}}
 
@@ -107,12 +110,13 @@ def _process_single_result(
     last_price = history[-1].price
 
     entry = {"item": {**item_details, "current_price": current_price}}
-    if target_price is not None and current_price <= target_price:
-        entry["deal"] = entry["item"]
-    if last_price > current_price:
-        entry["drop"] = entry["item"]
-    if last_price < current_price:
-        entry["increase"] = entry["item"]
+    if current_price is not None:
+        if target_price is not None and current_price <= target_price:
+            entry["deal"] = entry["item"]
+        if last_price > current_price:
+            entry["drop"] = entry["item"]
+        if last_price < current_price:
+            entry["increase"] = entry["item"]
     return entry
 
 

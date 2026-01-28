@@ -11,5 +11,8 @@
   "ruff.organizeImports": true,
   "ruff.fixAll": true,
   "python.analysis.typeCheckingMode": "basic",
-  "python.analysis.autoImportCompletions": true
+  "python.analysis.autoImportCompletions": true,
+  "mypy.enabled": true,
+  "mypy.runUsingActiveInterpreter": true,
+  "mypy.args": ["--ignore-missing-imports"]
 }

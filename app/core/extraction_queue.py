@@ -72,6 +72,9 @@ async def extract_single_item(
         if not item:
             _raise_item_not_found(item_id)
 
+        # We know item is present (checked above); mypy needs explicit assertion here
+        assert item is not None
+
         product = product_repo.get_by_id(item.product_id)
         category = (
             category_repo.get_by_name(product.category)
@@ -92,7 +95,7 @@ async def extract_single_item(
         # Capture screenshot
         screenshot_bytes = await capture_screenshot(
             url,
-            target_size=str(item.target_size) if item and item.target_size else None,
+            target_size=str(item.target_size) if item.target_size else None,
         )
 
         # Save screenshot
@@ -206,10 +209,15 @@ async def process_extraction_queue(
             for item in items
         ]
 
+    # Mypy doesn't infer strict optional across the closure properly
+    assert api_key is not None
+
     semaphore = asyncio.Semaphore(MAX_CONCURRENT)
 
     async def extract_with_limit(item: TrackedItem) -> dict[str, Any]:
         """Extract with semaphore limit."""
+        # Ensure api_key is treated as str in this scope
+        assert api_key is not None
         async with semaphore:
             try:
                 return await extract_single_item(
