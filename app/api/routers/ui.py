@@ -162,6 +162,7 @@ async def dashboard(request: Request, db: Annotated[Database, Depends(get_db)]):
                 latest_price_rec.deal_description if latest_price_rec else None
             )
 
+            is_target_hit = False
             if price is not None and product.target_price is not None:
                 if product.target_unit:
                     normalized_target_unit = normalize_unit(product.target_unit)
