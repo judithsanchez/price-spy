@@ -169,15 +169,14 @@ async def extract_single_item(
             "duration_ms": duration_ms,
         }
 
-    else:
-        return {
-            "item_id": item_id,
-            "status": "success",
-            "price": result.price,
-            "currency": result.currency,
-            "model_used": model_used,
-            "duration_ms": duration_ms,
-        }
+    return {
+        "item_id": item_id,
+        "status": "success",
+        "price": result.price,
+        "currency": result.currency,
+        "model_used": model_used,
+        "duration_ms": duration_ms,
+    }
 
 
 async def process_extraction_queue(

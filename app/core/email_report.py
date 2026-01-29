@@ -213,8 +213,7 @@ def send_email(
     except Exception as e:
         print(f"Email error: {e}")
         return False
-    else:
-        return True
+    return True
 
 
 def send_daily_report(results: list[dict[str, Any]], db: Database) -> bool:
