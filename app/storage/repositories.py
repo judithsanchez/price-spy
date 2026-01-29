@@ -312,12 +312,12 @@ class ProductRepository:
         placeholders = ",".join("?" for _ in product_ids)
         # 1. Delete tracked items first (cascade)
         self.db.execute(
-            f"DELETE FROM tracked_items WHERE product_id IN ({placeholders})",  # noqa: S608
+            f"DELETE FROM tracked_items WHERE product_id IN ({placeholders})",  # nosec # noqa: S608
             tuple(product_ids),
         )
         # 2. Delete products
         self.db.execute(
-            f"DELETE FROM products WHERE id IN ({placeholders})",  # noqa: S608
+            f"DELETE FROM products WHERE id IN ({placeholders})",  # nosec # noqa: S608
             tuple(product_ids),
         )
         self.db.commit()
