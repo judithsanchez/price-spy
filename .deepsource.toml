@@ -3,14 +3,15 @@ version = 1
 [[analyzers]]
 name = "python"
 enabled = true
-  [analyzers.meta]
-  runtime_version = "3.x.x"
-  skip_issues = [
-    "PY-D0001",
-    "PY-D0002",
-    "PY-D0003",
-    "PY-D0004"
-  ]
+
+[analyzers.meta]
+runtime_version = "3.x.x"
+skip_issues = [
+  "PY-D0001",
+  "PY-D0002",
+  "PY-D0003",
+  "PY-D0004"
+]
 
 [[analyzers]]
 name = "secrets"
