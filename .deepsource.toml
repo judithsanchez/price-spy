@@ -3,23 +3,19 @@ version = 1
 [[analyzers]]
 name = "python"
 enabled = true
-
   [analyzers.meta]
-  # Value should be in "x.y" format. DeepSource automatically uses the latest patch.
   runtime_version = "3.11"
-  
-  # Skipping the complete set of docstring issues (Module, Class, Function, Method)
   skip_issues = [
-    "PY-D0001", # Missing docstring in public module
-    "PY-D0002", # Missing docstring in public class
-    "PY-D0003", # Missing docstring in public function
-    "PY-D0004"  # Missing docstring in public method
+    "PY-D0001",
+    "PY-D0002",
+    "PY-D0003",
+    "PY-D0004"
   ]
 
 [[analyzers]]
-name = "test-coverage"
+name = "secrets"
 enabled = true
 
 [[analyzers]]
-name = "secrets"
+name = "test-coverage"
 enabled = true
