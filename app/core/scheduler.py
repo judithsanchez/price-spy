@@ -38,7 +38,6 @@ def get_scheduler_config() -> dict[str, Any]:
 
 async def run_scheduled_extraction() -> dict[str, Any]:
     """Run the scheduled extraction job."""
-
     db = Database(settings.DATABASE_PATH)
     db.initialize()
 
@@ -102,7 +101,6 @@ def get_scheduler() -> AsyncIOScheduler | None:
 
 def get_scheduler_status() -> dict[str, Any]:
     """Get current scheduler status."""
-
     config = get_scheduler_config()
 
     if _state["scheduler"] is None:

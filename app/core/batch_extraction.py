@@ -42,7 +42,6 @@ async def extract_single_item(
     Returns:
         Dict with item_id, status, and optional price/error
     """
-
     if delay_seconds > 0:
         await asyncio.sleep(delay_seconds)
 
