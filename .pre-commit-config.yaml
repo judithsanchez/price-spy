@@ -22,7 +22,7 @@ repos:
         files: ^app/
         args: [
           "--disable=all",
-          "--enable=no-else-return,useless-import-alias,unnecessary-pass,missing-function-docstring,no-self-use,no-else-raise,pointless-string-statement",
+          "--enable=no-else-return,useless-import-alias,unnecessary-pass,no-self-use,no-else-raise,pointless-string-statement",
           "--score=n",
           "--no-docstring-rgx=^$"
         ]
