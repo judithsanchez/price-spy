@@ -370,7 +370,8 @@ class ProductRepository:
         self.db.execute("DELETE FROM products WHERE id = ?", (product_id,))
         self.db.commit()
 
-    def _row_to_record(self, row) -> Product:
+    @staticmethod
+    def _row_to_record(row) -> Product:
         """Convert a database row to a Product."""
         return Product(
             id=row["id"],

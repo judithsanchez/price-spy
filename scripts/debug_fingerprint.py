@@ -79,7 +79,6 @@ async def main():
         logger.info(f"Fingerprint report saved to {output_file}")
 
         await browser.close()
-        # display.stop() # If using Xvfb
 
 
 if __name__ == "__main__":
