@@ -21,8 +21,6 @@ MAX_ERROR_PREVIEW = 200
 class GeminiAPIError(Exception):
     """Exception raised for Gemini API errors."""
 
-    pass
-
 
 # JSON Schema for Gemini structured outputs
 EXTRACTION_SCHEMA = {

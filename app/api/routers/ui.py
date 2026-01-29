@@ -72,6 +72,105 @@ def _get_chart_color(index: int) -> str:
     return colors[index % len(colors)]
 
 
+def _calculate_trend(
+    history: list[Any],
+    product_name: str,
+    store_name: str,
+    latest_currency: str,
+) -> tuple[str, dict[str, Any] | None]:
+    """Calculate price trend and return trend string and warning if any."""
+    trend = "stable"
+    warning = None
+    if len(history) >= MIN_HISTORY_FOR_TREND:
+        prev_price = history[1].price
+        curr_price = history[0].price
+        if curr_price and prev_price:
+            if curr_price > prev_price:
+                trend = "up"
+                warning = {
+                    "product_name": product_name,
+                    "store_name": store_name,
+                    "price": curr_price,
+                    "previous_price": prev_price,
+                    "currency": latest_currency,
+                }
+            elif curr_price < prev_price:
+                trend = "down"
+    return trend, warning
+
+
+def _check_target_hit(
+    price: float | None,
+    unit_price: float | None,
+    unit: str | None,
+    product: Any,
+) -> bool:
+    """Check if the target price condition is met."""
+    if price is None or product.target_price is None:
+        return False
+
+    if product.target_unit:
+        normalized_target = normalize_unit(product.target_unit)
+        normalized_current = normalize_unit(unit) if unit else None
+        if unit_price is not None and normalized_target == normalized_current:
+            return unit_price <= product.target_price
+    else:
+        return price <= product.target_price
+    return False
+
+
+def _check_stock_warnings(
+    latest_price_rec: Any, product_name: str, store_name: str
+) -> dict[str, Any] | None:
+    """Check for low stock keywords in notes."""
+    if not latest_price_rec or not latest_price_rec.notes:
+        return None
+
+    notes_lower = latest_price_rec.notes.lower()
+    low_stock_keywords = [
+        "low stock",
+        "units left",
+        "stock low",
+        "only",
+        "last units",
+    ]
+
+    if any(kw in notes_lower for kw in low_stock_keywords):
+        return {
+            "product_name": product_name,
+            "store_name": store_name,
+            "notes": latest_price_rec.notes,
+        }
+    return None
+
+
+def _build_graph_dataset(
+    history: list[Any],
+    product_name: str,
+    store_name: str,
+    item_id: int,
+) -> tuple[dict[str, Any], list[str]] | None:
+    """Build graph dataset from history."""
+    if not history:
+        return None
+
+    item_label = f"{product_name} ({store_name})"
+    dataset: dict[str, Any] = {
+        "label": item_label,
+        "data": [],
+        "borderColor": f"hsl({(int(item_id or 0) * 137) % 360}, 70%, 50%)",
+        "fill": False,
+        "tension": 0.1,
+    }
+    timestamps = []
+    for h in reversed(history):
+        ts = h.created_at.strftime("%Y-%m-%d %H:%M")
+        timestamps.append(ts)
+        dataset["data"].append({"x": ts, "y": h.price})
+
+    return dataset, timestamps
+
+
 @router.get("/")
 async def dashboard(request: Request, db: Annotated[Database, Depends(get_db)]):
     """Render dashboard page."""
@@ -88,7 +187,6 @@ async def dashboard(request: Request, db: Annotated[Database, Depends(get_db)]):
         low_stock_warnings: list[dict] = []
         price_increase_warnings: list[dict] = []
         graph_data: dict[str, list] = {"labels": [], "datasets": []}
-
         all_timestamps = set()
 
         for item in tracked_items:
@@ -113,34 +211,21 @@ async def dashboard(request: Request, db: Annotated[Database, Depends(get_db)]):
             store = store_repo.get_by_id(item.store_id)
             latest_price_rec = price_repo.get_latest_by_url(item.url)
             history = price_repo.get_history_since(item.url, cutoff)
+            store_name = store.name if store else "Unknown"
 
-            trend = "stable"
-            if len(history) >= MIN_HISTORY_FOR_TREND:
-                prev_price = history[1].price
-                curr_price = history[0].price
-                if curr_price and prev_price:
-                    if curr_price > prev_price:
-                        trend = "up"
-                        price_increase_warnings.append(
-                            {
-                                "product_name": product.name,
-                                "store_name": store.name if store else "Unknown",
-                                "price": curr_price,
-                                "previous_price": prev_price,
-                                "currency": latest_price_rec.currency
-                                if latest_price_rec
-                                else "EUR",
-                            }
-                        )
-                    elif curr_price < prev_price:
-                        trend = "down"
+            # 1. Trend Analysis
+            current_currency = latest_price_rec.currency if latest_price_rec else "EUR"
+            trend, warning = _calculate_trend(
+                history, str(product.name), store_name, current_currency
+            )
+            if warning:
+                price_increase_warnings.append(warning)
 
+            # 2. Screenshot Path
             screenshot_path = f"screenshots/{item.id}.png"
-            # In a real environment we would check if Path(screenshot_path).exists()
-            # But the logic from main.py assumes it can be checked or just passed.
-            # I will keep it consistent with main.py.
             has_screenshot = Path(screenshot_path).exists()
 
+            # 3. Unit Price Calculation
             unit_price = None
             unit = None
             if latest_price_rec and latest_price_rec.price:
@@ -152,6 +237,7 @@ async def dashboard(request: Request, db: Annotated[Database, Depends(get_db)]):
                 )
                 unit_price = round(unit_price, 2)
 
+            # 4. Extract Pricing Info
             price = latest_price_rec.price if latest_price_rec else None
             original_price = (
                 latest_price_rec.original_price if latest_price_rec else None
@@ -161,20 +247,10 @@ async def dashboard(request: Request, db: Annotated[Database, Depends(get_db)]):
                 latest_price_rec.deal_description if latest_price_rec else None
             )
 
-            is_target_hit = False
-            if price is not None and product.target_price is not None:
-                if product.target_unit:
-                    normalized_target_unit = normalize_unit(product.target_unit)
-                    normalized_current_unit = normalize_unit(unit) if unit else None
+            # 5. Check Target Hit
+            is_target_hit = _check_target_hit(price, unit_price, unit, product)
 
-                    if (
-                        unit_price is not None
-                        and normalized_target_unit == normalized_current_unit
-                    ):
-                        is_target_hit = unit_price <= product.target_price
-                else:
-                    is_target_hit = price <= product.target_price
-
+            # 6. Check Deals
             is_price_drop = trend == "down"
             is_deal = False
             if price is not None:
@@ -184,16 +260,14 @@ async def dashboard(request: Request, db: Annotated[Database, Depends(get_db)]):
                 has_deal_type = deal_type is not None and deal_type.lower() != "none"
                 is_deal = has_original_higher or has_deal_type
 
-            pid = int(product.id or 0)
+            # 7. Add to Map
             products_map[pid]["tracked_items"].append(
                 {
                     "id": item.id,
-                    "store_name": store.name if store else "Unknown",
+                    "store_name": store_name,
                     "url": item.url,
                     "price": price,
-                    "currency": latest_price_rec.currency
-                    if latest_price_rec
-                    else "EUR",
+                    "currency": current_currency,
                     "unit_price": unit_price,
                     "unit": unit,
                     "target_unit": product.target_unit,
@@ -216,37 +290,21 @@ async def dashboard(request: Request, db: Annotated[Database, Depends(get_db)]):
                 }
             )
 
-            if latest_price_rec and latest_price_rec.notes:
-                notes_lower = latest_price_rec.notes.lower()
-                low_stock_keywords = [
-                    "low stock",
-                    "units left",
-                    "stock low",
-                    "only",
-                    "last units",
-                ]
-                if any(kw in notes_lower for kw in low_stock_keywords):
-                    low_stock_warnings.append(
-                        {
-                            "product_name": product.name,
-                            "store_name": store.name if store else "Unknown",
-                            "notes": latest_price_rec.notes,
-                        }
-                    )
+            # 8. Check Stock Warnings
+            stock_warning = _check_stock_warnings(
+                latest_price_rec, str(product.name), store_name
+            )
+            if stock_warning:
+                low_stock_warnings.append(stock_warning)
 
-            if history:
-                item_label = f"{product.name} ({store.name if store else '?'})"
-                dataset: dict[str, Any] = {
-                    "label": item_label,
-                    "data": [],
-                    "borderColor": f"hsl({(int(item.id or 0) * 137) % 360}, 70%, 50%)",
-                    "fill": False,
-                    "tension": 0.1,
-                }
-                for h in reversed(history):
-                    ts = h.created_at.strftime("%Y-%m-%d %H:%M")
-                    all_timestamps.add(ts)
-                    dataset["data"].append({"x": ts, "y": h.price})
+            # 9. Build Graph Data
+            graph_res = _build_graph_dataset(
+                history, str(product.name), store_name, int(item.id or 0)
+            )
+            if graph_res:
+                dataset, timestamps = graph_res
+                graph_data["datasets"].append(dataset)
+                all_timestamps.update(timestamps)
                 graph_data["datasets"].append(dataset)
 
         sorted_labels = sorted(all_timestamps)

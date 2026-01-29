@@ -19,8 +19,10 @@ repos:
         entry: pylint
         language: system
         types: [python]
+        files: ^app/
         args: [
           "--disable=all",
-          "--enable=no-else-return,useless-import-alias",
-          "--score=n"
+          "--enable=no-else-return,useless-import-alias,unnecessary-pass,missing-function-docstring",
+          "--score=n",
+          "--no-docstring-rgx=^$"
         ]

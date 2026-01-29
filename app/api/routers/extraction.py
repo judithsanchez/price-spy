@@ -1,7 +1,7 @@
 import os
 import time
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
@@ -43,6 +43,42 @@ class BatchExtractResponse(BaseModel):
     success_count: int
     error_count: int
     results: list
+
+
+def _build_extraction_context(product, category, item) -> ExtractionContext:
+    """Build extraction context from item details."""
+    return ExtractionContext(
+        product_name=str(product.name) if product else "Unknown",
+        category=str(category.name) if category else None,
+        is_size_sensitive=bool(category.is_size_sensitive) if category else False,
+        target_size=str(item.target_size) if item.target_size else None,
+        quantity_size=float(item.quantity_size) if item.quantity_size else None,
+        quantity_unit=str(item.quantity_unit) if item.quantity_unit else None,
+    )
+
+
+def _save_extraction_result(
+    price_repo: PriceHistoryRepository,
+    result: Any,
+    item_url: str,
+) -> None:
+    """Save the extraction result to price history."""
+    record = PriceHistoryRecord(
+        product_name=result.product_name,
+        price=result.price,
+        currency=result.currency,
+        is_available=result.is_available,
+        confidence=1.0,
+        url=item_url,
+        store_name=result.store_name,
+        original_price=result.original_price,
+        deal_type=result.deal_type,
+        discount_percentage=result.discount_percentage,
+        discount_fixed_amount=result.discount_fixed_amount,
+        deal_description=result.deal_description,
+        notes=result.notes,
+    )
+    price_repo.insert(record)
 
 
 async def run_extraction(item_id: int, db_path: str):
@@ -161,14 +197,7 @@ async def trigger_extraction(item_id: int, db: Annotated[Database, Depends(get_d
         )
 
         # Build context
-        context = ExtractionContext(
-            product_name=str(product.name) if product else "Unknown",
-            category=str(category.name) if category else None,
-            is_size_sensitive=bool(category.is_size_sensitive) if category else False,
-            target_size=str(item.target_size) if item.target_size else None,
-            quantity_size=float(item.quantity_size) if item.quantity_size else None,
-            quantity_unit=str(item.quantity_unit) if item.quantity_unit else None,
-        )
+        context = _build_extraction_context(product, category, item)
 
         api_key = settings.GEMINI_API_KEY
         if not api_key:
@@ -199,7 +228,6 @@ async def trigger_extraction(item_id: int, db: Annotated[Database, Depends(get_d
             screenshot_path.parent.mkdir(parents=True, exist_ok=True)
             screenshot_path.write_bytes(screenshot_bytes)
 
-            # Update context with screenshot path for logging
             context.screenshot_path = str(screenshot_path)
 
             # Extract price with rate limiting
@@ -210,22 +238,7 @@ async def trigger_extraction(item_id: int, db: Annotated[Database, Depends(get_d
             duration_ms = int((time.time() - start_time) * 1000)
 
             # Save to price history
-            record = PriceHistoryRecord(
-                product_name=result.product_name,
-                price=result.price,
-                currency=result.currency,
-                is_available=result.is_available,
-                confidence=1.0,
-                url=item.url,
-                store_name=result.store_name,
-                original_price=result.original_price,
-                deal_type=result.deal_type,
-                discount_percentage=result.discount_percentage,
-                discount_fixed_amount=result.discount_fixed_amount,
-                deal_description=result.deal_description,
-                notes=result.notes,
-            )
-            price_repo.insert(record)
+            _save_extraction_result(price_repo, result, item.url)
 
             # Log successful extraction
             log_repo.insert(
@@ -239,7 +252,6 @@ async def trigger_extraction(item_id: int, db: Annotated[Database, Depends(get_d
                 )
             )
 
-            # Update last checked time
             tracked_repo.set_last_checked(item_id)
 
             return ExtractResponse(
@@ -264,7 +276,7 @@ async def trigger_extraction(item_id: int, db: Annotated[Database, Depends(get_d
                 )
             )
 
-            # Parse common errors for friendlier messages
+            # Parse common errors
             if "429" in error_msg or "quota" in error_msg.lower():
                 error_msg = "Gemini API quota exceeded. Try again later."
             elif "401" in error_msg or "API key" in error_msg.lower():
