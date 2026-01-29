@@ -6,4 +6,5 @@ enabled = true
 
 [analyzers.meta]
 runtime_version = "3.10.x"
-skip = ["PY-D0001", "PY-D0002", "PY-D0003", "PY-D0004"]
+# Skip documentation coverage calculation
+skip_doc_coverage = true
