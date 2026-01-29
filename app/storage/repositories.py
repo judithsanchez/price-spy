@@ -879,8 +879,10 @@ class CategoryRepository:
         self.db = db
 
     def normalize_name(self, name: str) -> str:
-        """Normalize category name: case-insensitive check against DB,
-        else capitalize."""
+        """
+        Normalize category name: case-insensitive check against DB,
+        else capitalize.
+        """
         clean_name = name.strip()
         if not clean_name:
             return clean_name

@@ -81,10 +81,8 @@ class JSONFormatter(logging.Formatter):
         return json.dumps(log_entry, default=str)
 
 
-"""
-Logging utilities providing ExtraFieldsAdapter for merging extra context into
-log records.
-"""
+# Logging utilities providing ExtraFieldsAdapter for merging extra context
+# into log records.
 
 
 class ExtraFieldsAdapter(logging.LoggerAdapter):

@@ -247,7 +247,7 @@ def get_extraction_prompt(context: ExtractionContext | None = None) -> str:
                 "- If the page shows a different size (e.g., in a list of results),\n"
                 "prioritize finding the exact match.\n"
             )
-        elif context.target_size:
+        if context.target_size:
             target_info += f"TARGET SIZE: {context.target_size}\n"
             size_guidance = (
                 f"- Look specifically for the version/size '{context.target_size}'.\n"
@@ -397,12 +397,12 @@ async def extract_with_structured_output(
     # If tracker provided, filter to available models
     if tracker:
         available = tracker.get_available_model(models_to_try)
-        if available:
-            # Reorder to put available first, but maintain priority
-            models_to_try = [available] + [m for m in models_to_try if m != available]
-        else:
+        if not available:
             msg = "All Gemini models exhausted for today. Try again tomorrow."
             raise GeminiAPIError(msg)
+
+        # Reorder to put available first, but maintain priority
+        models_to_try = [available] + [m for m in models_to_try if m != available]
 
     last_error = None
 
@@ -425,12 +425,11 @@ async def extract_with_structured_output(
 
             # Non-rate-limit error, don't try fallback
             raise
-        else:
-            # Record successful usage
-            if tracker:
-                tracker.record_usage(config)
+        # Record successful usage
+        if tracker:
+            tracker.record_usage(config)
 
-            return result, config.model.value
+        return result, config.model.value
 
     # All models failed
     raise last_error or Exception("All models failed")
