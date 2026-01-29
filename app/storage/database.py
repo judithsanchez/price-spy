@@ -177,6 +177,7 @@ class Database:
     """SQLite database connection manager."""
 
     def __init__(self, db_path: str = "data/pricespy.db"):
+        """Initialize database connection."""
         self.db_path = db_path
         self._conn: sqlite3.Connection | None = None
 
@@ -207,12 +208,14 @@ class Database:
         return self._conn
 
     def _needs_products_migration(self, cursor) -> bool:
+        """Check if products table needs migration."""
         cursor.execute("PRAGMA table_info(products)")
         columns = [row["name"] for row in cursor.fetchall()]
         unwanted = ["labels", "brand", "preferred_unit_size", "current_stock"]
         return any(col in columns for col in unwanted)
 
     def _migrate_products_table(self, conn) -> None:
+        """Handle products table migration."""
         cursor = conn.cursor()
         cursor.execute("PRAGMA table_info(products)")
         columns = [row["name"] for row in cursor.fetchall()]

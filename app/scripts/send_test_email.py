@@ -15,6 +15,7 @@ from app.core.email_report import (
 
 
 def send_mock_email():
+    """Send a mock email report for testing purposes."""
     config = get_email_config()
 
     if not config["enabled"] or not config["recipient"]:

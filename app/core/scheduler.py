@@ -136,7 +136,6 @@ def get_scheduler_status() -> dict[str, Any]:
             db.close()
     except Exception:
         logging.getLogger(__name__).debug("Failed to get active items count")
-        pass
 
     return {
         "running": _state["scheduler"].running,

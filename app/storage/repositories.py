@@ -25,6 +25,7 @@ class PriceHistoryRepository:
     """Repository for price history operations."""
 
     def __init__(self, db: Database):
+        """Initialize repository."""
         self.db = db
 
     def insert(self, record: PriceHistoryRecord) -> int:
@@ -163,6 +164,7 @@ class ErrorLogRepository:
     """Repository for error log operations."""
 
     def __init__(self, db: Database):
+        """Initialize repository."""
         self.db = db
 
     def insert(self, error: ErrorRecord) -> int:
@@ -240,6 +242,7 @@ class ProductRepository:
     """Repository for product operations."""
 
     def __init__(self, db: Database):
+        """Initialize repository."""
         self.db = db
 
     def insert(self, product: Product) -> int:
@@ -385,6 +388,7 @@ class StoreRepository:
     """Repository for store operations."""
 
     def __init__(self, db: Database):
+        """Initialize repository."""
         self.db = db
 
     def normalize_name(self, name: str) -> str:
@@ -451,6 +455,7 @@ class TrackedItemRepository:
     """Repository for tracked item operations."""
 
     def __init__(self, db: Database):
+        """Initialize repository."""
         self.db = db
 
     def insert(self, item: TrackedItem) -> int:
@@ -626,7 +631,6 @@ class TrackedItemRepository:
                 last_checked = datetime.fromisoformat(row["last_checked_at"])
             except Exception:
                 logger.debug("Failed to parse last_checked_at")
-                pass
 
         return TrackedItem(
             id=int(row["id"]),
@@ -647,6 +651,7 @@ class ExtractionLogRepository:
     """Repository for extraction log operations."""
 
     def __init__(self, db: Database):
+        """Initialize repository."""
         self.db = db
 
     def insert(self, log: ExtractionLog) -> int:
@@ -787,6 +792,7 @@ class SchedulerRunRepository:
     """Repository for scheduler run logging."""
 
     def __init__(self, db: Database):
+        """Initialize repository."""
         self.db = db
 
     def start_run(self, items_total: int) -> int:
@@ -868,6 +874,7 @@ class CategoryRepository:
     """Repository for category operations."""
 
     def __init__(self, db: Database):
+        """Initialize repository."""
         self.db = db
 
     def normalize_name(self, name: str) -> str:
@@ -953,6 +960,7 @@ class LabelRepository:
     """Repository for label operations."""
 
     def __init__(self, db: Database):
+        """Initialize repository."""
         self.db = db
 
     def insert(self, label: Label) -> int:
@@ -1013,6 +1021,7 @@ class UnitRepository:
     """Repository for unit operations."""
 
     def __init__(self, db: Database):
+        """Initialize repository."""
         self.db = db
 
     def insert(self, unit: Unit) -> int:
@@ -1079,6 +1088,7 @@ class PurchaseTypeRepository:
     """Repository for purchase type operations."""
 
     def __init__(self, db: Database):
+        """Initialize repository."""
         self.db = db
 
     def insert(self, pt: PurchaseType) -> int:

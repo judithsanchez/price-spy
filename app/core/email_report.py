@@ -73,6 +73,7 @@ def get_item_details(item_id: int, db: Database) -> dict[str, Any] | None:
 
 
 def _initialize_empty_report() -> dict[str, Any]:
+    """Initialize a default empty report structure."""
     return {
         "date": datetime.now().strftime("%B %d, %Y"),
         "total": 0,
@@ -93,6 +94,7 @@ def _process_single_result(
     price_repo: PriceHistoryRepository,
     db: Database,
 ) -> dict[str, Any]:
+    """Process a single extraction result for the report."""
     item_id = result.get("item_id")
     if item_id is None:
         return {"error": {"message": "Missing item_id"}}
