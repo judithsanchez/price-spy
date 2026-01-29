@@ -11,3 +11,16 @@ repos:
       - id: mypy
         args: [--ignore-missing-imports]
         additional_dependencies: [types-requests, pydantic, types-pytz]
+
+  - repo: local
+    hooks:
+      - id: pylint
+        name: pylint-parity
+        entry: pylint
+        language: system
+        types: [python]
+        args: [
+          "--disable=all",
+          "--enable=no-else-return,useless-import-alias",
+          "--score=n"
+        ]
