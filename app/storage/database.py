@@ -182,7 +182,6 @@ class Database:
 
     def _connect(self) -> sqlite3.Connection:
         """Create database connection with safety check."""
-
         # SAFETY GUARD: Prevent accidental production database modification during tests
         is_test = (
             os.environ.get("PYTEST_CURRENT_TEST")

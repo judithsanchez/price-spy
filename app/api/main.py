@@ -56,7 +56,6 @@ if screenshots_dir.exists():
 @app.exception_handler(ValidationError)
 async def pydantic_validation_exception_handler(request: Request, exc: ValidationError):
     """Handle Pydantic validation errors by returning a 422 JSON response."""
-
     log_error_to_db(
         error_type="validation_error",
         message=f"Validation error: {exc!s}",
@@ -70,7 +69,6 @@ async def pydantic_validation_exception_handler(request: Request, exc: Validatio
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
     """Global catch-all for unhandled exceptions."""
-
     log_error_to_db(
         error_type="unhandled_exception", message=str(exc), url=str(request.url)
     )

@@ -75,7 +75,6 @@ def _get_chart_color(index: int) -> str:
 @router.get("/")
 async def dashboard(request: Request, db: Annotated[Database, Depends(get_db)]):
     """Render dashboard page."""
-
     cutoff = datetime.now() - timedelta(days=7)
 
     try:
@@ -366,7 +365,6 @@ async def products_page(request: Request):
 @router.get("/timeline")
 async def timeline_page(request: Request, db: Annotated[Database, Depends(get_db)]):
     """Render the vertical wishlist timeline."""
-
     product_repo = ProductRepository(db)
     price_repo = PriceHistoryRepository(db)
 

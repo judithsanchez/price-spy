@@ -56,7 +56,6 @@ async def extract_single_item(
     Returns:
         Dict with item_id, status, and optional price/error
     """
-
     tracked_repo = TrackedItemRepository(db)
     price_repo = PriceHistoryRepository(db)
     log_repo = ExtractionLogRepository(db)

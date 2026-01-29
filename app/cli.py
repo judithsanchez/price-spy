@@ -32,7 +32,6 @@ def seed_test_data_command(db_path: str = "data/pricespy.db"):
 
 def extract_all_command(db_path: str = "data/pricespy.db", delay: float = 5.0):
     """Extract prices for all active tracked items."""
-
     db = Database(db_path)
     db.initialize()
 
