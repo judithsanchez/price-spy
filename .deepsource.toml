@@ -4,7 +4,7 @@ version = 1
 name = "python"
 enabled = true
   [analyzers.meta]
-  runtime_version = "3.11"
+  runtime_version = "3.x.x"
   skip_issues = [
     "PY-D0001",
     "PY-D0002",
