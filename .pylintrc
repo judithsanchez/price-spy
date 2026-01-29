@@ -1,0 +1,13 @@
+[MESSAGES CONTROL]
+disable =
+    missing-module-docstring,
+    missing-class-docstring,
+    missing-function-docstring,
+    missing-docstring,
+    C0114,
+    C0115,
+    C0116,
+    empty-docstring,
+    no-self-use,
+    unnecessary-pass,
+    useless-import-alias
