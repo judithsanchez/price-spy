@@ -11,3 +11,9 @@ def get_db() -> Database:
 
     db.initialize()
     return db
+
+
+def set_test_db_path(path: str | None) -> None:
+    """Set the database path for testing overrides."""
+    global _test_db_path  # noqa: PLW0603
+    _test_db_path = path

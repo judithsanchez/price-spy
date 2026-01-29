@@ -12,7 +12,7 @@ from app.core.price_calculator import (
     calculate_volume_price,
     normalize_unit,
 )
-from app.models.schemas import TrackedItem
+from app.models.schemas import PriceHistoryRecord, TrackedItem
 from app.storage.database import Database
 from app.storage.repositories import (
     PriceHistoryRepository,
@@ -172,26 +172,8 @@ def _build_graph_dataset(
     return dataset, timestamps
 
 
-def _process_dashboard_item(
-    item: TrackedItem,
-    product_repo: ProductRepository,
-    store_repo: StoreRepository,
-    price_repo: PriceHistoryRepository,
-    products_map: dict[int, dict],
-    low_stock_warnings: list[dict],
-    price_increase_warnings: list[dict],
-    graph_data: dict[str, list],
-    all_timestamps: set,
-    cutoff: datetime,
-) -> None:
-    """Process a single tracked item for the dashboard."""
-    if not item.is_active:
-        return
-
-    product = product_repo.get_by_id(item.product_id)
-    if not product:
-        return
-
+def _ensure_product_in_map(product: Any, products_map: dict[int, dict]) -> int:
+    """Ensure product exists in the map and return its ID."""
     pid = int(product.id or 0)
     if pid not in products_map:
         products_map[pid] = {
@@ -202,25 +184,77 @@ def _process_dashboard_item(
             "target_unit": product.target_unit,
             "tracked_items": [],
         }
+    return pid
 
-    store = store_repo.get_by_id(item.store_id)
-    latest_price_rec = price_repo.get_latest_by_url(item.url)
-    history = price_repo.get_history_since(item.url, cutoff)
-    store_name = store.name if store else "Unknown"
 
-    # 1. Trend Analysis
+def _build_item_dict(
+    item: TrackedItem,
+    store_name: str,
+    latest_price_rec: Any,
+    metrics: dict,
+    product: Any,
+    screenshot_path: str,
+) -> dict[str, Any]:
+    """Build the dictionary representation of a tracked item."""
+    price = metrics["price"]
+    original_price = metrics["original_price"]
+    deal_type = metrics["deal_type"]
+
+    # Deal Logic
+    is_price_drop = metrics["trend"] == "down"
+    is_deal = False
+    if price is not None:
+        has_original_higher = original_price is not None and original_price > price
+        has_deal_type = deal_type is not None and deal_type.lower() != "none"
+        is_deal = has_original_higher or has_deal_type
+
+    has_screenshot = Path(screenshot_path).exists()
+
+    return {
+        "id": item.id,
+        "store_name": store_name,
+        "url": item.url,
+        "price": price,
+        "currency": metrics["currency"],
+        "unit_price": metrics["unit_price"],
+        "unit": metrics["unit"],
+        "target_unit": product.target_unit,
+        "trend": metrics["trend"],
+        "is_deal": is_deal,
+        "is_price_drop": is_price_drop,
+        "is_target_hit": metrics["is_target_hit"],
+        "is_best_deal": False,
+        "is_available": latest_price_rec.is_available if latest_price_rec else None,
+        "is_size_matched": latest_price_rec.is_size_matched
+        if latest_price_rec
+        else True,
+        "notes": latest_price_rec.notes if latest_price_rec else None,
+        "screenshot_path": screenshot_path if has_screenshot else None,
+        "original_price": original_price,
+        "deal_type": deal_type,
+        "deal_description": latest_price_rec.deal_description
+        if latest_price_rec
+        else None,
+    }
+
+
+def _calculate_item_metrics(
+    item: TrackedItem,
+    product: Any,
+    store_name: str,
+    latest_price_rec: Any,
+    history: list[PriceHistoryRecord],
+    warnings_list: list[dict],
+) -> dict[str, Any]:
+    """Calculate price metrics, trend, and target hit status."""
     current_currency = latest_price_rec.currency if latest_price_rec else "EUR"
     trend, warning = _calculate_trend(
         history, str(product.name), store_name, current_currency
     )
+
     if warning:
-        price_increase_warnings.append(warning)
+        warnings_list.append(warning)
 
-    # 2. Screenshot Path
-    screenshot_path = f"screenshots/{item.id}.png"
-    has_screenshot = Path(screenshot_path).exists()
-
-    # 3. Unit Price Calculation
     unit_price = None
     unit = None
     if latest_price_rec and latest_price_rec.price:
@@ -232,59 +266,77 @@ def _process_dashboard_item(
         )
         unit_price = round(unit_price, 2)
 
-    # 4. Extract Pricing Info
     price = latest_price_rec.price if latest_price_rec else None
-    original_price = latest_price_rec.original_price if latest_price_rec else None
-    deal_type = latest_price_rec.deal_type if latest_price_rec else None
-    deal_description = latest_price_rec.deal_description if latest_price_rec else None
 
-    # 5. Check Target Hit
+    # Check Target Hit
     is_target_hit = _check_target_hit(price, unit_price, unit, product)
 
-    # 6. Check Deals
-    is_price_drop = trend == "down"
-    is_deal = False
-    if price is not None:
-        has_original_higher = original_price is not None and original_price > price
-        has_deal_type = deal_type is not None and deal_type.lower() != "none"
-        is_deal = has_original_higher or has_deal_type
+    return {
+        "trend": trend,
+        "currency": current_currency,
+        "unit_price": unit_price,
+        "unit": unit,
+        "price": price,
+        "original_price": latest_price_rec.original_price if latest_price_rec else None,
+        "deal_type": latest_price_rec.deal_type if latest_price_rec else None,
+        "is_target_hit": is_target_hit,
+    }
 
-    # 7. Add to Map
-    products_map[pid]["tracked_items"].append(
-        {
-            "id": item.id,
-            "store_name": store_name,
-            "url": item.url,
-            "price": price,
-            "currency": current_currency,
-            "unit_price": unit_price,
-            "unit": unit,
-            "target_unit": product.target_unit,
-            "trend": trend,
-            "is_deal": is_deal,
-            "is_price_drop": is_price_drop,
-            "is_target_hit": is_target_hit,
-            "is_best_deal": False,
-            "is_available": latest_price_rec.is_available if latest_price_rec else None,
-            "is_size_matched": latest_price_rec.is_size_matched
-            if latest_price_rec
-            else True,
-            "notes": latest_price_rec.notes if latest_price_rec else None,
-            "screenshot_path": screenshot_path if has_screenshot else None,
-            "original_price": original_price,
-            "deal_type": deal_type,
-            "deal_description": deal_description,
-        }
+
+def _process_dashboard_item(
+    item: TrackedItem,
+    product_repo: ProductRepository,
+    store_repo: StoreRepository,
+    price_repo: PriceHistoryRepository,
+    products_map: dict[int, dict],
+    low_stock_warnings: list[dict],
+    price_increase_warnings: list[dict],
+    graph_data: dict[str, list],
+    all_timestamps: set[str],
+    cutoff: datetime,
+) -> None:
+    """Process a single tracked item for the dashboard."""
+    if not item.is_active:
+        return
+
+    product = product_repo.get_by_id(item.product_id)
+    if not product:
+        return
+
+    pid = _ensure_product_in_map(product, products_map)
+
+    store = store_repo.get_by_id(item.store_id)
+    latest_price_rec = price_repo.get_latest_by_url(item.url)
+    history = price_repo.get_history_since(item.url, cutoff)
+    store_name = store.name if store else "Unknown"
+
+    # Calculate metrics & Trend
+    metrics = _calculate_item_metrics(
+        item,
+        product,
+        store_name,
+        latest_price_rec,
+        history,
+        price_increase_warnings,
     )
 
-    # 8. Check Stock Warnings
+    # Screenshot Path
+    screenshot_path = f"screenshots/{item.id}.png"
+
+    # Add to Map
+    item_dict = _build_item_dict(
+        item, store_name, latest_price_rec, metrics, product, screenshot_path
+    )
+    products_map[pid]["tracked_items"].append(item_dict)
+
+    # Check Stock Warnings
     stock_warning = _check_stock_warnings(
         latest_price_rec, str(product.name), store_name
     )
     if stock_warning:
         low_stock_warnings.append(stock_warning)
 
-    # 9. Build Graph Data
+    # Build Graph Data
     graph_res = _build_graph_dataset(
         history, str(product.name), store_name, int(item.id or 0)
     )
@@ -310,7 +362,7 @@ async def dashboard(request: Request, db: Annotated[Database, Depends(get_db)]):
         low_stock_warnings: list[dict] = []
         price_increase_warnings: list[dict] = []
         graph_data: dict[str, list] = {"labels": [], "datasets": []}
-        all_timestamps: set[datetime] = set()
+        all_timestamps: set[str] = set()
 
         for item in tracked_items:
             _process_dashboard_item(

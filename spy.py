@@ -235,25 +235,8 @@ async def _capture_screenshot_to_file(url: str, output_path: Path) -> bytes:
     return screenshot
 
 
-async def cmd_check(args) -> int:
-    """Check if a URL is accessible and visible to the AI."""
-    if not _ensure_api_key():
-        return 1
-
-    if not validate_url(args.url):
-        print(f"Error: Invalid URL '{args.url}'", file=sys.stderr)
-        return 1
-
-    try:
-        output_path = _build_output_path(args.url)
-        screenshot = await _capture_screenshot_to_file(args.url, output_path)
-        print("Analyzing with AI...")
-        result, model_used = await extract_with_structured_output(
-            screenshot, settings.GEMINI_API_KEY
-        )
-    except Exception as e:
-        print(f"Error during check: {e}", file=sys.stderr)
-        return 1
+def _print_diagnostic_results(result, model_used):
+    """Print diagnostic results from AI analysis."""
     print("\n--- Diagnostic Results ---")
     print(f"Detection Status: {'BLOCKED' if result.is_blocked else 'CLEAR'}")
     if result.is_blocked:
@@ -295,6 +278,28 @@ async def cmd_check(args) -> int:
             "product data."
         )
 
+
+async def cmd_check(args) -> int:
+    """Check if a URL is accessible and visible to the AI."""
+    if not _ensure_api_key():
+        return 1
+
+    if not validate_url(args.url):
+        print(f"Error: Invalid URL '{args.url}'", file=sys.stderr)
+        return 1
+
+    try:
+        output_path = _build_output_path(args.url)
+        screenshot = await _capture_screenshot_to_file(args.url, output_path)
+        print("Analyzing with AI...")
+        result, model_used = await extract_with_structured_output(
+            screenshot, settings.GEMINI_API_KEY
+        )
+    except Exception as e:
+        print(f"Error during check: {e}", file=sys.stderr)
+        return 1
+
+    _print_diagnostic_results(result, model_used)
     return 0
 
 
