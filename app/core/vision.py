@@ -198,16 +198,15 @@ async def extract_product_info(image_bytes: bytes, api_key: str) -> ProductInfo 
             extra={"error": str(e)},
         )
         return text
-    else:
-        logger.info(
-            "Price extracted successfully",
-            extra={
-                "product": product_info.product_name[:50],
-                "price": product_info.price,
-                "confidence": product_info.confidence,
-            },
-        )
-        return product_info
+    logger.info(
+        "Price extracted successfully",
+        extra={
+            "product": product_info.product_name[:50],
+            "price": product_info.price,
+            "confidence": product_info.confidence,
+        },
+    )
+    return product_info
 
 
 def get_extraction_prompt(context: ExtractionContext | None = None) -> str:

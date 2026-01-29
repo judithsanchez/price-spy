@@ -39,9 +39,7 @@ def dump():
     except Exception:
         logger.exception("Error during dump:")
         return False
-    else:
-        logger.info("Successfully created dump at %s", DUMP_PATH)
-        return True
+    return True
 
 
 def restore():
@@ -76,9 +74,8 @@ def restore():
             backup_name.rename(DB_PATH)
             logger.info("Restored from backup after failure.")
         return False
-    else:
-        logger.info("Successfully restored database from %s", DUMP_PATH)
-        return True
+    logger.info("Successfully restored database from %s", DUMP_PATH)
+    return True
 
 
 def query(sql):
@@ -124,8 +121,7 @@ def query(sql):
     except Exception:
         logger.exception("Error during query:")
         return False
-    else:
-        return True
+    return True
 
 
 def main():

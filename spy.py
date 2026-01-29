@@ -254,50 +254,48 @@ async def cmd_check(args) -> int:
     except Exception as e:
         print(f"Error during check: {e}", file=sys.stderr)
         return 1
-    else:
-        print("\n--- Diagnostic Results ---")
-        print(f"Detection Status: {'BLOCKED' if result.is_blocked else 'CLEAR'}")
-        if result.is_blocked:
-            print("Page appears to be blocked by a modal, captcha, or WAF.")
+    print("\n--- Diagnostic Results ---")
+    print(f"Detection Status: {'BLOCKED' if result.is_blocked else 'CLEAR'}")
+    if result.is_blocked:
+        print("WARN: Site blocked by cookie modal/overlay (detection may be partial).")
 
-        print(
-            f"Store Detected: {result.store_name if result.store_name else 'Unknown'}"
-        )
-        print(
-            f"Product Detected: "
-            f"{result.product_name if result.product_name else 'Unknown'}"
-        )
-        print(
-            f"Price Found: {result.currency} "
-            f"{result.price if result.price > 0 else 'N/A'}"
-        )
-        if result.original_price:
-            print(f"Original Price: {result.currency} {result.original_price}")
-        if result.deal_type and result.deal_type != "none":
-            print(f"Deal Type: {result.deal_type}")
-            if result.discount_percentage:
-                print(f"Discount Percentage: {result.discount_percentage}%")
-            if result.discount_fixed_amount:
-                print(
-                    f"Discount Fixed Amount: {result.currency} "
-                    f"{result.discount_fixed_amount}"
-                )
-        if result.deal_description:
-            print(f"Deal Description: {result.deal_description}")
-        print(f"Model Used: {model_used}")
-        print("--------------------------")
+    print(f"Store Detected: {result.store_name if result.store_name else 'Unknown'}")
+    print(
+        f"Product Detected: {result.product_name if result.product_name else 'Unknown'}"
+    )
+    print(
+        f"Price Found: {result.currency} {result.price if result.price > 0 else 'N/A'}"
+    )
+    if result.original_price:
+        print(f"Original Price: {result.currency} {result.original_price}")
 
-        if not result.is_blocked and result.price > 0:
-            print("\nSuccess: This URL is likely compatible with Price Spy.")
-        elif result.is_blocked:
-            print("\nWarning: This site is detecting the bot or has persistent modals.")
-        else:
+    if result.deal_type and result.deal_type != "none":
+        print(f"Deal Type: {result.deal_type}")
+        if result.discount_percentage:
+            print(f"Discount Percentage: {result.discount_percentage}%")
+        if result.discount_fixed_amount:
             print(
-                "\nInconclusive: Screenshot captured, but AI couldn't find clear "
-                "product data."
+                f"Discount Fixed Amount: {result.currency} "
+                f"{result.discount_fixed_amount}"
             )
 
-        return 0
+    if result.deal_description:
+        print(f"Deal Description: {result.deal_description}")
+
+    print(f"Model Used: {model_used}")
+    print("--------------------------")
+
+    if not result.is_blocked and result.price > 0:
+        print("\nSuccess: This URL is likely compatible with Price Spy.")
+    elif result.is_blocked:
+        print("\nWarning: This site is detecting the bot or has persistent modals.")
+    else:
+        print(
+            "\nInconclusive: Screenshot captured, but AI couldn't find clear "
+            "product data."
+        )
+
+    return 0
 
 
 def cmd_add_product(args) -> int:

@@ -131,13 +131,12 @@ If you received this, your daily reports will work!
         print(f"Error: {type(e).__name__}: {e}")
         return False
 
-    else:
-        print()
-        print("=" * 50)
-        print("SUCCESS! Test email sent.")
-        print(f"Check your inbox at: {config['recipient']}")
-        print("=" * 50)
-        return True
+    print()
+    print("=" * 50)
+    print("SUCCESS! Test email sent.")
+    print(f"Check your inbox at: {config['recipient']}")
+    print("=" * 50)
+    return True
 
 
 if __name__ == "__main__":
