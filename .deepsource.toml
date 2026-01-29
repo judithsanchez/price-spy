@@ -5,15 +5,17 @@ name = "python"
 enabled = true
 
 [analyzers.meta]
-# Use exactly "3.x.x". DeepSource will fail if you use "3.11" here.
-runtime_version = "3.x.x" 
-# This silences the PY-D0003 error you saw in image_188c96.png
+runtime_version = "3.x.x"
 skip_issues = [
-  "PY-D0001", # Module docstrings
-  "PY-D0002", # Class docstrings
-  "PY-D0003", # Function docstrings
-  "PY-D0004"  # Method docstrings
+  "PY-D0001",
+  "PY-D0002",
+  "PY-D0003",
+  "PY-D0004"
 ]
+
+[[analyzers]]
+name = "test-coverage"
+enabled = true
 
 [[analyzers]]
 name = "secrets"
