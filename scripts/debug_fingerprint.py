@@ -19,6 +19,7 @@ except ImportError:
 
 
 async def main():
+    """Debug fingerprint generation for a given URL."""
     logger.info(f"Starting Fingerprint Diagnostic (Headful={HEADFUL})...")
 
     # We use the diagnostic site that checks for common bot leaks

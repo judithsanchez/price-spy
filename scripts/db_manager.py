@@ -125,6 +125,7 @@ def query(sql):
 
 
 def main():
+    """Execute the database manager utility."""
     if len(sys.argv) < MIN_ARGS_GLOBAL:
         print("Usage: python scripts/db_manager.py [dump|restore|query] [sql_if_query]")
         sys.exit(1)
