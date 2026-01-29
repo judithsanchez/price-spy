@@ -37,6 +37,7 @@ select = [
     "ASYNC",  # flake8-async
     "PLC0414", # Useless import alias
     "D202",   # No blank lines after function docstring
+    "ERA",    # eradicate (Commented out code)
 ]
 ignore = ["S101", "PLR0913", "PLR0912", "PLR0915", "PLR0911"]
 

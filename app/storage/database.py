@@ -207,14 +207,16 @@ class Database:
             self._conn.row_factory = sqlite3.Row
         return self._conn
 
-    def _needs_products_migration(self, cursor) -> bool:
+    @staticmethod
+    def _needs_products_migration(cursor) -> bool:
         """Check if products table needs migration."""
         cursor.execute("PRAGMA table_info(products)")
         columns = [row["name"] for row in cursor.fetchall()]
         unwanted = ["labels", "brand", "preferred_unit_size", "current_stock"]
         return any(col in columns for col in unwanted)
 
-    def _migrate_products_table(self, conn) -> None:
+    @staticmethod
+    def _migrate_products_table(conn) -> None:
         """Handle products table migration."""
         cursor = conn.cursor()
         cursor.execute("PRAGMA table_info(products)")
@@ -235,7 +237,8 @@ class Database:
             conn.rollback()
             raise
 
-    def _migrate_stores_table(self, conn, cursor) -> None:
+    @staticmethod
+    def _migrate_stores_table(conn, cursor) -> None:
         """Handle stores table migration."""
         cursor.execute("PRAGMA table_info(stores)")
         columns = [row["name"] for row in cursor.fetchall()]
@@ -262,7 +265,8 @@ class Database:
                 conn.rollback()
                 print(f"Migration failed (stores): {e}")
 
-    def _migrate_tracked_items_table(self, conn, cursor) -> None:
+    @staticmethod
+    def _migrate_tracked_items_table(conn, cursor) -> None:
         """Handle tracked_items table migration."""
         cursor.execute("PRAGMA table_info(tracked_items)")
         columns = [row["name"] for row in cursor.fetchall()]
@@ -287,7 +291,8 @@ class Database:
                 conn.rollback()
                 print(f"Migration failed (tracked_items): {e}")
 
-    def _migrate_labels_table(self, conn, cursor) -> None:
+    @staticmethod
+    def _migrate_labels_table(conn, cursor) -> None:
         """Handle labels table migration."""
         cursor.execute("PRAGMA table_info(labels)")
         columns = [row["name"] for row in cursor.fetchall()]
@@ -307,7 +312,8 @@ class Database:
                 conn.rollback()
                 print(f"Migration failed (labels): {e}")
 
-    def _ensure_schema_evolutions(self, cursor) -> None:
+    @staticmethod
+    def _ensure_schema_evolutions(cursor) -> None:
         """Handle other small schema evolutions."""
         cursor.execute("PRAGMA table_info(price_history)")
         columns = [row["name"] for row in cursor.fetchall()]
@@ -327,7 +333,8 @@ class Database:
             if col not in columns:
                 cursor.execute(f"ALTER TABLE price_history ADD COLUMN {col} {col_type}")
 
-    def _seed_base_data(self, conn, cursor) -> None:
+    @staticmethod
+    def _seed_base_data(conn, cursor) -> None:
         """Seed base data if tables are empty."""
         # Purchase Types
         cursor.execute("SELECT COUNT(*) FROM purchase_types")
@@ -368,7 +375,8 @@ class Database:
                 "INSERT INTO units (name) VALUES (?)", [(u,) for u in units]
             )
 
-    def _seed_categories_and_labels(self, conn, cursor) -> None:
+    @staticmethod
+    def _seed_categories_and_labels(conn, cursor) -> None:
         """Seed categories and labels if empty."""
         cursor.execute("SELECT COUNT(*) FROM categories")
         if cursor.fetchone()[0] == 0:
