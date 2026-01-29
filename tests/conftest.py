@@ -17,15 +17,17 @@ def test_db():
     os.close(fd)
 
     # Save original
-    original_test_path = deps._test_db_path
+    # Save original (assumed None/default for tests)
+    # We rely on set_test_db_path to restore it to None
+    pass
 
     # Override the database path in deps
-    deps._test_db_path = path
+    deps.set_test_db_path(path)
 
     yield path
 
     # Restore
-    deps._test_db_path = original_test_path
+    deps.set_test_db_path(None)
 
     # Cleanup
     # Cleanup
