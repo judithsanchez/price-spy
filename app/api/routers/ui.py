@@ -507,6 +507,7 @@ from typing import Annotated, Any, TypedDict, cast
 
 # ... imports ...
 
+
 class Deal(TypedDict):
     price: float | None
     currency: str
@@ -550,7 +551,7 @@ def _find_best_deal_for_product(
         # 1. Both have unit prices, compare unit prices
         # 2. Current has unit price but best doesn't
         # 3. Neither has unit price, compare raw prices
-        
+
         # Explicitly checking for None to satisfy mypy
         current_u_price = current_deal["unit_price"]
         best_u_price = best_deal["unit_price"]
@@ -562,14 +563,11 @@ def _find_best_deal_for_product(
             and best_u_price is not None
             and current_u_price < best_u_price
         )
-        has_unit_price_advantage = (
-            current_u_price is not None
-            and best_u_price is None
-        )
+        has_unit_price_advantage = current_u_price is not None and best_u_price is None
         is_better_raw_price = (
             current_u_price is None
             and best_u_price is None
-            and current_price is not None 
+            and current_price is not None
             and best_price is not None
             and current_price < best_price
         )
