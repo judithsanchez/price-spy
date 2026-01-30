@@ -17,9 +17,9 @@ def test_dashboard_unbound_local_error(client: TestClient):
     # Setup: Create a scenario where is_target_hit is not calculated
 
     # We need to access the DB used by the client.
-    # Since client uses the overridden _test_db_path, we can connect to it.
-    db_path = deps._test_db_path
-    assert db_path is not None
+    # Since client uses the overridden test db path, we can connect to it.
+    db_path = deps.DatabaseConfig.get_path()
+    assert db_path == deps.settings.DATABASE_PATH or db_path.endswith(".db")
     db = Database(db_path)
     db.initialize()
 
