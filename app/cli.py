@@ -5,6 +5,7 @@ import asyncio
 import sys
 
 from app.core.batch_extraction import extract_all_items, get_batch_summary
+
 # from app.core.seeder import seed_test_data  # TODO: Restore when seeder.py is available
 from app.storage.database import Database
 
