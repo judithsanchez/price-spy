@@ -10,7 +10,7 @@ name = "python"
   "PY-D0002",
   "PY-D0003",
   "PY-D0004"
-]
+  ]
 
 [[analyzers]]
 name = "test-coverage"
