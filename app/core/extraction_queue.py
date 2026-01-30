@@ -41,21 +41,82 @@ def get_api_key() -> str | None:
     return settings.GEMINI_API_KEY
 
 
+async def _get_context(
+    item: TrackedItem,
+    product_repo: ProductRepository,
+    category_repo: CategoryRepository,
+) -> ExtractionContext:
+    """Build extraction context for an item."""
+    product = product_repo.get_by_id(item.product_id)
+    category = (
+        category_repo.get_by_name(product.category)
+        if product and product.category
+        else None
+    )
+
+    return ExtractionContext(
+        product_name=product.name if product else "Unknown",
+        category=category.name if category else None,
+        is_size_sensitive=category.is_size_sensitive if category else False,
+        target_size=item.target_size,
+        quantity_size=item.quantity_size,
+        quantity_unit=item.quantity_unit,
+    )
+
+
+def _save_results(
+    item_id: int,
+    url: str,
+    result: Any,
+    model_used: str | None,
+    duration_ms: int,
+    price_repo: PriceHistoryRepository,
+    log_repo: ExtractionLogRepository,
+    tracked_repo: TrackedItemRepository,
+) -> None:
+    """Save extraction results to database."""
+    # Save to price history
+    record = PriceHistoryRecord(
+        item_id=item_id,
+        product_name=result.product_name,
+        price=result.price,
+        currency=result.currency,
+        confidence=1.0,
+        url=url,
+        store_name=result.store_name,
+        original_price=result.original_price,
+        deal_type=result.deal_type,
+        discount_percentage=result.discount_percentage,
+        discount_fixed_amount=result.discount_fixed_amount,
+        deal_description=result.deal_description,
+        available_sizes=json.dumps(result.available_sizes)
+        if result.available_sizes
+        else None,
+        is_available=result.is_available,
+        notes=result.notes,
+    )
+    price_repo.insert(record)
+
+    # Log successful extraction
+    log_repo.insert(
+        ExtractionLog(
+            tracked_item_id=item_id,
+            status="success",
+            model_used=model_used,
+            price=result.price,
+            currency=result.currency,
+            duration_ms=duration_ms,
+        )
+    )
+
+    # Update last checked time
+    tracked_repo.set_last_checked(item_id)
+
+
 async def extract_single_item(
     item_id: int, url: str, api_key: str, db: Database
 ) -> dict[str, Any]:
-    """
-    Extract price for a single tracked item.
-
-    Args:
-        item_id: The tracked item ID
-        url: The URL to extract from
-        api_key: Gemini API key
-        db: Database connection
-
-    Returns:
-        Dict with item_id, status, and optional price/error
-    """
+    """Extract price for a single tracked item."""
     tracked_repo = TrackedItemRepository(db)
     price_repo = PriceHistoryRepository(db)
     log_repo = ExtractionLogRepository(db)
@@ -70,26 +131,9 @@ async def extract_single_item(
         item = tracked_repo.get_by_id(item_id)
         if not item:
             _raise_item_not_found(item_id)
-
-        # We know item is present (checked above); mypy needs explicit assertion here
         assert item is not None
 
-        product = product_repo.get_by_id(item.product_id)
-        category = (
-            category_repo.get_by_name(product.category)
-            if product and product.category
-            else None
-        )
-
-        # Build context
-        context = ExtractionContext(
-            product_name=product.name if product else "Unknown",
-            category=category.name if category else None,
-            is_size_sensitive=category.is_size_sensitive if category else False,
-            target_size=item.target_size,
-            quantity_size=item.quantity_size,
-            quantity_unit=item.quantity_unit,
-        )
+        context = await _get_context(item, product_repo, category_repo)
 
         # Capture screenshot
         screenshot_bytes = await capture_screenshot(
@@ -109,45 +153,18 @@ async def extract_single_item(
 
         duration_ms = int((time.time() - start_time) * 1000)
 
-        # Save to price history
-        record = PriceHistoryRecord(
-            item_id=item_id,
-            product_name=result.product_name,
-            price=result.price,
-            currency=result.currency,
-            confidence=1.0,
-            url=url,
-            store_name=result.store_name,
-            original_price=result.original_price,
-            deal_type=result.deal_type,
-            discount_percentage=result.discount_percentage,
-            discount_fixed_amount=result.discount_fixed_amount,
-            deal_description=result.deal_description,
-            available_sizes=json.dumps(result.available_sizes)
-            if result.available_sizes
-            else None,
-            is_available=result.is_available,
-            notes=result.notes,
+        _save_results(
+            item_id,
+            url,
+            result,
+            model_used,
+            duration_ms,
+            price_repo,
+            log_repo,
+            tracked_repo,
         )
-        price_repo.insert(record)
-
-        # Log successful extraction
-        log_repo.insert(
-            ExtractionLog(
-                tracked_item_id=item_id,
-                status="success",
-                model_used=model_used,
-                price=result.price,
-                currency=result.currency,
-                duration_ms=duration_ms,
-            )
-        )
-
-        # Update last checked time
-        tracked_repo.set_last_checked(item_id)
 
     except Exception as e:
-        # Log failed extraction
         duration_ms = int((time.time() - start_time) * 1000)
         logging.exception("Extraction failed for item %s", item_id)
 
