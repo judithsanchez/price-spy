@@ -1,0 +1,4 @@
+services:
+  price-spy:
+    volumes:
+      - ..:/app:cached
