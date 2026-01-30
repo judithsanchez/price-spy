@@ -110,15 +110,35 @@ def _process_single_result(
     current_price = result.get("price")
     target_price = item_details.get("target_price")
     last_price = history[-1].price
+    currency = result.get("currency", "EUR")
 
-    entry = {"item": {**item_details, "current_price": current_price}}
+    # Calculate price change
+    price_change_pct = 0.0
+    if last_price and last_price > 0 and current_price is not None:
+        price_change_pct = ((current_price - last_price) / last_price) * 100
+
+    is_target_hit = False
+    if target_price is not None and current_price is not None:
+        is_target_hit = current_price <= target_price
+
+    entry_data = {
+        **item_details,
+        "price": current_price,
+        "prev_price": last_price,
+        "price_change_pct": price_change_pct,
+        "is_target_hit": is_target_hit,
+        "currency": currency,
+        "is_deal": is_target_hit or price_change_pct < -0.01,  # noqa: PLR2004
+    }
+
+    entry = {"item": entry_data}
     if current_price is not None:
-        if target_price is not None and current_price <= target_price:
-            entry["deal"] = entry["item"]
-        if last_price > current_price:
-            entry["drop"] = entry["item"]
-        if last_price < current_price:
-            entry["increase"] = entry["item"]
+        if is_target_hit:
+            entry["deal"] = entry_data
+        if last_price and last_price > current_price:
+            entry["drop"] = entry_data
+        if last_price and last_price < current_price:
+            entry["increase"] = entry_data
     return entry
 
 
@@ -146,7 +166,9 @@ def generate_report_data(results: list[dict[str, Any]], db: Database) -> dict[st
         "price_drops": price_drops,
         "price_increases": price_increases,
         "items": items,
+        "all_items": items,  # For template compatibility
         "errors": errors,
+        "untracked_planned": [],
         "next_run": "Tomorrow 23:00",
     }
 
@@ -173,7 +195,7 @@ def build_subject(report_data: dict[str, Any]) -> str:
 
 
 # Initialize Jinja2 environment for email templates
-template_dir = Path(__file__).resolve().parent.parent.parent / "templates" / "email"
+template_dir = Path(__file__).resolve().parent.parent / "templates" / "email"
 env = Environment(
     loader=FileSystemLoader(str(template_dir)),
     autoescape=select_autoescape(["html", "xml"]),
