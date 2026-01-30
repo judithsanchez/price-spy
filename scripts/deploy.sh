@@ -8,7 +8,8 @@ cd "$BASE_DIR"
 echo "🚀 Starting Deployment..."
 
 echo "📥 Pulling latest changes..."
-git pull origin main
+git fetch origin main
+git reset --hard origin/main
 
 echo "🐍 Running migrations..."
 ./venv/bin/python3 scripts/db_manager.py migrate
