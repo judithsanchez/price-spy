@@ -433,25 +433,8 @@ Quotas reset at midnight Pacific time.
 
 ### 1. Environment Setup
 
-### 1. Environment Setup
-**Option A: DevContainer (Highly Recommended)**
-The easiest way to ensure consistency.
-1. Open project in VS Code.
-2. Click "Reopen in Container".
-3. Done! (Python, Linters, and DB are pre-configured).
-
-**Option B: Docker (Manual)**
-Run commands via `docker compose`:
-```bash
-# Build the dev container
-docker compose -f infrastructure/docker-compose.yml build
-
-# Run tests
-docker compose -f infrastructure/docker-compose.yml run --rm price-spy pytest
-```
-
-**Option C: Local Virtual Environment**
-Supported but requires manual dependency management.
+**Option A: Local Virtual Environment**
+Recommended for active coding and IDE features.
 ```bash
 python3 -m venv venv
 source venv/bin/activate
@@ -459,36 +442,33 @@ pip install -r requirements.txt
 playwright install chromium
 ```
 
-### 2. Code Quality & Testing
-**Pre-commit Hooks:**
-- **On Host:** `pre-commit run --all-files` (Runs inside Docker automatically)
-- **In DevContainer:** Run checks manually (`ruff check .`, `mypy .`) as hooks may fail (Docker-in-Docker limits).
-
-### 2. Code Quality & Testing
-Before committing, ensure your code passes all checks.
-
-**Linting & Formatting:**
+**Option B: Docker**
+Recommended for running the full service or verifying the environment.
 ```bash
-# Run Ruff (Linter & Formatter)
+# Build and run tests
+docker compose -f infrastructure/docker-compose.yml run --rm price-spy pytest
+```
+
+### 2. Code Quality & Testing
+Before committing, ensure your code passes all checks. All checks run inside Docker via pre-commit hooks to ensure consistency.
+
+**Manual Check (Docker):**
+```bash
+# Run all quality checks
+docker compose -f infrastructure/docker-compose.yml run --rm price-spy sh -c "ruff check . && ruff format . && mypy . && pytest"
+```
+
+**Local Checks (if venv is active):**
+```bash
+# Linting & Formatting
 ruff check .
 ruff format .
 
-# Run Pylint
-pylint app/
-```
-
-**Type Checking:**
-```bash
+# Type Checking
 mypy .
-```
 
-**Running Tests:**
-```bash
-# Run all tests
+# Running Tests
 pytest
-
-# Run a specific test file
-pytest tests/test_api_products.py
 ```
 
 ### 3. Contribution Workflow
