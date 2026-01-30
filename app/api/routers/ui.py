@@ -346,6 +346,67 @@ def _process_dashboard_item(
         all_timestamps.update(timestamps)
 
 
+def _apply_best_deal_logic(sorted_products: list[dict]) -> None:
+    """Identify and mark the best deal for each product."""
+    for p in sorted_products:
+        p["has_best_deal"] = False
+        p["has_target_hit"] = any(it["is_target_hit"] for it in p["tracked_items"])
+        p["has_deal"] = any(
+            it["is_deal"] or it["is_price_drop"] for it in p["tracked_items"]
+        )
+
+        valid_items = [
+            it
+            for it in p["tracked_items"]
+            if it["unit_price"] is not None and it["is_available"] is not False
+        ]
+        if len(valid_items) > 1:
+            best_item = min(valid_items, key=lambda x: x["unit_price"])
+            for it in p["tracked_items"]:
+                if it["id"] == best_item["id"]:
+                    it["is_best_deal"] = True
+                    p["has_best_deal"] = True
+
+
+def _get_untracked_planned_products(
+    product_repo: ProductRepository, tracked_repo: TrackedItemRepository
+) -> list[dict]:
+    """Identify planned but untracked products within the next 4 weeks."""
+    now = datetime.now()
+    four_weeks_later = now + timedelta(days=28)
+
+    all_products = product_repo.get_all()
+    untracked_planned_products = []
+    for product in all_products:
+        if not product.planned_date:
+            continue
+
+        try:
+            # Parse as the first day of that week (e.g., '2026-W05-1')
+            planned_dt = datetime.strptime(product.planned_date + "-1", "%G-W%V-%u")
+            if planned_dt > four_weeks_later:
+                continue
+        except (ValueError, TypeError):
+            continue
+
+        active_items = [
+            ti
+            for ti in tracked_repo.get_by_product(int(product.id or 0))
+            if ti.is_active
+        ]
+        if not active_items:
+            untracked_planned_products.append(
+                {
+                    "id": product.id,
+                    "name": product.name,
+                    "planned_date": product.planned_date,
+                }
+            )
+
+    untracked_planned_products.sort(key=lambda p: str(p["planned_date"] or ""))
+    return untracked_planned_products
+
+
 @router.get("/")
 async def dashboard(request: Request, db: Annotated[Database, Depends(get_db)]):
     """Render dashboard page."""
@@ -382,29 +443,15 @@ async def dashboard(request: Request, db: Annotated[Database, Depends(get_db)]):
         graph_data["labels"] = sorted_labels
         sorted_products = sorted(products_map.values(), key=lambda p: p["name"])
 
-        for p in sorted_products:
-            p["has_best_deal"] = False
-            p["has_target_hit"] = any(it["is_target_hit"] for it in p["tracked_items"])
-            p["has_deal"] = any(
-                it["is_deal"] or it["is_price_drop"] for it in p["tracked_items"]
-            )
+        # Apply best deal logic & flags
+        _apply_best_deal_logic(sorted_products)
 
-            valid_items = [
-                it
-                for it in p["tracked_items"]
-                if it["unit_price"] is not None and it["is_available"] is not False
-            ]
-            if len(valid_items) > 1:
-                best_item = min(valid_items, key=lambda x: x["unit_price"])
-                for it in p["tracked_items"]:
-                    if it["id"] == best_item["id"]:
-                        it["is_best_deal"] = True
-                        p["has_best_deal"] = True
-
+        # Final Sort for UI
         sorted_products.sort(
             key=lambda p: (not p["has_target_hit"], not p["has_deal"], p["name"])
         )
 
+        # Flatten deals for summary section
         all_deals: list[dict[str, Any]] = []
         for p in sorted_products:
             all_deals.extend(
@@ -422,45 +469,10 @@ async def dashboard(request: Request, db: Annotated[Database, Depends(get_db)]):
                 if item["is_target_hit"] or item["is_deal"]
             )
 
-        # Identify planned but untracked products within 4 weeks
-
-        now = datetime.now()
-        four_weeks_later = now + timedelta(days=28)
-
-        all_products = product_repo.get_all()
-        untracked_planned_products = []
-        for product in all_products:
-            if product.planned_date:
-                # Format is YYYY-Www, e.g., '2026-W05'
-                try:
-                    # Parse as the first day of that week
-                    planned_dt = datetime.strptime(
-                        product.planned_date + "-1", "%G-W%V-%u"
-                    )
-
-                    # Only alert if the planned date is within the next 4 weeks
-                    # (Also include past dates if they were never tracked)
-                    if planned_dt > four_weeks_later:
-                        continue
-                except (ValueError, TypeError):
-                    continue
-
-                active_items = [
-                    ti
-                    for ti in tracked_repo.get_by_product(int(product.id or 0))
-                    if ti.is_active
-                ]
-                if not active_items:
-                    untracked_planned_products.append(
-                        {
-                            "id": product.id,
-                            "name": product.name,
-                            "planned_date": product.planned_date,
-                        }
-                    )
-
-        # Sort by planned_date (YYYY-Www) which is chronological
-        untracked_planned_products.sort(key=lambda p: str(p["planned_date"] or ""))
+        # Identify planned but untracked products
+        untracked_planned_products = _get_untracked_planned_products(
+            product_repo, tracked_repo
+        )
 
         return templates.TemplateResponse(
             request,

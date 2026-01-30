@@ -20,7 +20,7 @@ except ImportError:
 
 async def main():
     """Debug fingerprint generation for a given URL."""
-    logger.info(f"Starting Fingerprint Diagnostic (Headful={HEADFUL})...")
+    logger.info("Starting Fingerprint Diagnostic (Headful=%s)...", HEADFUL)
 
     # We use the diagnostic site that checks for common bot leaks
     url = "https://bot.sannysoft.com/"
@@ -70,14 +70,14 @@ async def main():
         stealth = Stealth()
         await stealth.apply_stealth_async(page)
 
-        logger.info(f"Navigating to {url}...")
+        logger.info("Navigating to %s...", url)
         await page.goto(url, wait_until="networkidle")
         await page.wait_for_timeout(2000)
 
         # Take screenshot
         output_file = "debug_fingerprint.png"
         await page.screenshot(path=output_file, full_page=True)
-        logger.info(f"Fingerprint report saved to {output_file}")
+        logger.info("Fingerprint report saved to %s", output_file)
 
         await browser.close()
 

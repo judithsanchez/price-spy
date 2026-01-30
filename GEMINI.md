@@ -8,3 +8,4 @@
 - **Database changes:** Do not make changes to the database schema without first having a migration strategy and checking how can it affect the current stored data.
 - **Database Safety:** All tests must use a disposable temporary database. Connecting to `data/pricespy.db` during tests is strictly blocked by a safety guard in the `Database` class.
 - **Database Versioning:** Use `python3 scripts/db_manager.py dump` to version the current data state in Git via `data/pricespy_dump.sql`. Binary `.db` files must NEVER be committed.
+- **DeepSource Configuration:** Do NOT add `skip_issues` or `ignore_issues` to `.deepsource.toml`. These must be managed via the DeepSource Dashboard UI (Issues -> Ignore -> For the entire repository).

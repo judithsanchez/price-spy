@@ -17,15 +17,15 @@ OUTPUT_FILE = "debug_levis.png"
 
 
 async def main():
-    logger.info(f"Attempting to screenshot: {URL}")
+    logger.info("Attempting to screenshot: %s", URL)
     try:
         screenshot_data = await capture_screenshot(URL)
 
         # Use async file writing
         await asyncio.to_thread(Path(OUTPUT_FILE).write_bytes, screenshot_data)
 
-        logger.info(f"Screenshot saved to {OUTPUT_FILE}")
-        logger.info(f"Size: {len(screenshot_data)} bytes")
+        logger.info("Screenshot saved to %s", OUTPUT_FILE)
+        logger.info("Size: %d bytes", len(screenshot_data))
 
     except Exception:
         logger.exception("Failed to capture screenshot")
