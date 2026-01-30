@@ -4,16 +4,15 @@ Follow these steps one-by-one to enable automated deployments from GitHub to you
 
 ---
 
-### Step 1: Get Tailscale OAuth Credentials
-1.  Open your [Tailscale OAuth Settings](https://login.tailscale.com/admin/settings/oauth).
-2.  Click **"Generate OAuth client"**.
-3.  Under **Scopes**, select:
-    - `Devices` -> `Write`
-4.  (Optional but recommended) Under **Tags**, select or create a tag like `tag:ci`.
-5.  Click **"Generate client"**.
-6.  **COPY IMMEDIATELY**:
-    - Copy the **Client ID** and save it as `TS_OAUTH_CLIENT_ID` in GitHub.
-    - Copy the **Client Secret** and save it as `TS_OAUTH_SECRET` in GitHub.
+### Step 1: Get Tailscale Auth Key
+1.  Open your [Tailscale Keys Settings](https://login.tailscale.com/admin/settings/keys).
+2.  Click **"Generate auth key"**.
+3.  Set these options:
+    - **Reusable**: Yes (Turn this ON)
+    - **Ephemeral**: Yes
+    - **Tags**: Select `tag:ci`
+4.  Click **"Generate key"**.
+5.  **COPY IMMEDIATELY**: Save it as `TAILSCALE_AUTH_KEY` in GitHub Secrets.
 
 ---
 
