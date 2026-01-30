@@ -292,6 +292,10 @@ class ExtractionResult(BaseModel):
         default=True,
         description="Whether the extracted price is confirmed for the target size",
     )
+    is_screenshot_faulty: bool = Field(
+        default=False,
+        description="Whether the screenshot is de-centered, cut off, or low quality",
+    )
     detected_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
     @field_validator("price")
