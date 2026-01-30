@@ -148,12 +148,14 @@ docker compose -f infrastructure/docker-compose.yml logs --tail 100
 
 ### Update to Latest Version
 
+The easiest way to update is to use the provided deployment script:
+
 ```bash
 cd price-spy
-git pull
-docker compose -f infrastructure/docker-compose.yml build
-docker compose -f infrastructure/docker-compose.yml up -d
+./scripts/deploy.sh
 ```
+
+The script automatically pulls the latest code, runs database migrations, rebuilds the Docker container, and cleans up old backups.
 
 ### Check Scheduler Status
 

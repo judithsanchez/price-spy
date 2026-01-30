@@ -68,6 +68,12 @@ python3 scripts/db_manager.py dump
 
 # Restore database from the SQL dump
 python3 scripts/db_manager.py restore
+
+# Run pending migrations
+python3 scripts/db_manager.py migrate
+
+# Cleanup old database backups
+python3 scripts/db_manager.py cleanup
 ```
 
 ### 6. Run Tests
@@ -192,6 +198,12 @@ python3 scripts/db_manager.py dump
 
 # Restore Price Spy from a SQL dump (automatically creates a backup of current DB)
 python3 scripts/db_manager.py restore
+
+# Run pending SQL migrations from the migrations/ directory
+python3 scripts/db_manager.py migrate
+
+# Cleanup old database backup files (*.bak)
+python3 scripts/db_manager.py cleanup
 ```
 
 **Files:**
@@ -431,16 +443,19 @@ playwright install chromium
 # Run tests
 pytest tests/ -v -s
 
-### Quality Checks
-
-Run these commands locally to ensure your code matches the CI requirements:
-
-- **All-in-One:** `pre-commit run --all-files`
-- **Linting:** `ruff check .`
-- **Formatting:** `ruff format .`
-- **Typing:** `mypy .`
-- **Security:** `bandit -r app/ --skip B101`
 - **Audit:** `pip-audit`
+
+### Database Management (Advanced)
+See [GEMINI.md](GEMINI.md) for detailed database management instructions including migrations and backups.
+
+### DevOps Workflow (Remote development)
+If you are developing on a PC/WSL and deploying to a Raspberry Pi:
+1. **Develop** on a feature branch locally.
+2. **Push** and merge to `main` via PR.
+3. **Deploy** by running `./scripts/deploy.sh` on the Pi.
+4. **Sync Production Data** by running `./scripts/sync_prod_db.sh` on your local machine.
+
+See [GEMINI.md](GEMINI.md) for full DevOps workflow details.
 ```
 
 ## Documentation
