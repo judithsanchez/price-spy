@@ -431,19 +431,73 @@ Quotas reset at midnight Pacific time.
 
 ## Development
 
-```bash
-# Create virtual environment
-python3 -m venv venv
-source venv/bin/activate
+### 1. Environment Setup
 
-# Install dependencies
-pip install -r requirements.txt
-playwright install chromium
+**Option A: Docker (Recommended)**
+The easiest way to ensure consistency.
+```bash
+# Build the dev container
+docker compose -f infrastructure/docker-compose.yml build
 
 # Run tests
-pytest tests/ -v -s
+docker compose -f infrastructure/docker-compose.yml run --rm price-spy pytest
+```
 
-- **Audit:** `pip-audit`
+**Option B: Local Virtual Environment**
+Faster for editing and linting.
+```bash
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+playwright install chromium
+```
+
+### 2. Code Quality & Testing
+Before committing, ensure your code passes all checks.
+
+**Linting & Formatting:**
+```bash
+# Run Ruff (Linter & Formatter)
+ruff check .
+ruff format .
+
+# Run Pylint
+pylint app/
+```
+
+**Type Checking:**
+```bash
+mypy .
+```
+
+**Running Tests:**
+```bash
+# Run all tests
+pytest
+
+# Run a specific test file
+pytest tests/test_api_products.py
+```
+
+### 3. Contribution Workflow
+
+1.  **Create a Branch**:
+    ```bash
+    git checkout -b feat/your-feature-name
+    ```
+2.  **Make Changes**: Edit code, add features, or fix bugs.
+3.  **Run Checks**:
+    ```bash
+    ruff format . && ruff check . --fix
+    pytest
+    ```
+4.  **Commit & Push**:
+    ```bash
+    git add .
+    git commit -m "feat: description of changes"
+    git push origin feat/your-feature-name
+    ```
+5.  **Create Pull Request**: Go to GitHub and open a PR to `main`.
 
 ### Database Management (Advanced)
 See [GEMINI.md](GEMINI.md) for detailed database management instructions including migrations and backups.
@@ -456,7 +510,6 @@ If you are developing on a PC/WSL and deploying to a Raspberry Pi:
 4. **Sync Production Data** by running `./scripts/sync_prod_db.sh` on your local machine.
 
 See [GEMINI.md](GEMINI.md) for full DevOps workflow details.
-```
 
 ## Documentation
 
