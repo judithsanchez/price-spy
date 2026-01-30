@@ -544,12 +544,12 @@ async def timeline_page(request: Request, db: Annotated[Database, Depends(get_db
                     item.quantity_size,
                     item.quantity_unit,
                 )
-                
+
                 current_deal = {
                     "price": latest.price,
                     "currency": latest.currency,
                     "unit_price": u_price,
-                    "unit": u_unit
+                    "unit": u_unit,
                 }
 
                 if best_deal is None:
@@ -558,16 +558,25 @@ async def timeline_page(request: Request, db: Annotated[Database, Depends(get_db
 
                 # Comparison Logic
                 # 1. If both have unit prices, compare unit prices
-                if current_deal["unit_price"] is not None and best_deal["unit_price"] is not None:
+                if (
+                    current_deal["unit_price"] is not None
+                    and best_deal["unit_price"] is not None
+                ):
                     if current_deal["unit_price"] < best_deal["unit_price"]:
                         best_deal = current_deal
-                
+
                 # 2. If current has unit price but best doesn't, prefer current
-                elif current_deal["unit_price"] is not None and best_deal["unit_price"] is None:
+                elif (
+                    current_deal["unit_price"] is not None
+                    and best_deal["unit_price"] is None
+                ):
                     best_deal = current_deal
-                
+
                 # 3. If neither has unit price, compare raw prices
-                elif current_deal["unit_price"] is None and best_deal["unit_price"] is None:
+                elif (
+                    current_deal["unit_price"] is None
+                    and best_deal["unit_price"] is None
+                ):
                     if current_deal["price"] < best_deal["price"]:
                         best_deal = current_deal
 
