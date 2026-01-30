@@ -23,5 +23,5 @@ jobs:
           username: ${{ secrets.PI_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            cd /home/${{ secrets.PI_USER }}/price-spy
+            cd /home/${{ secrets.PI_USER }}/Desktop/dev/price-spy
             ./scripts/deploy.sh
