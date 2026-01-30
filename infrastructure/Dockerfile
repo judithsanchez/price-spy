@@ -5,6 +5,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     wget \
     ca-certificates \
+    procps \
+    git \
     libnss3 \
     libnspr4 \
     libatk1.0-0 \

@@ -3,35 +3,35 @@ repos:
     hooks:
       - id: docker-ruff
         name: ruff (docker)
-        entry: bash scripts/run_docker_hook.sh ruff check . --fix
+        entry: docker compose -f infrastructure/docker-compose.yml run --rm price-spy ruff check . --fix
         language: system
         types: [python]
         pass_filenames: false
 
       - id: docker-ruff-format
         name: ruff-format (docker)
-        entry: bash scripts/run_docker_hook.sh ruff format .
+        entry: docker compose -f infrastructure/docker-compose.yml run --rm price-spy ruff format .
         language: system
         types: [python]
         pass_filenames: false
 
       - id: docker-mypy
         name: mypy (docker)
-        entry: bash scripts/run_docker_hook.sh mypy .
+        entry: docker compose -f infrastructure/docker-compose.yml run --rm price-spy mypy .
         language: system
         types: [python]
         pass_filenames: false
 
       - id: docker-bandit
         name: bandit (docker)
-        entry: bash scripts/run_docker_hook.sh bandit -r app/ --skip B101
+        entry: docker compose -f infrastructure/docker-compose.yml run --rm price-spy bandit -r app/ --skip B101
         language: system
         types: [python]
         pass_filenames: false
 
       - id: docker-pip-audit
         name: pip-audit (docker)
-        entry: bash scripts/run_docker_hook.sh pip-audit
+        entry: docker compose -f infrastructure/docker-compose.yml run --rm price-spy pip-audit
         language: system
         types: [python]
         pass_filenames: false
