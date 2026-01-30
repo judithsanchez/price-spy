@@ -32,3 +32,8 @@
     - **Deployment:** Once merged, run `./scripts/deploy.sh` on the Raspberry Pi to sync and restart.
     - **DB Sync:** Run `./scripts/sync_prod_db.sh` on WSL to pull the latest production data for local testing.
 - **Commit:** Before pushing make sure to rebase
+
+- **Browser & Screenshots:**
+    - Capture full viewport (1920x1200) to avoid information loss.
+    - Use centering logic in `_scroll_to_product` for the product element.
+    - The AI can report faulty screenshots via `is_screenshot_faulty`.
