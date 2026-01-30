@@ -43,7 +43,7 @@ def test_generate_report_data_mocked(mock_db):
             product_name="Test Product",
             created_at=datetime.now(UTC),
         )
-        mock_price_repo.return_value.get_by_url.return_value = [price]
+        mock_price_repo.return_value.get_by_item.return_value = [price]
 
         # result passed to generate_report_data
         results = [{"item_id": 1, "status": "success", "price": 9.0, "currency": "EUR"}]
