@@ -5,7 +5,6 @@ import asyncio
 import sys
 
 from app.core.batch_extraction import extract_all_items, get_batch_summary
-
 from app.storage.database import Database
 
 
