@@ -21,18 +21,23 @@ from app.storage.database import Database
 logger = logging.getLogger(__name__)
 
 
-class PriceHistoryRepository:
-    """Repository for price history operations."""
+class BaseRepository:
+    """Base class for all repositories."""
 
     def __init__(self, db: Database):
         """Initialize repository."""
         self.db = db
+
+
+class PriceHistoryRepository(BaseRepository):
+    """Repository for price history operations."""
 
     def insert(self, record: PriceHistoryRecord) -> int:
         """Insert a price history record and return its ID."""
         cursor = self.db.execute(
             """
             INSERT INTO price_history (
+                item_id,
                 product_name,
                 price,
                 currency,
@@ -50,9 +55,10 @@ class PriceHistoryRepository:
                 deal_description,
                 available_sizes
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
+                record.item_id,
                 record.product_name,
                 record.price,
                 record.currency,
@@ -160,12 +166,8 @@ class PriceHistoryRepository:
         )
 
 
-class ErrorLogRepository:
+class ErrorLogRepository(BaseRepository):
     """Repository for error log operations."""
-
-    def __init__(self, db: Database):
-        """Initialize repository."""
-        self.db = db
 
     def insert(self, error: ErrorRecord) -> int:
         """Insert an error record and return its ID."""
@@ -238,12 +240,8 @@ class ErrorLogRepository:
         )
 
 
-class ProductRepository:
+class ProductRepository(BaseRepository):
     """Repository for product operations."""
-
-    def __init__(self, db: Database):
-        """Initialize repository."""
-        self.db = db
 
     def insert(self, product: Product) -> int:
         """Insert a product and return its ID."""
@@ -385,12 +383,8 @@ class ProductRepository:
         )
 
 
-class StoreRepository:
+class StoreRepository(BaseRepository):
     """Repository for store operations."""
-
-    def __init__(self, db: Database):
-        """Initialize repository."""
-        self.db = db
 
     def normalize_name(self, name: str) -> str:
         """Normalize store name: case-insensitive check against DB, else capitalize."""
@@ -452,12 +446,8 @@ class StoreRepository:
         return Store(id=row["id"], name=row["name"])
 
 
-class TrackedItemRepository:
+class TrackedItemRepository(BaseRepository):
     """Repository for tracked item operations."""
-
-    def __init__(self, db: Database):
-        """Initialize repository."""
-        self.db = db
 
     def insert(self, item: TrackedItem) -> int:
         """Insert a tracked item and return its ID."""
@@ -648,12 +638,8 @@ class TrackedItemRepository:
         )
 
 
-class ExtractionLogRepository:
+class ExtractionLogRepository(BaseRepository):
     """Repository for extraction log operations."""
-
-    def __init__(self, db: Database):
-        """Initialize repository."""
-        self.db = db
 
     def insert(self, log: ExtractionLog) -> int:
         """Insert an extraction log and return its ID."""
@@ -789,12 +775,8 @@ class ExtractionLogRepository:
         )
 
 
-class SchedulerRunRepository:
+class SchedulerRunRepository(BaseRepository):
     """Repository for scheduler run logging."""
-
-    def __init__(self, db: Database):
-        """Initialize repository."""
-        self.db = db
 
     def start_run(self, items_total: int) -> int:
         """Start a new scheduler run and return its ID."""
@@ -871,12 +853,8 @@ class SchedulerRunRepository:
         return [dict(row) for row in cursor.fetchall()]
 
 
-class CategoryRepository:
+class CategoryRepository(BaseRepository):
     """Repository for category operations."""
-
-    def __init__(self, db: Database):
-        """Initialize repository."""
-        self.db = db
 
     def normalize_name(self, name: str) -> str:
         """
@@ -959,12 +937,8 @@ class CategoryRepository:
         )
 
 
-class LabelRepository:
+class LabelRepository(BaseRepository):
     """Repository for label operations."""
-
-    def __init__(self, db: Database):
-        """Initialize repository."""
-        self.db = db
 
     def insert(self, label: Label) -> int:
         """Insert a label and return its ID."""
@@ -1020,12 +994,8 @@ class LabelRepository:
         )
 
 
-class UnitRepository:
+class UnitRepository(BaseRepository):
     """Repository for unit operations."""
-
-    def __init__(self, db: Database):
-        """Initialize repository."""
-        self.db = db
 
     def insert(self, unit: Unit) -> int:
         """Insert a unit and return its ID."""
@@ -1087,12 +1057,8 @@ class UnitRepository:
         return Unit(id=row["id"], name=row["name"])
 
 
-class PurchaseTypeRepository:
+class PurchaseTypeRepository(BaseRepository):
     """Repository for purchase type operations."""
-
-    def __init__(self, db: Database):
-        """Initialize repository."""
-        self.db = db
 
     def insert(self, pt: PurchaseType) -> int:
         """Insert a purchase type and return its ID."""
