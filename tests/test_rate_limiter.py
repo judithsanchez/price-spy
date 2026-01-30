@@ -30,6 +30,7 @@ def test_get_available_model_logic(test_db):
 
     # Fallback (priority 0) should be returned first
     selected = tracker.get_available_model(models)
+    assert selected is not None
     assert selected.model == GeminiModel.FLASH_2_5_LITE
 
     # Mark fallback exhausted
@@ -37,4 +38,5 @@ def test_get_available_model_logic(test_db):
 
     # Now extraction (priority 1) should be returned
     new_selected = tracker.get_available_model(models)
+    assert new_selected is not None
     assert new_selected.model == GeminiModel.FLASH_2_5

@@ -9,7 +9,7 @@ def test_product_basic():
 
 
 def test_store_schema():
-    s = Store(name="Store", base_url="https://store.com")
+    s = Store(name="Store")
     assert s.name == "Store"
 
 

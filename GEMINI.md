@@ -1,5 +1,8 @@
 # Development Rules
 
+**⚠️ STRICT COMPLIANCE:** Any deviation from the validation rules (linting, type checking, tests) via suppression mechanisms (e.g., `noqa`, `type: ignore`, `skip_issues`) is **FORBIDDEN** unless explicit permission is granted by the USER.
+
+
 - **Workflow:** Always use Test-Driven Development (TDD). Write the test first, verify failure, then implement.
 - **Documentation:** Only update documentation (READMEs, logs, etc.) at the **end** of a completed task. Do not update docs for every incremental step.
 - **Conciseness:** Be extremely brief. Skip conversational fillers and summaries of completed tool calls.

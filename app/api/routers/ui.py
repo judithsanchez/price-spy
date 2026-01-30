@@ -30,6 +30,15 @@ templates = Jinja2Templates(directory=str(templates_dir))
 MIN_HISTORY_FOR_TREND = 2
 
 
+class Deal(TypedDict):
+    """Type definition for a deal object."""
+
+    price: float | None
+    currency: str
+    unit_price: float | None
+    unit: str | None
+
+
 class DashboardItem(BaseModel):
     """View model for dashboard items."""
 
@@ -502,17 +511,6 @@ async def products_page(request: Request):
     """Render products management page."""
     return templates.TemplateResponse(request, "products.html", {})
 
-
-from typing import Annotated, Any, TypedDict, cast
-
-# ... imports ...
-
-
-class Deal(TypedDict):
-    price: float | None
-    currency: str
-    unit_price: float | None
-    unit: str | None
 
 
 def _find_best_deal_for_product(

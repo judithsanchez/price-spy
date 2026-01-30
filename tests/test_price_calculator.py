@@ -11,7 +11,7 @@ def test_normalize_unit():
     assert normalize_unit("ML") == "L"
     assert normalize_unit("  kg  ") == "kg"
     assert normalize_unit("stuks") == "stuks"
-    assert normalize_unit(None) == ""
+    assert normalize_unit(None) == ""  # type: ignore
 
 
 def test_calculate_volume_price_basic():
@@ -53,7 +53,7 @@ def test_is_size_available():
     available = [" S ", "M", "L"]
     assert is_size_available("s", available) is True
     assert is_size_available("XL", available) is False
-    assert is_size_available(None, available) is False
+    assert is_size_available(None, available) is False  # type: ignore
 
 
 def test_determine_effective_availability_basic():

@@ -41,7 +41,6 @@ def test_dashboard_full_rendering(mock_db):
             quantity_unit="ml",
             is_active=True,
             alerts_enabled=True,
-            created_at=datetime.now(UTC),
             labels=[],
         )
         mock_tracked_repo.return_value.get_all.return_value = [item]
@@ -60,7 +59,7 @@ def test_dashboard_full_rendering(mock_db):
         mock_prod_repo.return_value.get_all.return_value = [product]
 
         # Mock store
-        store = StoreResponse(id=1, name="Test Store", created_at=datetime.now(UTC))
+        store = StoreResponse(id=1, name="Test Store")
         mock_store_repo.return_value.get_by_id.return_value = store
 
         # Mock price history (a drop)

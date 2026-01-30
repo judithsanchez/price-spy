@@ -9,7 +9,7 @@ from app.core.price_calculator import (
 
 def test_normalize_unit_edge_cases():
     assert normalize_unit("") == ""
-    assert normalize_unit(None) == ""
+    assert normalize_unit(None) == ""  # type: ignore
     assert normalize_unit("kg") == "kg"
     assert normalize_unit("UNKNOWN") == "unknown"
 

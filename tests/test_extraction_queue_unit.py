@@ -104,6 +104,7 @@ def test_save_results(test_db):
     # _row_to_record returns a list (or whatever the schema says)
     # Wait, PriceHistoryRecord schema available_sizes is TEXT? No, it's Any in models?
     # Actually it's probably just a string.
+    assert history[0].available_sizes is not None
     assert "S" in history[0].available_sizes
 
     # Verify logs
@@ -113,4 +114,5 @@ def test_save_results(test_db):
 
     # Verify last checked updated
     updated_item = tracked_repo.get_by_id(item_id)
+    assert updated_item is not None
     assert updated_item.last_checked_at is not None
