@@ -6,7 +6,7 @@ from pathlib import Path
 # Add app to path
 sys.path.append(str(Path.cwd()))
 
-from app.core.browser import capture_screenshot
+from app.core.browser import capture_screenshot  # skipcq: FLK-E402
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)

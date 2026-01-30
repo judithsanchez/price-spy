@@ -5,7 +5,7 @@ from datetime import datetime
 # In container, we usually run from /app, and the package is 'app'
 sys.path.append("/app")
 
-from app.core.email_report import (
+from app.core.email_report import (  # skipcq: FLK-E402
     build_subject,
     get_email_config,
     render_html_email,
