@@ -430,6 +430,17 @@ playwright install chromium
 
 # Run tests
 pytest tests/ -v -s
+
+### Quality Checks
+
+Run these commands locally to ensure your code matches the CI requirements:
+
+- **All-in-One:** `pre-commit run --all-files`
+- **Linting:** `ruff check .`
+- **Formatting:** `ruff format .`
+- **Typing:** `mypy .`
+- **Security:** `bandit -r app/ --skip B101`
+- **Audit:** `pip-audit`
 ```
 
 ## Documentation

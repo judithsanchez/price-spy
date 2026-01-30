@@ -13,4 +13,10 @@
     - **Ruff** is the primary linter and formatter.
     - **Pylint** is maintained for `pylint-parity` checks in `app/`.
     - **Docstrings** are explicitly disabled across all linters (`D` rules in Ruff, `missing-docstring` in Pylint).
-    - Use `# skipcq` for DeepSource-specific skips if `# noqa` is not sufficient for remote analyzers.
+- **Useful Commands:**
+    - `pre-commit run --all-files`: Run all quality checks.
+    - `ruff check .` / `ruff format .`: Lint and format code.
+    - `mypy .`: Static type checking.
+    - `bandit -r app/ --skip B101`: Security scan.
+    - `pip-audit`: Dependency audit.
+    - `pytest`: Run tests (`--cov=app` for coverage).
