@@ -512,7 +512,6 @@ async def products_page(request: Request):
     return templates.TemplateResponse(request, "products.html", {})
 
 
-
 def _find_best_deal_for_product(
     product_id: int,
     tracked_repo: TrackedItemRepository,
