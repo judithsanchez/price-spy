@@ -12,7 +12,10 @@ from app.core.browser import capture_screenshot
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-URL = "https://www.levi.com/NL/nl_NL/kleding/dames/jeans/xl-lightweight-overall/p/001V00000"
+URL = (
+    "https://www.levi.com/NL/nl_NL/kleding/dames/jeans/"
+    "xl-lightweight-overall/p/001V00000"
+)
 OUTPUT_FILE = "debug_levis.png"
 
 

@@ -6,7 +6,10 @@ from app.core.browser import capture_screenshot
 
 async def diagnose_sites():
     sites = {
-        "stradivarius": "https://www.stradivarius.com/nl/silk-eau-de-toilette-no101--100-ml-l00419056?categoryId=1020208533&colorId=310&style=02&pelement=485588125",
+        "stradivarius": (
+            "https://www.stradivarius.com/nl/silk-eau-de-toilette-no101--100-ml-l00419056"
+            "?categoryId=1020208533&colorId=310&style=02&pelement=485588125"
+        ),
         "douglas": "https://www.douglas.nl/nl/p/5010033070",
     }
 
