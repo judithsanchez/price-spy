@@ -92,6 +92,13 @@ EXTRACTION_SCHEMA = {
             ),
         },
         "notes": {"type": "string"},
+        "is_screenshot_faulty": {
+            "type": "boolean",
+            "description": (
+                "Whether the screenshot is de-centered, cut off, or low quality "
+                "(e.g., product or price is not fully visible)"
+            ),
+        },
     },
     "required": ["price", "currency", "is_available", "product_name"],
 }
@@ -121,7 +128,9 @@ Return ONLY a valid JSON object with these exact fields:
     "is_blocked": boolean (true if a modal/consent banner blocks
 major content),
     "is_size_matched": boolean (true if you are CERTAIN the price is for
-the requested size)
+the requested size),
+    "is_screenshot_faulty": boolean (true if the screenshot is de-centered,
+cut off, or unreadable)
 }
 
 Important for Clothing:
@@ -265,6 +274,8 @@ RULES:
 {size_guidance}- product_name: The name as shown on the site.
 - store_name: The retailer name.
 - is_blocked: Boolean (true if a cookie/consent modal blocks the view).
+- is_screenshot_faulty: Boolean (true if the screenshot is de-centered,
+  cut off, or unreadable).
 - Original price: Only if a clear previous price is shown (strikethrough).
   ALWAYS look for this to detect discounts.
 - Deal type: Choose from 'bogo', 'multibuy', 'percentage_off', 'fixed_amount_off',

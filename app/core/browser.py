@@ -237,10 +237,12 @@ async def _dismiss_cookie_consent(page):
 
 
 async def _scroll_to_product(page):
-    """Try to find a product image or main title to scroll to."""
+    """Try to find a product image or main title to scroll to and center it."""
     product_selectors = [
         "h1",
+        "h2",  # Added h2 as fallback
         'img[data-testid="pdp-main-image"]',
+        'img[alt*="product"]',  # Generic fallback
         ".product-title",
         ".pdp-info",
         "#productTitle",
@@ -251,8 +253,10 @@ async def _scroll_to_product(page):
         for selector in product_selectors:
             el = page.locator(selector).first
             if await el.is_visible(timeout=2000):
+                # Try to center the element in the viewport
                 await el.scroll_into_view_if_needed()
-                await page.mouse.wheel(0, -150)
+                # Subtle adjustment to pull it slightly up if it's a big element
+                await page.mouse.wheel(0, -100)
                 break
     except Exception as e:
         logger.debug("Scrolling to product failed: %s", e)
@@ -290,10 +294,8 @@ async def capture_screenshot(url: str, target_size: str | None = None) -> bytes:
         # Wait for page to stabilize
         await page.wait_for_timeout(3000)
 
-        # Capture screenshot
-        screenshot_bytes = await page.screenshot(
-            type="png", clip={"x": 0, "y": 0, "width": 1280, "height": 960}
-        )
+        # Capture screenshot (removed hardcoded clip to use full viewport)
+        screenshot_bytes = await page.screenshot(type="png")
 
         if context.browser:
             await context.browser.close()
