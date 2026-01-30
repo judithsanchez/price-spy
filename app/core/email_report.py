@@ -89,18 +89,41 @@ def _initialize_empty_report() -> dict[str, Any]:
     }
 
 
+def _get_process_context(
+    result: dict[str, Any], db: Database
+) -> tuple[int | None, dict[str, Any] | None]:
+    """Extract item_id and details for processing."""
+    item_id = result.get("item_id")
+    if item_id is None:
+        return None, None
+    return item_id, get_item_details(item_id, db)
+
+
+def _calculate_metrics(
+    current_price: float | None, target_price: float | None, last_price: float
+) -> tuple[float, bool]:
+    """Calculate price change percent and target hit status."""
+    change_pct = 0.0
+    if last_price and last_price > 0 and current_price is not None:
+        change_pct = ((current_price - last_price) / last_price) * 100
+
+    target_hit = False
+    if target_price is not None and current_price is not None:
+        target_hit = current_price <= target_price
+
+    return change_pct, target_hit
+
+
 def _process_single_result(
     result: dict[str, Any],
     price_repo: PriceHistoryRepository,
     db: Database,
 ) -> dict[str, Any]:
     """Process a single extraction result for the report."""
-    item_id = result.get("item_id")
+    item_id, details = _get_process_context(result, db)
     if item_id is None:
         return {"error": {"message": "Missing item_id"}}
-
-    item_details = get_item_details(item_id, db)
-    if not item_details:
+    if not details:
         return {"error": {"item_id": item_id, "message": "Item not found"}}
 
     history = price_repo.get_by_item(item_id)
@@ -108,32 +131,24 @@ def _process_single_result(
         return {"error": {"item_id": item_id, "message": "No price history"}}
 
     current_price = result.get("price")
-    target_price = item_details.get("target_price")
     last_price = history[-1].price
-    currency = result.get("currency", "EUR")
-
-    # Calculate price change
-    price_change_pct = 0.0
-    if last_price and last_price > 0 and current_price is not None:
-        price_change_pct = ((current_price - last_price) / last_price) * 100
-
-    is_target_hit = False
-    if target_price is not None and current_price is not None:
-        is_target_hit = current_price <= target_price
+    change_pct, target_hit = _calculate_metrics(
+        current_price, details.get("target_price"), last_price
+    )
 
     entry_data = {
-        **item_details,
+        **details,
         "price": current_price,
         "prev_price": last_price,
-        "price_change_pct": price_change_pct,
-        "is_target_hit": is_target_hit,
-        "currency": currency,
-        "is_deal": is_target_hit or price_change_pct < -0.01,  # noqa: PLR2004
+        "price_change_pct": change_pct,
+        "is_target_hit": target_hit,
+        "currency": result.get("currency", "EUR"),
+        "is_deal": target_hit or change_pct < -0.01,  # noqa: PLR2004
     }
 
     entry = {"item": entry_data}
     if current_price is not None:
-        if is_target_hit:
+        if target_hit:
             entry["deal"] = entry_data
         if last_price and last_price > current_price:
             entry["drop"] = entry_data
