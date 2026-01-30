@@ -5,7 +5,7 @@ from pathlib import Path
 # Add app directory to path
 sys.path.append(str(Path(__file__).resolve().parent.parent))
 
-from app.core.email_report import (
+from app.core.email_report import (  # skipcq: FLK-E402
     build_subject,
     get_email_config,
     render_html_email,
