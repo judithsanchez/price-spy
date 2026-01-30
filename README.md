@@ -433,8 +433,15 @@ Quotas reset at midnight Pacific time.
 
 ### 1. Environment Setup
 
-**Option A: Docker (Recommended)**
+### 1. Environment Setup
+**Option A: DevContainer (Highly Recommended)**
 The easiest way to ensure consistency.
+1. Open project in VS Code.
+2. Click "Reopen in Container".
+3. Done! (Python, Linters, and DB are pre-configured).
+
+**Option B: Docker (Manual)**
+Run commands via `docker compose`:
 ```bash
 # Build the dev container
 docker compose -f infrastructure/docker-compose.yml build
@@ -443,14 +450,19 @@ docker compose -f infrastructure/docker-compose.yml build
 docker compose -f infrastructure/docker-compose.yml run --rm price-spy pytest
 ```
 
-**Option B: Local Virtual Environment**
-Faster for editing and linting.
+**Option C: Local Virtual Environment**
+Supported but requires manual dependency management.
 ```bash
 python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
 playwright install chromium
 ```
+
+### 2. Code Quality & Testing
+**Pre-commit Hooks:**
+- **On Host:** `pre-commit run --all-files` (Runs inside Docker automatically)
+- **In DevContainer:** Run checks manually (`ruff check .`, `mypy .`) as hooks may fail (Docker-in-Docker limits).
 
 ### 2. Code Quality & Testing
 Before committing, ensure your code passes all checks.
