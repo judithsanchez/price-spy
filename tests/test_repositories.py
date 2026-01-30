@@ -41,7 +41,9 @@ def test_metadata_repositories(test_db):
     labels = label_repo.get_all()
     assert any(label.name == custom_label for label in labels)
     assert any(label.name == "Eco-friendly" for label in labels)  # Verify seeded
-    assert label_repo.get_by_id(label_id).name == custom_label
+    found_label = label_repo.get_by_id(label_id)
+    assert found_label is not None
+    assert found_label.name == custom_label
 
 
 def test_product_repository(test_db):
@@ -59,6 +61,7 @@ def test_product_repository(test_db):
     )
     prod_id = repo.insert(prod)
     found = repo.get_by_id(prod_id)
+    assert found is not None
     assert found.name == "Test Shirt"
     assert found.target_price == 25.0  # noqa: PLR2004
 
@@ -71,6 +74,7 @@ def test_product_repository(test_db):
     found.target_price = 20.0
     repo.update(prod_id, found)
     updated = repo.get_by_id(prod_id)
+    assert updated is not None
     assert updated.target_price == 20.0  # noqa: PLR2004
 
     # Test delete
@@ -93,6 +97,7 @@ def test_tracked_item_repository(test_db):
     )
     item_id = repo.insert(item)
     found = repo.get_by_id(item_id)
+    assert found is not None
     assert found.url == "https://example.com/item"
 
     # Test set/get labels
@@ -112,4 +117,5 @@ def test_tracked_item_repository(test_db):
     # Test set_last_checked
     repo.set_last_checked(item_id)
     updated = repo.get_by_id(item_id)
+    assert updated is not None
     assert updated.last_checked_at is not None

@@ -94,7 +94,7 @@ class ExtraFieldsAdapter(logging.LoggerAdapter):
         message.
         """
         extra = kwargs.get("extra", {})
-        kwargs["extra"] = {**self.extra, **extra}
+        kwargs["extra"] = {**self.extra, **extra}  # type: ignore
         return msg, kwargs
 
 

@@ -1,42 +1,37 @@
 repos:
-  - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.9.3
-    hooks:
-      - id: ruff
-        args: [--fix, --exit-non-zero-on-fix]
-      - id: ruff-format
-  - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.14.1
-    hooks:
-      - id: mypy
-        args: [--ignore-missing-imports]
-        additional_dependencies: [types-requests, pydantic, types-pytz]
-
-  - repo: https://github.com/PyCQA/bandit
-    rev: 1.8.2
-    hooks:
-      - id: bandit
-        args: ["-r", "app/", "--skip", "B101"]
-        pass_filenames: false
-
-  - repo: https://github.com/pypa/pip-audit
-    rev: v2.7.3
-    hooks:
-      - id: pip-audit
-        args: ["-r", "requirements.txt"]
-        pass_filenames: false
-
   - repo: local
     hooks:
-      - id: pylint
-        name: pylint-parity
-        entry: pylint
+      - id: docker-ruff
+        name: ruff (docker)
+        entry: docker compose -f infrastructure/docker-compose.yml run --rm price-spy ruff check . --fix
         language: system
         types: [python]
-        files: ^app/
-        args: [
-          "--disable=all",
-          "--enable=no-else-return,useless-import-alias,unnecessary-pass,no-self-use,no-else-raise,pointless-string-statement",
-          "--score=n",
-          "--no-docstring-rgx=^$"
-        ]
+        pass_filenames: false
+
+      - id: docker-ruff-format
+        name: ruff-format (docker)
+        entry: docker compose -f infrastructure/docker-compose.yml run --rm price-spy ruff format .
+        language: system
+        types: [python]
+        pass_filenames: false
+
+      - id: docker-mypy
+        name: mypy (docker)
+        entry: docker compose -f infrastructure/docker-compose.yml run --rm price-spy mypy .
+        language: system
+        types: [python]
+        pass_filenames: false
+
+      - id: docker-bandit
+        name: bandit (docker)
+        entry: docker compose -f infrastructure/docker-compose.yml run --rm price-spy bandit -r app/ --skip B101
+        language: system
+        types: [python]
+        pass_filenames: false
+
+      - id: docker-pip-audit
+        name: pip-audit (docker)
+        entry: docker compose -f infrastructure/docker-compose.yml run --rm price-spy pip-audit
+        language: system
+        types: [python]
+        pass_filenames: false
