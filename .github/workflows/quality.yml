@@ -71,7 +71,7 @@ jobs:
         if: "github.event_name == 'pull_request' && !contains(github.event.pull_request.labels.*.name, 'skip-docs') && !contains(github.event.pull_request.labels.*.name, 'skip-all')"
         run: |
           APP_CHANGES=$(git diff --name-only origin/${{ github.base_ref }}...HEAD | grep "^app/" | wc -l)
-          DOC_CHANGES=$(git diff --name-only origin/${{ github.base_ref }}...HEAD | grep -E "^docs/|^README.md" | wc -l)
+          DOC_CHANGES=$(git diff --name-only origin/${{ github.base_ref }}...HEAD | grep -E "^docs/|^README.md|^GEMINI.md" | wc -l)
           if [ "$APP_CHANGES" -gt 0 ] && [ "$DOC_CHANGES" -eq 0 ]; then
             echo "❌ ERROR: Code changed in app/ but no changes found in docs/ or README.md."
             exit 1
