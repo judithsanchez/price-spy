@@ -1,7 +1,8 @@
 {
     "name": "Price Spy Dev",
     "dockerComposeFile": [
-        "../infrastructure/docker-compose.yml"
+        "../infrastructure/docker-compose.yml",
+        "docker-compose.dev.yml"
     ],
     "service": "price-spy",
     "workspaceFolder": "/app",
