@@ -12,6 +12,20 @@ repos:
         args: [--ignore-missing-imports]
         additional_dependencies: [types-requests, pydantic, types-pytz]
 
+  - repo: https://github.com/PyCQA/bandit
+    rev: 1.8.2
+    hooks:
+      - id: bandit
+        args: ["-r", "app/", "--skip", "B101"]
+        pass_filenames: false
+
+  - repo: https://github.com/pypa/pip-audit
+    rev: v2.7.3
+    hooks:
+      - id: pip-audit
+        args: ["-r", "requirements.txt"]
+        pass_filenames: false
+
   - repo: local
     hooks:
       - id: pylint
