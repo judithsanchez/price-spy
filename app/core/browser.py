@@ -3,6 +3,7 @@ import logging
 import random
 
 from playwright.async_api import BrowserContext, async_playwright
+from app.core.store_configs import STORE_CONFIGS, StoreConfig
 
 logger = logging.getLogger(__name__)
 
@@ -136,102 +137,87 @@ async def create_stealth_context(playwright) -> BrowserContext:
     )
 
 
-async def _find_zalando_size_button(page):
-    """Find and click the Zalando size picker button."""
-    selectors = [
-        'button[data-testid="pdp-size-picker-trigger"]',
-        'button[data-testid="pdp-size-selector-trigger"]',
-        'button:has-text("Maat kiezen")',
-        'button:has-text("Select size")',
-        'button:has-text("Maat selecteren")',
+async def _get_store_config(url: str) -> StoreConfig | None:
+    """Find a store configuration matching the URL."""
+    for keyword, config in STORE_CONFIGS.items():
+        if keyword in url.lower():
+            return config
+    return None
+
+
+async def _dismiss_cookie_consent(page, config: StoreConfig | None = None):
+    """Try to dismiss cookie consent popups using smart heuristics and store config."""
+    
+    # 1. Smart Accept Heuristic (Text-based)
+    # We look for common "Accept" labels in multiple languages
+    smart_labels = [
+        "Akkoord", "Accepteren", "Accept", "Agree", "Toestaan", 
+        "Allow", "Conferma", "Accepter", "Accetto"
     ]
-
-    for selector in selectors:
-        try:
-            btn = page.locator(selector).first
-            if await btn.is_visible(timeout=3000):
-                await btn.scroll_into_view_if_needed()
-                await btn.click()
-                logger.info("Clicked Zalando size dropdown")
-                await page.wait_for_timeout(1000)
-                return True
-        except Exception:
-            logger.debug("Selector %s not found on Zalando", selector)
-            continue
-    return False
-
-
-async def _select_zalando_size(page, target_size: str):
-    """Try to find and click the specific target size."""
-    size_selectors = [
-        f'button[data-testid="pdp-size-selector-item"]:has-text("{target_size}")',
-        f'button[data-testid="pdp-size-picker-item"]:has-text("{target_size}")',
-        (f'li[data-testid="pdp-size-selector-item"] button:has-text("{target_size}")'),
-        f'button:has-text("{target_size}")',
-    ]
-
-    for selector in size_selectors:
-        try:
-            opt = page.locator(selector).first
-            if await opt.is_visible(timeout=2000):
-                await opt.click()
-                logger.info("Clicked Zalando size option: %s", target_size)
-                await page.wait_for_timeout(2000)
-                return True
-        except Exception:  # noqa: S112 # nosec B112
-            continue
-    return False
-
-
-async def handle_zalando_interaction(page, target_size: str | None = None):
-    """Specilized interaction for Zalando to handle size selection."""
-    if "zalando" not in page.url:
-        return
-
-    logger.info("Handling Zalando interaction (target_size: %s)", target_size)
+    
     try:
-        # 1. Look for the "Maat kiezen" button
-        button_clicked = await _find_zalando_size_button(page)
+        # Try text-based matching first (very robust against ID changes)
+        for label in smart_labels:
+            try:
+                # Search for buttons containing the label
+                btn = page.locator(f'button:has-text("{label}")').first
+                if await btn.is_visible(timeout=500):
+                    await btn.click()
+                    logger.info("Dismissed cookie banner via smart label: %s", label)
+                    await page.wait_for_timeout(1000)
+                    return # Exit early if successful
+            except Exception:
+                continue
 
-        if button_clicked and target_size:
-            # 2. Try to click the specific size
-            size_selected = await _select_zalando_size(page, target_size)
-            if not size_selected:
-                logger.warning("Zalando size option '%s' not found", target_size)
-        elif not button_clicked:
-            logger.warning("Zalando size button not found")
-    except Exception:
-        logger.exception("Error during Zalando interaction")
+        # 2. Generic Selectors (High confidence fallbacks)
+        generic_selectors = [
+            "#sp-cc-accept",
+            "#js-first-screen-accept-all-button",
+            '[data-test="consent-modal-ofc-confirm-btn"]',
+            "#onetrust-accept-btn-handler",
+            "#onetrust-banner-sdk",
+            ".uc-btn-accept",
+        ]
+        
+        for selector in generic_selectors:
+            try:
+                btn = page.locator(selector).first
+                if await btn.is_visible(timeout=500):
+                    await btn.click()
+                    logger.info("Dismissed cookie banner via generic selector: %s", selector)
+                    await page.wait_for_timeout(1000)
+                    return
+            except Exception:
+                continue
 
-
-async def _dismiss_cookie_consent(page):
-    """Try to dismiss cookie consent popups."""
-    selectors = [
-        "#sp-cc-accept",
-        "#js-first-screen-accept-all-button",
-        '[data-test="consent-modal-ofc-confirm-btn"]',
-        'button:has-text("Alles accepteren")',
-        "#onetrust-accept-btn-handler",
-        "#onetrust-banner-sdk",
-        'button:has-text("Accepteren")',
-        'button:has-text("Accept All")',
-        ".uc-btn-accept",
-    ]
-
-    try:
-        for _ in range(3):
-            clicked_any = False
-            for selector in selectors:
+        # 3. Store-Specific Click Targets
+        if config and config.cookie_click_targets:
+            for selector in config.cookie_click_targets:
                 try:
                     btn = page.locator(selector).first
                     if await btn.is_visible(timeout=500):
                         await btn.click()
+                        logger.info("Dismissed cookie banner via store click target: %s", selector)
                         await page.wait_for_timeout(1000)
-                        clicked_any = True
-                except Exception:  # noqa: S112 # nosec B112
+                        return
+                except Exception:
                     continue
-            if not clicked_any:
-                break
+
+        # 4. CSS Hiding Fallback (Last resort for persistent overlays)
+        hide_selectors = [
+            ".cookie-banner", ".cookie-notice", "#cookie-law-info-bar",
+            ".consent-banner", ".privacy-overlay"
+        ]
+        if config and config.cookie_hide_selectors:
+            hide_selectors.extend(config.cookie_hide_selectors)
+
+        for selector in hide_selectors:
+            try:
+                # We use evaluate to hide the element if it exists
+                await page.add_style_tag(content=f"{selector} {{ display: none !important; visibility: hidden !important; pointer-events: none !important; }}")
+            except Exception:
+                continue
+                
     except Exception as e:
         logger.debug("Cookie consent handling failed: %s", e)
 
@@ -281,12 +267,15 @@ async def capture_screenshot(url: str, target_size: str | None = None) -> bytes:
                 logger.exception("Failed to navigate to %s", url)
                 raise
 
-        # Try to dismiss cookie consent popups
-        await _dismiss_cookie_consent(page)
+        # Get store-specific config
+        config = await _get_store_config(url)
 
-        # Handle Zalando specifically if needed
-        if "zalando" in url:
-            await handle_zalando_interaction(page, target_size)
+        # Try to dismiss cookie consent popups
+        await _dismiss_cookie_consent(page, config)
+
+        # Handle custom interactions (e.g., size selection)
+        if config and config.custom_interaction:
+            await config.custom_interaction(page, target_size)
 
         # Try to find a product image or main title to scroll to
         await _scroll_to_product(page)

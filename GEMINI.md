@@ -36,4 +36,6 @@
 - **Browser & Screenshots:**
     - Capture full viewport (1920x1200) to avoid information loss.
     - Use centering logic in `_scroll_to_product` for the product element.
-    - The AI can report faulty screenshots via `is_screenshot_faulty`.
+    - **Store Configuration**: Use `app/core/store_configs.py` to define site-specific behaviors (cookie click targets, CSS hiding, custom interactions).
+    - **Smart Dismissal**: The browser uses text-based heuristics to dismiss cookie banners before falling back to selectors.
+    - The AI can report faulty screenshots via `is_screenshot_faulty` and blocked pages via `is_blocked`.
