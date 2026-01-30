@@ -1,7 +1,7 @@
 from collections import defaultdict
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Annotated, Any, cast
+from typing import Annotated, Any, TypedDict, cast
 
 from fastapi import APIRouter, Depends, Request
 from fastapi.templating import Jinja2Templates
@@ -503,14 +503,25 @@ async def products_page(request: Request):
     return templates.TemplateResponse(request, "products.html", {})
 
 
+from typing import Annotated, Any, TypedDict, cast
+
+# ... imports ...
+
+class Deal(TypedDict):
+    price: float | None
+    currency: str
+    unit_price: float | None
+    unit: str | None
+
+
 def _find_best_deal_for_product(
     product_id: int,
     tracked_repo: TrackedItemRepository,
     price_repo: PriceHistoryRepository,
-) -> dict[str, Any] | None:
+) -> Deal | None:
     """Find the best deal for a product among its tracked items."""
     tracked_items = tracked_repo.get_by_product(product_id)
-    best_deal = None
+    best_deal: Deal | None = None
 
     for item in tracked_items:
         latest = price_repo.get_latest_by_url(item.url)
@@ -524,7 +535,7 @@ def _find_best_deal_for_product(
             item.quantity_unit,
         )
 
-        current_deal = {
+        current_deal: Deal = {
             "price": latest.price,
             "currency": latest.currency,
             "unit_price": u_price,
@@ -539,18 +550,28 @@ def _find_best_deal_for_product(
         # 1. Both have unit prices, compare unit prices
         # 2. Current has unit price but best doesn't
         # 3. Neither has unit price, compare raw prices
+        
+        # Explicitly checking for None to satisfy mypy
+        current_u_price = current_deal["unit_price"]
+        best_u_price = best_deal["unit_price"]
+        current_price = current_deal["price"]
+        best_price = best_deal["price"]
+
         is_better_unit_price = (
-            current_deal["unit_price"] is not None
-            and best_deal["unit_price"] is not None
-            and current_deal["unit_price"] < best_deal["unit_price"]
+            current_u_price is not None
+            and best_u_price is not None
+            and current_u_price < best_u_price
         )
         has_unit_price_advantage = (
-            current_deal["unit_price"] is not None and best_deal["unit_price"] is None
+            current_u_price is not None
+            and best_u_price is None
         )
         is_better_raw_price = (
-            current_deal["unit_price"] is None
-            and best_deal["unit_price"] is None
-            and current_deal["price"] < best_deal["price"]
+            current_u_price is None
+            and best_u_price is None
+            and current_price is not None 
+            and best_price is not None
+            and current_price < best_price
         )
 
         if is_better_unit_price or has_unit_price_advantage or is_better_raw_price:

@@ -5,29 +5,30 @@ import asyncio
 import sys
 
 from app.core.batch_extraction import extract_all_items, get_batch_summary
-from app.core.seeder import seed_test_data
+# from app.core.seeder import seed_test_data  # TODO: Restore when seeder.py is available
 from app.storage.database import Database
 
 
 def seed_test_data_command(db_path: str = "data/pricespy.db"):
     """Seed the database with test data."""
-    db = Database(db_path)
-    db.initialize()
-
-    try:
-        result = seed_test_data(db)
-        if result["status"] == "skipped":
-            print(f"Skipped: {result['reason']}")
-        else:
-            print("Test data seeded successfully:")
-            print(f"  - Products: {result['products_created']}")
-            print(f"  - Stores: {result['stores_created']}")
-            print(f"  - Tracked Items: {result['tracked_items_created']}")
-            print(f"  - Price Records: {result['price_records_created']}")
-            print(f"  - Deals (price <= target): {result['deals']}")
-            print(f"  - Above target: {result['above_target']}")
-    finally:
-        db.close()
+    print("Seeder is currently unavailable.")
+    # db = Database(db_path)
+    # db.initialize()
+    #
+    # try:
+    #     result = seed_test_data(db)
+    #     if result["status"] == "skipped":
+    #         print(f"Skipped: {result['reason']}")
+    #     else:
+    #         print("Test data seeded successfully:")
+    #         print(f"  - Products: {result['products_created']}")
+    #         print(f"  - Stores: {result['stores_created']}")
+    #         print(f"  - Tracked Items: {result['tracked_items_created']}")
+    #         print(f"  - Price Records: {result['price_records_created']}")
+    #         print(f"  - Deals (price <= target): {result['deals']}")
+    #         print(f"  - Above target: {result['above_target']}")
+    # finally:
+    #     db.close()
 
 
 def extract_all_command(db_path: str = "data/pricespy.db", delay: float = 5.0):
