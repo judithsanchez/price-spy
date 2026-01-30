@@ -28,3 +28,4 @@
     - **Development:** Work on a branch in WSL/Local. Push and create a PR to `main`.
     - **Deployment:** Once merged, run `./scripts/deploy.sh` on the Raspberry Pi to sync and restart.
     - **DB Sync:** Run `./scripts/sync_prod_db.sh` on WSL to pull the latest production data for local testing.
+- **Commit:** Before pushing make sure to rebase
