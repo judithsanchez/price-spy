@@ -32,3 +32,23 @@
     - **Deployment:** Once merged, run `./scripts/deploy.sh` on the Raspberry Pi to sync and restart.
     - **DB Sync:** Run `./scripts/sync_prod_db.sh` on WSL to pull the latest production data for local testing.
 - **Commit:** Before pushing make sure to rebase
+
+## DevContainer Setup (Recommended)
+This project is configured for **DevContainers**, allowing you to code inside the Docker environment.
+
+**How to use:**
+1.  Open the project in VS Code (or a compatible IDE).
+2.  Click "Reopen in Container" when prompted.
+3.  **Result**: You are now "inside" the `price-spy` container.
+    -   **Python**: Uses the container's python (no venv needed).
+    -   **Terminal**: Running `python` runs it in the container.
+    -   **Running App**: `uvicorn` starts automatically via `docker-compose`.
+
+**Working inside DevContainer:**
+-   **Run Tests:** `pytest` (Directly! No need for `docker compose run...`)
+-   **Lint:** `ruff check .`
+-   **Type Check:** `mypy .`
+-   **Git Commits:**
+    -   The `pre-commit` hooks are configured for the *Host* machine (they call `docker compose`).
+    -   Inside DevContainer, run checks manually (`ruff`, `mypy`) before committing.
+    -   If hooks fail (due to missing docker socket), use `git commit --no-verify` and rely on CI/Host checks.
