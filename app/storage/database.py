@@ -208,111 +208,6 @@ class Database:
         return self._conn
 
     @staticmethod
-    def _needs_products_migration(cursor) -> bool:
-        """Check if products table needs migration."""
-        cursor.execute("PRAGMA table_info(products)")
-        columns = [row["name"] for row in cursor.fetchall()]
-        unwanted = ["labels", "brand", "preferred_unit_size", "current_stock"]
-        return any(col in columns for col in unwanted)
-
-    @staticmethod
-    def _migrate_products_table(conn) -> None:
-        """Handle products table migration."""
-        cursor = conn.cursor()
-        cursor.execute("PRAGMA table_info(products)")
-        columns = [row["name"] for row in cursor.fetchall()]
-        unwanted = ["labels", "brand", "preferred_unit_size", "current_stock"]
-        keep = [c for c in columns if c not in unwanted]
-        keep_csv = ", ".join(keep)
-        conn.execute("BEGIN TRANSACTION")
-        try:
-            conn.execute("ALTER TABLE products RENAME TO products_old")
-            conn.executescript(SCHEMA)
-            conn.execute(
-                f"INSERT INTO products ({keep_csv}) SELECT {keep_csv} FROM products_old"  # noqa: S608
-            )
-            conn.execute("DROP TABLE products_old")
-            conn.commit()
-        except Exception:
-            conn.rollback()
-            raise
-
-    @staticmethod
-    def _migrate_stores_table(conn, cursor) -> None:
-        """Handle stores table migration."""
-        cursor.execute("PRAGMA table_info(stores)")
-        columns = [row["name"] for row in cursor.fetchall()]
-        unwanted_stores = [
-            "is_size_sensitive",
-            "shipping_cost_standard",
-            "free_shipping_threshold",
-            "notes",
-        ]
-
-        if any(col in columns for col in unwanted_stores):
-            conn.execute("BEGIN TRANSACTION")
-            try:
-                conn.execute("ALTER TABLE stores RENAME TO stores_old")
-                conn.executescript(SCHEMA)
-                # Only copy id and name
-                conn.execute(
-                    "INSERT INTO stores (id, name) SELECT id, name FROM stores_old"
-                )
-                conn.execute("DROP TABLE stores_old")
-                conn.commit()
-                print("Stores migration successful.")
-            except Exception as e:
-                conn.rollback()
-                print(f"Migration failed (stores): {e}")
-
-    @staticmethod
-    def _migrate_tracked_items_table(conn, cursor) -> None:
-        """Handle tracked_items table migration."""
-        cursor.execute("PRAGMA table_info(tracked_items)")
-        columns = [row["name"] for row in cursor.fetchall()]
-        unwanted_ti = ["item_name_on_site", "preferred_model", "target_size_label"]
-
-        if any(col in columns for col in unwanted_ti):
-            keep = [c for c in columns if c not in unwanted_ti]
-            keep_csv = ", ".join(keep)
-
-            conn.execute("BEGIN TRANSACTION")
-            try:
-                conn.execute("ALTER TABLE tracked_items RENAME TO tracked_items_old")
-                conn.executescript(SCHEMA)
-                conn.execute(
-                    f"INSERT INTO tracked_items ({keep_csv}) "  # noqa: S608
-                    f"SELECT {keep_csv} FROM tracked_items_old"
-                )
-                conn.execute("DROP TABLE tracked_items_old")
-                conn.commit()
-                print("Tracked items migration successful.")
-            except Exception as e:
-                conn.rollback()
-                print(f"Migration failed (tracked_items): {e}")
-
-    @staticmethod
-    def _migrate_labels_table(conn, cursor) -> None:
-        """Handle labels table migration."""
-        cursor.execute("PRAGMA table_info(labels)")
-        columns = [row["name"] for row in cursor.fetchall()]
-        if "is_size_sensitive" in columns:
-            conn.execute("BEGIN TRANSACTION")
-            try:
-                conn.execute("ALTER TABLE labels RENAME TO labels_old")
-                conn.executescript(SCHEMA)
-                conn.execute(
-                    "INSERT INTO labels (id, name, created_at) "
-                    "SELECT id, name, created_at FROM labels_old"
-                )
-                conn.execute("DROP TABLE labels_old")
-                conn.commit()
-                print("Labels table simplified.")
-            except Exception as e:
-                conn.rollback()
-                print(f"Migration failed (labels): {e}")
-
-    @staticmethod
     def _ensure_schema_evolutions(cursor) -> None:
         """Handle other small schema evolutions."""
         cursor.execute("PRAGMA table_info(price_history)")
@@ -601,7 +496,7 @@ class Database:
                 "Naturally-flavored",
                 "Raw",
                 "Sprouted",
-                "Whole-grain",
+                "Whole-gain",
                 "Ancient-grains",
                 "Soy-free",
                 "Egg-free",
@@ -716,33 +611,17 @@ class Database:
         conn.executescript(SCHEMA)
 
         cursor = conn.cursor()
-        if self._needs_products_migration(cursor):
-            try:
-                self._migrate_products_table(conn)
-                conn.commit()
-            except Exception as e:
-                conn.rollback()
-                print(f"Migration failed (products): {e}")
 
-        # 1.1. Ensure planned_date exists
+        # Ensure planned_date exists
         cursor.execute("PRAGMA table_info(products)")
         columns = [row["name"] for row in cursor.fetchall()]
         if "planned_date" not in columns:
             cursor.execute("ALTER TABLE products ADD COLUMN planned_date TEXT")
 
-        # 2. Handle stores table migration
-        self._migrate_stores_table(conn, cursor)
-
-        # 3. Handle tracked_items table migration
-        self._migrate_tracked_items_table(conn, cursor)
-
-        # 4. Handle labels table migration
-        self._migrate_labels_table(conn, cursor)
-
-        # 5. Handle other schema evolutions
+        # Handle other schema evolutions
         self._ensure_schema_evolutions(cursor)
 
-        # 6. Seed data
+        # Seed data
         self._seed_base_data(conn, cursor)
         self._seed_categories_and_labels(conn, cursor)
 

@@ -52,7 +52,7 @@ STEALTH_SCRIPTS = """
 
 def _get_random_ua_profile():
     """Pick a random UA profile."""
-    return random.choice(  # noqa: S311
+    return random.choice(  # noqa: S311 # nosec B311
         [
             {
                 "ua": (
@@ -178,7 +178,7 @@ async def _select_zalando_size(page, target_size: str):
                 logger.info("Clicked Zalando size option: %s", target_size)
                 await page.wait_for_timeout(2000)
                 return True
-        except Exception:  # noqa: S112
+        except Exception:  # noqa: S112 # nosec B112
             continue
     return False
 
@@ -228,7 +228,7 @@ async def _dismiss_cookie_consent(page):
                         await btn.click()
                         await page.wait_for_timeout(1000)
                         clicked_any = True
-                except Exception:  # noqa: S112
+                except Exception:  # noqa: S112 # nosec B112
                     continue
             if not clicked_any:
                 break
@@ -265,7 +265,7 @@ async def capture_screenshot(url: str, target_size: str | None = None) -> bytes:
         page = await context.new_page()
 
         await page.add_init_script(STEALTH_SCRIPTS)
-        await asyncio.sleep(random.uniform(1, 4))  # noqa: S311
+        await asyncio.sleep(random.uniform(1, 4))  # noqa: S311 # nosec B311
 
         try:
             await page.goto(url, wait_until="networkidle", timeout=60000)
