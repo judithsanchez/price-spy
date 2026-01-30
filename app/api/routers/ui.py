@@ -545,8 +545,7 @@ def _find_best_deal_for_product(
             and current_deal["unit_price"] < best_deal["unit_price"]
         )
         has_unit_price_advantage = (
-            current_deal["unit_price"] is not None
-            and best_deal["unit_price"] is None
+            current_deal["unit_price"] is not None and best_deal["unit_price"] is None
         )
         is_better_raw_price = (
             current_deal["unit_price"] is None
