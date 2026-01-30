@@ -36,10 +36,12 @@ select = [
     "FURB",   # refurb
     "ASYNC",  # flake8-async
     "PLC0414", # Useless import alias
-    "D202",   # No blank lines after function docstring
+    "D",       # docstrings
+    "C901",    # complexity
+    "G",       # flake8-logging-format
     "ERA",    # eradicate (Commented out code)
 ]
-ignore = ["S101", "PLR0913", "PLR0912", "PLR0915", "PLR0911"]
+ignore = ["S101", "PLR0913", "PLR0912", "PLR0915", "PLR0911", "D100", "D101", "D102", "D103", "D104", "D107"]
 
 [tool.ruff.format]
 quote-style = "double"
