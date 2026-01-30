@@ -531,27 +531,57 @@ async def timeline_page(request: Request, db: Annotated[Database, Depends(get_db
             tracked_item_repo = TrackedItemRepository(db)
             tracked_items = tracked_item_repo.get_by_product(int(p.id or 0))
 
-            best_price = None
-            best_currency = "EUR"
+            best_deal = None
 
             for item in tracked_items:
                 latest = price_repo.get_latest_by_url(item.url)
-                if (
-                    latest
-                    and latest.price
-                    and (best_price is None or latest.price < best_price)
-                ):
-                    best_price = latest.price
-                    best_currency = latest.currency
+                if not latest or not latest.price:
+                    continue
+
+                u_price, u_unit = calculate_volume_price(
+                    latest.price,
+                    item.items_per_lot,
+                    item.quantity_size,
+                    item.quantity_unit,
+                )
+                
+                current_deal = {
+                    "price": latest.price,
+                    "currency": latest.currency,
+                    "unit_price": u_price,
+                    "unit": u_unit
+                }
+
+                if best_deal is None:
+                    best_deal = current_deal
+                    continue
+
+                # Comparison Logic
+                # 1. If both have unit prices, compare unit prices
+                if current_deal["unit_price"] is not None and best_deal["unit_price"] is not None:
+                    if current_deal["unit_price"] < best_deal["unit_price"]:
+                        best_deal = current_deal
+                
+                # 2. If current has unit price but best doesn't, prefer current
+                elif current_deal["unit_price"] is not None and best_deal["unit_price"] is None:
+                    best_deal = current_deal
+                
+                # 3. If neither has unit price, compare raw prices
+                elif current_deal["unit_price"] is None and best_deal["unit_price"] is None:
+                    if current_deal["price"] < best_deal["price"]:
+                        best_deal = current_deal
 
             product_card = {
                 "id": p.id,
                 "name": p.name,
                 "category": p.category,
                 "target_price": p.target_price,
+                "target_unit": p.target_unit,
                 "planned_date": p.planned_date,
-                "best_price": best_price,
-                "currency": best_currency,
+                "best_price": best_deal["price"] if best_deal else None,
+                "best_unit_price": best_deal["unit_price"] if best_deal else None,
+                "best_unit": best_deal["unit"] if best_deal else None,
+                "currency": best_deal["currency"] if best_deal else "EUR",
                 "tracked_count": len(tracked_items),
             }
 
