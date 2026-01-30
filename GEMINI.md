@@ -14,15 +14,15 @@
     - **Ruff** is the primary linter and formatter.
     - **Pylint** is maintained for `pylint-parity` checks in `app/`.
     - **Docstrings** are explicitly disabled across all linters (`D` rules in Ruff, `missing-docstring` in Pylint).
-- **Useful Commands:**
-    - `pre-commit run --all-files`: Run all quality checks.
-    - `ruff check .` / `ruff format .`: Lint and format code.
-    - `mypy .`: Static type checking.
-    - `bandit -r app/ --skip B101`: Security scan.
-    - `pip-audit`: Dependency audit.
-    - `pytest`: Run tests (`--cov=app` for coverage).
-    - `python3 scripts/db_manager.py cleanup`: Remove old DB backups.
-    - `python3 scripts/db_manager.py migrate`: Run pending migrations.
+- **Useful Commands (Docker):**
+    - **Run Tests:** `docker compose -f infrastructure/docker-compose.yml run --rm price-spy pytest`
+    - **Lint & Format:** `docker compose -f infrastructure/docker-compose.yml run --rm price-spy sh -c "ruff check . && ruff format ."`
+    - **Type Check:** `docker compose -f infrastructure/docker-compose.yml run --rm price-spy mypy .`
+    - **Security Scan:** `docker compose -f infrastructure/docker-compose.yml run --rm price-spy bandit -r app/ --skip B101`
+    - **Dependency Audit:** `docker compose -f infrastructure/docker-compose.yml run --rm price-spy pip-audit`
+    - **Database Cleanup:** `docker compose -f infrastructure/docker-compose.yml run --rm price-spy python3 scripts/db_manager.py cleanup`
+    - **Run Migrations:** `docker compose -f infrastructure/docker-compose.yml run --rm price-spy python3 scripts/db_manager.py migrate`
+    - **Pre-commit:** If running locally, `pre-commit run --all-files` (requires local environment). Recommendation: Use Docker commands above for consistency.
 
 - **DevOps Workflow:**
     - **Development:** Work on a branch in WSL/Local. Push and create a PR to `main`.

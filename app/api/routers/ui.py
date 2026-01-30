@@ -503,11 +503,69 @@ async def products_page(request: Request):
     return templates.TemplateResponse(request, "products.html", {})
 
 
+def _find_best_deal_for_product(
+    product_id: int,
+    tracked_repo: TrackedItemRepository,
+    price_repo: PriceHistoryRepository,
+) -> dict[str, Any] | None:
+    """Find the best deal for a product among its tracked items."""
+    tracked_items = tracked_repo.get_by_product(product_id)
+    best_deal = None
+
+    for item in tracked_items:
+        latest = price_repo.get_latest_by_url(item.url)
+        if not latest or not latest.price:
+            continue
+
+        u_price, u_unit = calculate_volume_price(
+            latest.price,
+            item.items_per_lot,
+            item.quantity_size,
+            item.quantity_unit,
+        )
+
+        current_deal = {
+            "price": latest.price,
+            "currency": latest.currency,
+            "unit_price": u_price,
+            "unit": u_unit,
+        }
+
+        if best_deal is None:
+            best_deal = current_deal
+            continue
+
+        # Comparison Logic
+        # 1. Both have unit prices, compare unit prices
+        # 2. Current has unit price but best doesn't
+        # 3. Neither has unit price, compare raw prices
+        is_better_unit_price = (
+            current_deal["unit_price"] is not None
+            and best_deal["unit_price"] is not None
+            and current_deal["unit_price"] < best_deal["unit_price"]
+        )
+        has_unit_price_advantage = (
+            current_deal["unit_price"] is not None
+            and best_deal["unit_price"] is None
+        )
+        is_better_raw_price = (
+            current_deal["unit_price"] is None
+            and best_deal["unit_price"] is None
+            and current_deal["price"] < best_deal["price"]
+        )
+
+        if is_better_unit_price or has_unit_price_advantage or is_better_raw_price:
+            best_deal = current_deal
+
+    return best_deal
+
+
 @router.get("/timeline")
 async def timeline_page(request: Request, db: Annotated[Database, Depends(get_db)]):
     """Render the vertical wishlist timeline."""
     product_repo = ProductRepository(db)
     price_repo = PriceHistoryRepository(db)
+    tracked_item_repo = TrackedItemRepository(db)
 
     products = product_repo.get_all()
     timeline_data: dict[int, dict[int, list[dict]]] = defaultdict(
@@ -527,58 +585,9 @@ async def timeline_page(request: Request, db: Annotated[Database, Depends(get_db
             week = int(week_str)
 
             # Get latest price for the product (best deal among its tracked items)
-
-            tracked_item_repo = TrackedItemRepository(db)
-            tracked_items = tracked_item_repo.get_by_product(int(p.id or 0))
-
-            best_deal = None
-
-            for item in tracked_items:
-                latest = price_repo.get_latest_by_url(item.url)
-                if not latest or not latest.price:
-                    continue
-
-                u_price, u_unit = calculate_volume_price(
-                    latest.price,
-                    item.items_per_lot,
-                    item.quantity_size,
-                    item.quantity_unit,
-                )
-
-                current_deal = {
-                    "price": latest.price,
-                    "currency": latest.currency,
-                    "unit_price": u_price,
-                    "unit": u_unit,
-                }
-
-                if best_deal is None:
-                    best_deal = current_deal
-                    continue
-
-                # Comparison Logic
-                # 1. If both have unit prices, compare unit prices
-                if (
-                    current_deal["unit_price"] is not None
-                    and best_deal["unit_price"] is not None
-                ):
-                    if current_deal["unit_price"] < best_deal["unit_price"]:
-                        best_deal = current_deal
-
-                # 2. If current has unit price but best doesn't, prefer current
-                elif (
-                    current_deal["unit_price"] is not None
-                    and best_deal["unit_price"] is None
-                ):
-                    best_deal = current_deal
-
-                # 3. If neither has unit price, compare raw prices
-                elif (
-                    current_deal["unit_price"] is None
-                    and best_deal["unit_price"] is None
-                ):
-                    if current_deal["price"] < best_deal["price"]:
-                        best_deal = current_deal
+            best_deal = _find_best_deal_for_product(
+                int(p.id or 0), tracked_item_repo, price_repo
+            )
 
             product_card = {
                 "id": p.id,
@@ -591,7 +600,6 @@ async def timeline_page(request: Request, db: Annotated[Database, Depends(get_db
                 "best_unit_price": best_deal["unit_price"] if best_deal else None,
                 "best_unit": best_deal["unit"] if best_deal else None,
                 "currency": best_deal["currency"] if best_deal else "EUR",
-                "tracked_count": len(tracked_items),
             }
 
             cast(list, timeline_data[year][week]).append(product_card)
