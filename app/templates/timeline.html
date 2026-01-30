@@ -59,6 +59,9 @@
                                                     <p class="font-bold text-jolly-dark">
                                                         {% if product.target_price %}
                                                             {{ product.target_price }} {{ product.currency }}
+                                                            {% if product.target_unit %}
+                                                                <span class="text-xs text-gray-400 font-medium">/ {{ product.target_unit }}</span>
+                                                            {% endif %}
                                                         {% else %}
                                                             <span class="text-gray-300">N/A</span>
                                                         {% endif %}
@@ -68,9 +71,20 @@
                                                 <div class="text-right">
                                                     <p class="text-[9px] font-black text-jolly-dark/40 uppercase tracking-widest mb-1">Current Best</p>
                                                     {% if product.best_price %}
-                                                        <p class="text-xl font-black text-jolly-lime tracking-tighter">
-                                                            {{ product.best_price }} {{ product.currency }}
-                                                        </p>
+                                                        <div class="flex flex-col items-end">
+                                                            {% if product.best_unit_price %}
+                                                                <p class="text-xl font-black text-jolly-lime tracking-tighter">
+                                                                    {{ product.best_unit_price }} {{ product.currency }} <span class="text-sm font-bold text-jolly-lime/70">/ {{ product.best_unit }}</span>
+                                                                </p>
+                                                                <p class="text-[10px] mobile-price-sub font-medium text-gray-400">
+                                                                    ({{ product.best_price }} {{ product.currency }} total)
+                                                                </p>
+                                                            {% else %}
+                                                                <p class="text-xl font-black text-jolly-lime tracking-tighter">
+                                                                    {{ product.best_price }} {{ product.currency }}
+                                                                </p>
+                                                            {% endif %}
+                                                        </div>
                                                     {% else %}
                                                         <a href="/products" class="text-[10px] font-black text-jolly hover:underline uppercase tracking-tighter">
                                                             Start Spying 🔍
