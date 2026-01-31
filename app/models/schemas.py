@@ -18,7 +18,11 @@ class ProductInfo(BaseModel):
     page_type: Literal["single_product", "search_results"]
     confidence: float = Field(..., ge=0.0, le=1.0, alias="confidence_score")
     is_blocked: bool = Field(
-        default=False, description="Whether the page is blocked by a modal"
+        default=False,
+        description="Whether the page is blocked by a modal or login wall",
+    )
+    blocking_type: str | None = Field(
+        default=None, description="The type of block (cookie_banner, login_wall, etc.)"
     )
 
     @field_validator("price")
@@ -268,7 +272,11 @@ class ExtractionResult(BaseModel):
     store_name: str | None = Field(default=None)
     notes: str | None = Field(default=None, description="AI notes/observations")
     is_blocked: bool = Field(
-        default=False, description="Whether the page is blocked by a modal"
+        default=False,
+        description="Whether the page is blocked by a modal or login wall",
+    )
+    blocking_type: str | None = Field(
+        default=None, description="The type of block (cookie_banner, login_wall, etc.)"
     )
     original_price: float | None = Field(
         default=None, ge=0, description="Original price before discount"
@@ -318,6 +326,8 @@ class ExtractionLog(BaseModel):
     currency: str | None = Field(default=None, pattern=r"^([A-Z]{3}|N/A)$")
     error_message: str | None = Field(default=None, max_length=2000)
     duration_ms: int | None = Field(default=None, ge=0)
+    blocking_type: str | None = Field(default=None)
+    is_screenshot_faulty: bool = Field(default=False)
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 

@@ -1,6 +1,7 @@
 """Price calculation and comparison logic."""
 
 import json
+from typing import Any
 
 from app.models.schemas import PriceComparison
 
@@ -69,10 +70,7 @@ def compare_prices(
     current: float,
     previous: float | None,
     original_price: float | None = None,
-    deal_type: str | None = None,
-    discount_percentage: float | None = None,
-    discount_fixed_amount: float | None = None,
-    deal_description: str | None = None,
+    deal_info: dict[str, Any] | None = None,
 ) -> PriceComparison:
     """
     Compare current price with previous price and evaluate deals.
@@ -81,11 +79,13 @@ def compare_prices(
         current: Current price
         previous: Previous price (None if first check)
         original_price: Original price before any discount
-        deal_type: Type of promotion detected (e.g., '1+1 gratis')
-        discount_percentage: Percentage off
-        discount_fixed_amount: Fixed amount off
-        deal_description: Explanation of the deal
+        deal_info: Dict with deal_type, discount_percentage, etc.
     """
+    deal_info = deal_info or {}
+    deal_type = deal_info.get("deal_type")
+    discount_percentage = deal_info.get("discount_percentage")
+    discount_fixed_amount = deal_info.get("discount_fixed_amount")
+    deal_description = deal_info.get("deal_description")
     is_deal = False
     if (original_price and original_price > current) or (
         deal_type and deal_type.lower() != "none"

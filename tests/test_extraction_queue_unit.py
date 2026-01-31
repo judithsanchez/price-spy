@@ -1,9 +1,8 @@
-from unittest.mock import MagicMock
-
 import pytest
 
-from app.core.extraction_queue import _get_context, _save_results
-from app.models.schemas import Category, Product, TrackedItem
+from app.core.batch_extraction import _process_extraction_result
+from app.core.extraction_queue import _get_context
+from app.models.schemas import Category, ExtractionResult, Product, TrackedItem
 from app.storage.database import Database
 from app.storage.repositories import (
     CategoryRepository,
@@ -52,7 +51,8 @@ async def test_get_context(test_db):
     assert context.target_size == "32"
 
 
-def test_save_results(test_db):
+@pytest.mark.asyncio
+async def test_process_extraction_result(test_db):
     db = Database(test_db)
     db.initialize()
 
@@ -71,29 +71,29 @@ def test_save_results(test_db):
         )
     )
 
-    result = MagicMock()
-    result.product_name = "Test Product"
-    result.price = 10.0
-    result.currency = "USD"
-    result.store_name = "Test Store"
-    result.original_price = None
-    result.deal_type = None
-    result.discount_percentage = None
-    result.discount_fixed_amount = None
-    result.deal_description = None
-    result.available_sizes = ["S", "M"]
-    result.is_available = True
-    result.notes = "No notes"
+    result = ExtractionResult(
+        product_name="Test Product",
+        price=10.0,
+        currency="USD",
+        store_name="Test Store",
+        original_price=None,
+        deal_type=None,
+        discount_percentage=None,
+        discount_fixed_amount=None,
+        deal_description=None,
+        available_sizes=["S", "M"],
+        is_available=True,
+        is_blocked=False,
+        notes="No notes",
+    )
 
-    _save_results(
+    await _process_extraction_result(
         item_id=item_id,
         url="http://test.com",
         result=result,
         model_used="gemini-1.5-flash",
         duration_ms=500,
-        price_repo=price_repo,
-        log_repo=log_repo,
-        tracked_repo=tracked_repo,
+        db=db,
     )
 
     # Verify price history
