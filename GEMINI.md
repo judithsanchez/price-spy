@@ -1,6 +1,6 @@
 # Development Rules
 
-**⚠️ STRICT COMPLIANCE:** Any deviation from the validation rules (linting, type checking, tests) via suppression mechanisms (e.g., `noqa`, `type: ignore`, `skip_issues`) is **FORBIDDEN** unless explicit permission is granted by the USER.
+**⚠️ STRICT COMPLIANCE:** Any deviation from the validation rules (linting, type checking, tests) via suppression mechanisms (e.g., `noqa`, `type: ignore`, `skip_issues`, `--no-verify`) is **FORBIDDEN** unless explicit permission is granted by the USER.
 
 
 - **Workflow:** Always use Test-Driven Development (TDD). Write the test first, verify failure, then implement.
@@ -28,10 +28,10 @@
     - **Pre-commit:** If running locally, `pre-commit run --all-files` (requires local environment). Recommendation: Use Docker commands above for consistency.
 
 - **DevOps Workflow:**
-    - **Development:** Work on a branch in WSL/Local. Push and create a PR to `main`.
+    - **Development:** Always create a new branch from `main` for each feature, bug, or task. Pull the latest from `main` before starting.
     - **Deployment:** Once merged, run `./scripts/deploy.sh` on the Raspberry Pi to sync and restart.
     - **DB Sync:** Run `./scripts/sync_prod_db.sh` on WSL to pull the latest production data for local testing.
-- **Commit:** Before pushing make sure to rebase
+- **Commit & PR:** Ensure the branch is rebased with `main` before pushing and creating a Pull Request.
 
 - **Browser & Screenshots:**
     - Capture full viewport (1920x1200) to avoid information loss.
