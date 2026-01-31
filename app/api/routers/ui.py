@@ -294,29 +294,24 @@ def _calculate_item_metrics(
 
 def _process_dashboard_item(
     item: TrackedItem,
-    product_repo: ProductRepository,
-    store_repo: StoreRepository,
-    price_repo: PriceHistoryRepository,
+    repos: dict[str, Any],
     products_map: dict[int, dict],
-    low_stock_warnings: list[dict],
-    price_increase_warnings: list[dict],
-    graph_data: dict[str, list],
-    all_timestamps: set[str],
-    cutoff: datetime,
+    warnings: dict[str, list[dict]],
+    graph_info: dict[str, Any],
 ) -> None:
     """Process a single tracked item for the dashboard."""
     if not item.is_active:
         return
 
-    product = product_repo.get_by_id(item.product_id)
+    product = repos["product"].get_by_id(item.product_id)
     if not product:
         return
 
     pid = _ensure_product_in_map(product, products_map)
 
-    store = store_repo.get_by_id(item.store_id)
-    latest_price_rec = price_repo.get_latest_by_url(item.url)
-    history = price_repo.get_history_since(item.url, cutoff)
+    store = repos["store"].get_by_id(item.store_id)
+    latest_price_rec = repos["price"].get_latest_by_url(item.url)
+    history = repos["price"].get_history_since(item.url, graph_info["cutoff"])
     store_name = store.name if store else "Unknown"
 
     # Calculate metrics & Trend
@@ -326,7 +321,7 @@ def _process_dashboard_item(
         store_name,
         latest_price_rec,
         history,
-        price_increase_warnings,
+        warnings["price_increase"],
     )
 
     # Screenshot Path
@@ -343,7 +338,7 @@ def _process_dashboard_item(
         latest_price_rec, str(product.name), store_name
     )
     if stock_warning:
-        low_stock_warnings.append(stock_warning)
+        warnings["low_stock"].append(stock_warning)
 
     # Build Graph Data
     graph_res = _build_graph_dataset(
@@ -351,8 +346,8 @@ def _process_dashboard_item(
     )
     if graph_res:
         dataset, timestamps = graph_res
-        graph_data["datasets"].append(dataset)
-        all_timestamps.update(timestamps)
+        graph_info["graph_data"]["datasets"].append(dataset)
+        graph_info["all_timestamps"].update(timestamps)
 
 
 def _apply_best_deal_logic(sorted_products: list[dict]) -> None:
@@ -434,18 +429,28 @@ async def dashboard(request: Request, db: Annotated[Database, Depends(get_db)]):
         graph_data: dict[str, list] = {"labels": [], "datasets": []}
         all_timestamps: set[str] = set()
 
+        repos = {
+            "product": product_repo,
+            "store": store_repo,
+            "price": price_repo,
+        }
+        warnings = {
+            "low_stock": low_stock_warnings,
+            "price_increase": price_increase_warnings,
+        }
+        graph_info = {
+            "graph_data": graph_data,
+            "all_timestamps": all_timestamps,
+            "cutoff": cutoff,
+        }
+
         for item in tracked_items:
             _process_dashboard_item(
                 item,
-                product_repo,
-                store_repo,
-                price_repo,
+                repos,
                 products_map,
-                low_stock_warnings,
-                price_increase_warnings,
-                graph_data,
-                all_timestamps,
-                cutoff,
+                warnings,
+                graph_info,
             )
 
         sorted_labels = sorted(all_timestamps)

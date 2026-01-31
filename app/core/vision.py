@@ -42,7 +42,18 @@ EXTRACTION_SCHEMA = {
         },
         "is_blocked": {
             "type": "boolean",
-            "description": "Whether the page is blocked by a modal",
+            "description": "Whether the page is blocked by a modal or login wall",
+        },
+        "blocking_type": {
+            "type": "string",
+            "enum": [
+                "cookie_banner",
+                "login_wall",
+                "newsletter_popup",
+                "other",
+                "none",
+            ],
+            "description": "The type of block detected",
         },
         "original_price": {
             "type": "number",
@@ -125,12 +136,12 @@ Return ONLY a valid JSON object with these exact fields:
     "deal_type": "string or null",
     "deal_description": "string or null",
     "confidence_score": number (your confidence from 0.0 to 1.0),
-    "is_blocked": boolean (true if a modal/consent banner blocks
-major content),
-    "is_size_matched": boolean (true if you are CERTAIN the price is for
-the requested size),
-    "is_screenshot_faulty": boolean (true if the screenshot is de-centered,
-cut off, or unreadable)
+    "is_blocked": boolean (true if a modal/consent banner blocks major content),
+    "blocking_type": (
+        "cookie_banner"| "login_wall" | "newsletter_popup" | "other" | "none"
+    ),
+    "is_size_matched": boolean (true if you are CERTAIN the size is correct),
+    "is_screenshot_faulty": boolean (true if the screenshot is cut off/unreadable)
 }
 
 Important for Clothing:
@@ -278,7 +289,8 @@ RULES:
 - is_available: Boolean.
 {size_guidance}- product_name: The name as shown on the site.
 - store_name: The retailer name.
-- is_blocked: Boolean (true if a cookie/consent modal blocks the view).
+- is_blocked: Boolean (true if a modal or login wall blocks the view).
+- blocking_type: The type of block ('cookie_banner', 'login_wall', etc.).
 - is_screenshot_faulty: Boolean (true if the screenshot is de-centered,
   cut off, or unreadable).
 - Original price: Only if a clear previous price is shown (strikethrough).

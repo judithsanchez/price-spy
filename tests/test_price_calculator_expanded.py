@@ -22,7 +22,9 @@ def test_calculate_volume_price_unknown_unit():
 
 
 def test_compare_prices_no_deal():
-    comp = compare_prices(10.0, 10.0, original_price=None, deal_type="None")
+    comp = compare_prices(
+        10.0, 10.0, original_price=None, deal_info={"deal_type": "None"}
+    )
     assert comp.is_deal is False
     assert comp.price_change == 0.0
 

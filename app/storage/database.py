@@ -113,6 +113,8 @@ CREATE TABLE IF NOT EXISTS extraction_logs (
     currency TEXT,
     error_message TEXT,
     duration_ms INTEGER,
+    blocking_type TEXT,
+    is_screenshot_faulty INTEGER DEFAULT 0,
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     FOREIGN KEY(tracked_item_id) REFERENCES tracked_items(id)
 );

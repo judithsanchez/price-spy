@@ -1,29 +1,18 @@
 """Extraction queue with concurrency management."""
 
 import asyncio
-import json
-import logging
-import time
-from pathlib import Path
 from typing import Any, cast
 
-from app.core.browser import capture_screenshot
+from app.core.batch_extraction import extract_single_item
 from app.core.config import settings
-from app.core.rate_limiter import RateLimitTracker
-from app.core.vision import extract_with_structured_output
 from app.models.schemas import (
     ExtractionContext,
-    ExtractionLog,
-    PriceHistoryRecord,
     TrackedItem,
 )
 from app.storage.database import Database
 from app.storage.repositories import (
     CategoryRepository,
-    ExtractionLogRepository,
-    PriceHistoryRepository,
     ProductRepository,
-    TrackedItemRepository,
 )
 
 # Maximum concurrent extractions (respects Gemini's 15 RPM limit)
@@ -64,135 +53,10 @@ async def _get_context(
     )
 
 
-def _save_results(
-    item_id: int,
-    url: str,
-    result: Any,
-    model_used: str | None,
-    duration_ms: int,
-    price_repo: PriceHistoryRepository,
-    log_repo: ExtractionLogRepository,
-    tracked_repo: TrackedItemRepository,
-) -> None:
-    """Save extraction results to database."""
-    # Save to price history
-    record = PriceHistoryRecord(
-        item_id=item_id,
-        product_name=result.product_name,
-        price=result.price,
-        currency=result.currency,
-        confidence=1.0,
-        url=url,
-        store_name=result.store_name,
-        original_price=result.original_price,
-        deal_type=result.deal_type,
-        discount_percentage=result.discount_percentage,
-        discount_fixed_amount=result.discount_fixed_amount,
-        deal_description=result.deal_description,
-        available_sizes=json.dumps(result.available_sizes)
-        if result.available_sizes
-        else None,
-        is_available=result.is_available,
-        notes=result.notes,
-    )
-    price_repo.insert(record)
-
-    # Log successful extraction
-    log_repo.insert(
-        ExtractionLog(
-            tracked_item_id=item_id,
-            status="success",
-            model_used=model_used,
-            price=result.price,
-            currency=result.currency,
-            duration_ms=duration_ms,
-        )
-    )
-
-    # Update last checked time
-    tracked_repo.set_last_checked(item_id)
+# Redundant _save_results removed as all processing now happens in batch_extraction.py
 
 
-async def extract_single_item(
-    item_id: int, url: str, api_key: str, db: Database
-) -> dict[str, Any]:
-    """Extract price for a single tracked item."""
-    tracked_repo = TrackedItemRepository(db)
-    price_repo = PriceHistoryRepository(db)
-    log_repo = ExtractionLogRepository(db)
-    product_repo = ProductRepository(db)
-    category_repo = CategoryRepository(db)
-    tracker = RateLimitTracker(db)
-
-    start_time = time.time()
-    model_used = None
-
-    try:
-        item = tracked_repo.get_by_id(item_id)
-        if not item:
-            _raise_item_not_found(item_id)
-        assert item is not None
-
-        context = await _get_context(item, product_repo, category_repo)
-
-        # Capture screenshot
-        screenshot_bytes = await capture_screenshot(
-            url,
-            target_size=str(item.target_size) if item.target_size else None,
-        )
-
-        # Save screenshot
-        screenshot_path = Path(f"screenshots/{item_id}.png")
-        screenshot_path.parent.mkdir(parents=True, exist_ok=True)
-        screenshot_path.write_bytes(screenshot_bytes)
-
-        # Extract price with rate limiting
-        result, model_used = await extract_with_structured_output(
-            screenshot_bytes, api_key, tracker, context=context
-        )
-
-        duration_ms = int((time.time() - start_time) * 1000)
-
-        _save_results(
-            item_id,
-            url,
-            result,
-            model_used,
-            duration_ms,
-            price_repo,
-            log_repo,
-            tracked_repo,
-        )
-
-    except Exception as e:
-        duration_ms = int((time.time() - start_time) * 1000)
-        logging.exception("Extraction failed for item %s", item_id)
-
-        log_repo.insert(
-            ExtractionLog(
-                tracked_item_id=item_id,
-                status="error",
-                model_used=model_used,
-                error_message=str(e)[:2000],
-                duration_ms=duration_ms,
-            )
-        )
-
-        return {
-            "item_id": item_id,
-            "status": "error",
-            "error": str(e),
-            "duration_ms": duration_ms,
-        }
-
-    return {
-        "item_id": item_id,
-        "status": "success",
-        "price": result.price,
-        "currency": result.currency,
-        "model_used": model_used,
-        "duration_ms": duration_ms,
-    }
+# Local extract_single_item removed, using batch_extraction.extract_single_item
 
 
 async def process_extraction_queue(
@@ -236,7 +100,7 @@ async def process_extraction_queue(
         async with semaphore:
             try:
                 return await extract_single_item(
-                    item_id=int(item.id or 0), url=str(item.url), api_key=api_key, db=db
+                    item_id=int(item.id or 0), api_key=api_key, db=db
                 )
             except Exception as e:
                 return {"item_id": item.id, "status": "error", "error": str(e)}

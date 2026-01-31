@@ -647,8 +647,8 @@ class ExtractionLogRepository(BaseRepository):
             """
             INSERT INTO extraction_logs
             (tracked_item_id, status, model_used, price, currency,
-             error_message, duration_ms)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+             error_message, duration_ms, blocking_type, is_screenshot_faulty)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 log.tracked_item_id,
@@ -658,6 +658,8 @@ class ExtractionLogRepository(BaseRepository):
                 log.currency,
                 log.error_message,
                 log.duration_ms,
+                log.blocking_type,
+                1 if log.is_screenshot_faulty else 0,
             ),
         )
         self.db.commit()
@@ -771,6 +773,8 @@ class ExtractionLogRepository(BaseRepository):
             currency=row["currency"],
             error_message=row["error_message"],
             duration_ms=row["duration_ms"],
+            blocking_type=row["blocking_type"],
+            is_screenshot_faulty=bool(row["is_screenshot_faulty"]),
             created_at=datetime.fromisoformat(row["created_at"]),
         )
 
