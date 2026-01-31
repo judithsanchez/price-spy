@@ -141,9 +141,11 @@ Important for Clothing:
 
 Important:
 - If is_blocked is true, still try to extract what you can, but set is_blocked: true.
-- CRITICAL: If a cookie banner, login screen, or modal covers the product or price, set is_blocked: true. 
-- DO NOT set is_available: false just because you can't see the price due to a modal. 
-- Only set is_available: false if you can clearly see "Out of Stock", "Sold Out", or a disabled "Add to Cart" button.
+- CRITICAL: If a cookie banner, login screen, or modal covers the product or price,
+  set is_blocked: true.
+- DO NOT set is_available: false just because you can't see the price due to a modal.
+- Only set is_available: false if you can clearly see "Out of Stock", "Sold Out",
+  or a disabled "Add to Cart" button.
 - If you CANNOT find the price or currency, use 0.0 for price and "N/A" for currency.
 - ALWAYS extract the original price and strikethrough prices to detect discounts.
 
@@ -285,10 +287,10 @@ RULES:
   'second_unit_discount', 'value_pack', 'clearance', or 'none'.
 - Discount: Extract percentage or fixed amount if applicable.
 - deal_description: E.g., '1+1 gratis' or '20% off with code'.
-- General Notes: Mention if the price is a general discount
-  but you couldn't confirm the target size price.
-- IMPORTANT: If a cookie banner, login screen, or login wall blocks the content, set is_blocked: true.
-- DO NOT report as "Out of Stock" if the page is simply blocked. Assume available but blocked.
+Return ONLY valid JSON. If is_blocked is true, provide your best guess.
+- IMPORTANT: If a cookie banner, login screen, or login wall blocks the content,
+  set is_blocked: true.
+- DO NOT report as "Out of Stock" if the page is simply blocked. Assume available.
 - IMPORTANT: If price is not immediately top-center, look for a STICKY BOTTOM BAR or
   "Add to Cart" button area. Fashion mobile sites often place the price there.
 

@@ -3,6 +3,7 @@ import logging
 import random
 
 from playwright.async_api import BrowserContext, async_playwright
+
 from app.core.store_configs import STORE_CONFIGS, StoreConfig
 
 logger = logging.getLogger(__name__)
@@ -145,79 +146,122 @@ async def _get_store_config(url: str) -> StoreConfig | None:
     return None
 
 
+async def _smart_accept_dismissal(page) -> bool:
+    """Try to dismiss via common text labels."""
+    smart_labels = [
+        "Akkoord",
+        "Accepteren",
+        "Accept",
+        "Agree",
+        "Toestaan",
+        "Allow",
+        "Conferma",
+        "Accepter",
+        "Accetto",
+    ]
+    for label in smart_labels:
+        try:
+            btn = page.locator(f'button:has-text("{label}")').first
+            if await btn.is_visible(timeout=500):
+                await btn.click()
+                logger.info("Dismissed cookie banner via smart label: %s", label)
+                await page.wait_for_timeout(1000)
+                return True
+        except Exception as e:
+            logger.debug("Smart label '%s' not found or not clickable: %s", label, e)
+            continue
+    return False
+
+
+async def _generic_selector_dismissal(page) -> bool:
+    """Try to dismiss via high-confidence generic selectors."""
+    generic_selectors = [
+        "#sp-cc-accept",
+        "#js-first-screen-accept-all-button",
+        '[data-test="consent-modal-ofc-confirm-btn"]',
+        "#onetrust-accept-btn-handler",
+        "#onetrust-banner-sdk",
+        ".uc-btn-accept",
+    ]
+    for selector in generic_selectors:
+        try:
+            btn = page.locator(selector).first
+            if await btn.is_visible(timeout=500):
+                await btn.click()
+                logger.info(
+                    "Dismissed cookie banner via generic selector: %s", selector
+                )
+                await page.wait_for_timeout(1000)
+                return True
+        except Exception as e:
+            logger.debug("Generic selector '%s' not found: %s", selector, e)
+            continue
+    return False
+
+
+async def _store_specific_dismissal(page, config: StoreConfig) -> bool:
+    """Try to dismiss via store-specific click targets."""
+    if not config.cookie_click_targets:
+        return False
+    for selector in config.cookie_click_targets:
+        try:
+            btn = page.locator(selector).first
+            if await btn.is_visible(timeout=500):
+                await btn.click()
+                logger.info(
+                    "Dismissed cookie banner via store click target: %s", selector
+                )
+                await page.wait_for_timeout(1000)
+                return True
+        except Exception as e:
+            logger.debug("Store click target '%s' not found: %s", selector, e)
+            continue
+    return False
+
+
+async def _css_hide_dismissal(page, config: StoreConfig | None):
+    """Hide persistent overlays via CSS."""
+    hide_selectors = [
+        ".cookie-banner",
+        ".cookie-notice",
+        "#cookie-law-info-bar",
+        ".consent-banner",
+        ".privacy-overlay",
+    ]
+    if config and config.cookie_hide_selectors:
+        hide_selectors.extend(config.cookie_hide_selectors)
+
+    for selector in hide_selectors:
+        try:
+            await page.add_style_tag(
+                content=(
+                    f"{selector} {{ display: none !important; "
+                    "visibility: hidden !important; pointer-events: none !important; }"
+                )
+            )
+        except Exception as e:
+            logger.debug("Hiding selector '%s' failed: %s", selector, e)
+            continue
+
+
 async def _dismiss_cookie_consent(page, config: StoreConfig | None = None):
     """Try to dismiss cookie consent popups using smart heuristics and store config."""
-    
-    # 1. Smart Accept Heuristic (Text-based)
-    # We look for common "Accept" labels in multiple languages
-    smart_labels = [
-        "Akkoord", "Accepteren", "Accept", "Agree", "Toestaan", 
-        "Allow", "Conferma", "Accepter", "Accetto"
-    ]
-    
     try:
-        # Try text-based matching first (very robust against ID changes)
-        for label in smart_labels:
-            try:
-                # Search for buttons containing the label
-                btn = page.locator(f'button:has-text("{label}")').first
-                if await btn.is_visible(timeout=500):
-                    await btn.click()
-                    logger.info("Dismissed cookie banner via smart label: %s", label)
-                    await page.wait_for_timeout(1000)
-                    return # Exit early if successful
-            except Exception:
-                continue
+        # 1. Smart Accept Heuristic (Text-based)
+        if await _smart_accept_dismissal(page):
+            return
 
         # 2. Generic Selectors (High confidence fallbacks)
-        generic_selectors = [
-            "#sp-cc-accept",
-            "#js-first-screen-accept-all-button",
-            '[data-test="consent-modal-ofc-confirm-btn"]',
-            "#onetrust-accept-btn-handler",
-            "#onetrust-banner-sdk",
-            ".uc-btn-accept",
-        ]
-        
-        for selector in generic_selectors:
-            try:
-                btn = page.locator(selector).first
-                if await btn.is_visible(timeout=500):
-                    await btn.click()
-                    logger.info("Dismissed cookie banner via generic selector: %s", selector)
-                    await page.wait_for_timeout(1000)
-                    return
-            except Exception:
-                continue
+        if await _generic_selector_dismissal(page):
+            return
 
         # 3. Store-Specific Click Targets
-        if config and config.cookie_click_targets:
-            for selector in config.cookie_click_targets:
-                try:
-                    btn = page.locator(selector).first
-                    if await btn.is_visible(timeout=500):
-                        await btn.click()
-                        logger.info("Dismissed cookie banner via store click target: %s", selector)
-                        await page.wait_for_timeout(1000)
-                        return
-                except Exception:
-                    continue
+        if config and await _store_specific_dismissal(page, config):
+            return
 
         # 4. CSS Hiding Fallback (Last resort for persistent overlays)
-        hide_selectors = [
-            ".cookie-banner", ".cookie-notice", "#cookie-law-info-bar",
-            ".consent-banner", ".privacy-overlay"
-        ]
-        if config and config.cookie_hide_selectors:
-            hide_selectors.extend(config.cookie_hide_selectors)
+        await _css_hide_dismissal(page, config)
 
-        for selector in hide_selectors:
-            try:
-                # We use evaluate to hide the element if it exists
-                await page.add_style_tag(content=f"{selector} {{ display: none !important; visibility: hidden !important; pointer-events: none !important; }}")
-            except Exception:
-                continue
-                
     except Exception as e:
         logger.debug("Cookie consent handling failed: %s", e)
 
